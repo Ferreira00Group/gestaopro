@@ -153,8 +153,17 @@ function salvarMeta(){
   if(!state.metas) state.metas={};
   state.metas[mesAtual]=val;
   marcarAlterado();
+  salvarMetaDebounced();
   const vendasMes=state.vendas.filter(v=>v.data.startsWith(mesAtual));
   renderMetaVendas(vendasMes.reduce((s,v)=>s+v.total,0));
+}
+const salvarMetaDebounced=debounce(salvarDados,500);
+function salvarMetaAgora(){
+  // Gravação imediata (sem esperar o debounce) ao sair do campo — evita perder a meta
+  // se o usuário fechar o app logo em seguida, já que no celular o navegador nem
+  // sempre roda o salvamento automático de saída (beforeunload) a tempo.
+  marcarAlterado();
+  salvarDados();
 }
 function renderMetaVendas(realizado){
   const mesAtual=today().slice(0,7);
