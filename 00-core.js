@@ -395,20 +395,43 @@ function getUltimosMeses(n){
 function marcarAlterado(){
   state.dados_alterados=true;
 }
+function nomeArquivoBackup(){
+  const now=new Date();
+  const hora=`${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  return `gestaopro-backup-${today()}-${hora}.json`;
+}
 function exportarBackup(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  const now=new Date();
-  const hora=`${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-  const nomeArquivo=`gestaopro-backup-${today()}-${hora}.json`;
+  const nomeArquivo=nomeArquivoBackup();
   a.download=nomeArquivo;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
   document.getElementById('backup-exportado-nome').textContent='📄 '+nomeArquivo;
   openModal('modal-backup-exportado');
   window.open('https://github.com/Ferreira00Group/gestaopro','_blank');
+}
+async function compartilharBackup(){
+  const nomeArquivo=nomeArquivoBackup();
+  const conteudo=JSON.stringify(state,null,2);
+  try{
+    const file=new File([conteudo],nomeArquivo,{type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({
+        files:[file],
+        title:'Backup GestãoPRO',
+        text:'Backup do sistema GestãoPRO — '+fmtDate(today())
+      });
+      showToast('Backup compartilhado ✓','green');
+      return;
+    }
+  }catch(e){
+    if(e.name==='AbortError')return; // usuário cancelou o compartilhamento, tudo bem
+  }
+  // Navegador não suporta compartilhar arquivo diretamente (ex: alguns desktops) -> baixa normalmente
+  exportarBackup();
 }
 function importarBackup(input){
   const file=input.files[0];
