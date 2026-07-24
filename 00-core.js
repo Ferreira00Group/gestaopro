@@ -98,6 +98,7 @@ const DEFAULT_STATE = {
   venda_tipo_filter:'',
   estoque_filter:'',
   estoque_categoria_filter:'',
+  planejamento_apenas_aprovados:false,
   precificacao_filter:'',
   fornecedor_filter:'',
   fornecedor_status_filter:'',

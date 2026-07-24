@@ -525,6 +525,7 @@ const OPCOES_IMPRESSAO=[
   {page:'receber',label:'Contas a Receber',icon:'📥'},
   {page:'producao',label:'Produção',icon:'🧪'},
   {page:'estoque',label:'Estoque',icon:'📦'},
+  {page:'planejamento',label:'Planejamento',icon:'🧮'},
   {page:'precificacao',label:'Precificação',icon:'🏷️'},
   {page:'financeiro',label:'Financeiro',icon:'💰'},
   {page:'relatorio',label:'Relatórios',icon:'📊'},
@@ -595,6 +596,7 @@ function render(page){
     if(state.estoque_tab==='fornecedores'){renderFornecedores();renderHistoricoCompras();renderHistoricoPreco();}
     else renderEstoque();
   }
+  if(page==='planejamento')renderPlanejamento();
   if(page==='precificacao'){renderPrecVisaoGeral();renderSimulador();}
   if(page==='financeiro'){
     const hj=today().slice(0,7);
