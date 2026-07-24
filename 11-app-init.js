@@ -50,6 +50,23 @@ function lockEsqueciSenha(){
 }
 initLockScreen();
 
+// ============ PWA: SERVICE WORKER + STORAGE PERSISTENTE ============
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(e=>{
+      console.warn('[GestãoPRO] Falha ao registrar Service Worker:',e);
+    });
+  });
+}
+// Pede ao navegador pra não apagar os dados do app sob pressão de espaço
+// (não garante 100%, mas reduz bastante o risco — funciona melhor depois
+// que o usuário instala o app na tela inicial)
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().then(concedido=>{
+    if(!concedido) console.warn('[GestãoPRO] Armazenamento persistente não concedido pelo navegador.');
+  });
+}
+
 // ============ INIT ============
 carregarDados();
 renderDashboard();
