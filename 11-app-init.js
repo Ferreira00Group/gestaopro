@@ -76,4 +76,6 @@ atualizarAlertBells();
 setTimeout(renderChartDash, 100);
 setTimeout(ajustarStickyTabela, 150);
 setTimeout(renderChart30Dias, 100);
-setTimeout(verificarLembreteBackup, 1200);
+initGoogleDriveClient();
+setTimeout(tentarBackupSilenciosoDrive, 1000);
+setTimeout(verificarLembreteBackup, 3000);
