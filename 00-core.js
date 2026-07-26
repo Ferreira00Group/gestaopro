@@ -101,6 +101,8 @@ const DEFAULT_STATE = {
   planejamento_apenas_aprovados:false,
   ultimoBackup:null,
   snoozeBackupAte:null,
+  driveBackupAtivo:false,
+  driveUltimaTentativa:null,
   precificacao_filter:'',
   fornecedor_filter:'',
   fornecedor_status_filter:'',

@@ -13,6 +13,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -110,7 +111,8 @@
     <label style="color:#2980B9;cursor:pointer;text-decoration:underline">⬆ Importar
       <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
     </label> ·
-    <a onclick="closeSidebar();verificarAtualizacao()" style="color:#8E44AD;cursor:pointer;text-decoration:underline">🔄 Atualizar</a>
+    <a onclick="closeSidebar();verificarAtualizacao()" style="color:#8E44AD;cursor:pointer;text-decoration:underline">🔄 Atualizar</a><br>
+    <span id="drive-status-texto"></span><a id="drive-status-btn" onclick="cliqueBotaoDrive()" style="cursor:pointer;text-decoration:underline;display:none"></a>
   </div>
 </div>
 
@@ -1511,6 +1513,7 @@ const UPDATE_URL = 'https://raw.githubusercontent.com/Ferreira00Group/gestaopro/
 <script src="09-financeiro-relatorios.js"></script>
 <script src="10-fab-inline.js"></script>
 <script src="10b-planejamento.js"></script>
+<script src="12-drive-backup.js"></script>
 <script src="11-app-init.js"></script>
 
 <!-- MODAL NOVO PRODUTO -->

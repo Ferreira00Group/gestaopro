@@ -29,6 +29,7 @@ const ASSETS = [
   './09-financeiro-relatorios.js',
   './10-fab-inline.js',
   './10b-planejamento.js',
+  './12-drive-backup.js',
   './11-app-init.js',
   './manifest.json',
   './icon-192.png',
@@ -59,7 +60,7 @@ self.addEventListener('fetch', (event)=>{
   // Chart.js (CDN externo): tenta rede primeiro, cai pro cache se offline.
   // Assim, com internet sempre pega a versão mais nova; sem internet, usa
   // a última versão que já tiver sido baixada com sucesso alguma vez.
-  if(req.url.includes('cdnjs.cloudflare.com')){
+  if(req.url.includes('cdnjs.cloudflare.com') || req.url.includes('accounts.google.com')){
     event.respondWith(
       caches.open(CACHE_NAME).then(cache=>
         fetch(req).then(res=>{ cache.put(req, res.clone()); return res; }).catch(()=>cache.match(req))

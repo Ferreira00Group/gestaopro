@@ -1,5 +1,12 @@
 // ═══════════════════════════════════════════
 // VERSÃO DO APP — incremente a cada update
-const APP_VERSION = '5.6.7';
+const APP_VERSION = '5.7.0';
 const UPDATE_URL = 'https://raw.githubusercontent.com/Ferreira00Group/gestaopro/main/index.html';
+// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+// GOOGLE DRIVE (backup automático) — opcional
+// Cole aqui o "Client ID" criado no Google Cloud Console (veja instruções).
+// Deixando em branco, o botão de conectar avisa que ainda não foi configurado.
+const GOOGLE_CLIENT_ID = '';
 // ═══════════════════════════════════════════
