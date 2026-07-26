@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════
 // VERSÃO DO APP — incremente a cada update
-const APP_VERSION = '5.7.7';
+const APP_VERSION = '5.7.8';
 const UPDATE_URL = 'https://raw.githubusercontent.com/Ferreira00Group/gestaopro/main/00a-config.js';
 // ═══════════════════════════════════════════
 

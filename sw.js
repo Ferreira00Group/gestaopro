@@ -1,12 +1,11 @@
 // ============ SERVICE WORKER — GestãoPRO ============
-// Estratégia: cache-first pros arquivos do app (funciona offline assim que
-// visitado uma vez), com atualização em segundo plano a cada acesso.
+// Estratégia: rede primeiro, sempre — com internet, o app sempre busca a
+// versão mais nova de cada arquivo (evita a inconsistência de um arquivo
+// atualizar e outro ficar preso na versão antiga). O cache só é usado como
+// último recurso, quando o dispositivo está de fato sem internet — é isso
+// que garante o funcionamento offline.
 // O cache é nomeado com a APP_VERSION (00a-config.js) — ao subir uma nova
 // versão, um novo cache é criado e o antigo é limpo no activate.
-// Isso é complementar ao botão "Verificar Atualização" que já existe em
-// 00-core.js: aquele fluxo continua funcionando como um "reset forçado"
-// (desregistra SW + limpa caches + recarrega), pra quando o usuário quer
-// garantir a versão mais nova na hora, sem esperar o ciclo normal do SW.
 
 importScripts('00a-config.js');
 
@@ -57,29 +56,12 @@ self.addEventListener('fetch', (event)=>{
   const req = event.request;
   if(req.method !== 'GET') return;
 
-  // Chart.js (CDN externo): tenta rede primeiro, cai pro cache se offline.
-  // Assim, com internet sempre pega a versão mais nova; sem internet, usa
-  // a última versão que já tiver sido baixada com sucesso alguma vez.
-  if(req.url.includes('cdnjs.cloudflare.com') || req.url.includes('accounts.google.com')){
-    event.respondWith(
-      caches.open(CACHE_NAME).then(cache=>
-        fetch(req).then(res=>{ cache.put(req, res.clone()); return res; }).catch(()=>cache.match(req))
-      )
-    );
-    return;
-  }
-
-  // Arquivos do app: cache primeiro (rápido e funciona offline), atualiza
-  // o cache em segundo plano pra próxima visita já vir com o mais novo.
   event.respondWith(
-    caches.match(req).then(cached=>{
-      const fetchAndUpdate = fetch(req).then(res=>{
-        if(res && res.status===200){
-          caches.open(CACHE_NAME).then(cache=>cache.put(req, res.clone()));
-        }
-        return res;
-      }).catch(()=>cached);
-      return cached || fetchAndUpdate;
-    })
+    fetch(req).then(res=>{
+      if(res && res.status===200){
+        caches.open(CACHE_NAME).then(cache=>cache.put(req, res.clone()));
+      }
+      return res;
+    }).catch(()=>caches.match(req))
   );
 });
