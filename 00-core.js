@@ -99,6 +99,8 @@ const DEFAULT_STATE = {
   estoque_filter:'',
   estoque_categoria_filter:'',
   planejamento_apenas_aprovados:false,
+  ultimoBackup:null,
+  snoozeBackupAte:null,
   precificacao_filter:'',
   fornecedor_filter:'',
   fornecedor_status_filter:'',
@@ -410,6 +412,9 @@ function exportarBackup(){
   a.download=nomeArquivo;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  state.ultimoBackup=Date.now();
+  state.snoozeBackupAte=null;
+  salvarDados();
   document.getElementById('backup-exportado-nome').textContent='📄 '+nomeArquivo;
   openModal('modal-backup-exportado');
   window.open('https://github.com/Ferreira00Group/gestaopro','_blank');
@@ -425,6 +430,9 @@ async function compartilharBackup(){
         title:'Backup GestãoPRO',
         text:'Backup do sistema GestãoPRO — '+fmtDate(today())
       });
+      state.ultimoBackup=Date.now();
+      state.snoozeBackupAte=null;
+      salvarDados();
       showToast('Backup compartilhado ✓','green');
       return;
     }
@@ -456,6 +464,48 @@ function importarBackup(input){
   };
   reader.readAsText(file);
   input.value='';
+}
+
+// ============ LEMBRETE AUTOMÁTICO DE BACKUP ============
+// Não faz backup sozinho (o navegador não deixa uma página web escrever
+// direto no Google Drive/e-mail sem o usuário participar), mas garante que
+// ninguém esqueça: verifica há quanto tempo não se faz backup e, se passou
+// do limite, oferece o compartilhamento com um toque.
+const LIMIAR_DIAS_BACKUP = 3;
+
+function diasDesde(timestamp){
+  if(!timestamp) return Infinity;
+  return (Date.now()-timestamp)/(1000*60*60*24);
+}
+
+function temDadosRelevantes(){
+  // evita incomodar em uma instalação nova, ainda vazia
+  return (state.vendas&&state.vendas.length>0) || (state.producoes&&state.producoes.length>0) || (state.clientes&&state.clientes.length>0);
+}
+
+function verificarLembreteBackup(){
+  if(!temDadosRelevantes()) return;
+  const lockScreen=document.getElementById('lock-screen');
+  if(lockScreen && lockScreen.style.display==='flex') return; // espera desbloquear primeiro
+  if(state.snoozeBackupAte && Date.now()<state.snoozeBackupAte) return;
+  if(diasDesde(state.ultimoBackup) < LIMIAR_DIAS_BACKUP) return;
+
+  const dias = state.ultimoBackup ? Math.floor(diasDesde(state.ultimoBackup)) : null;
+  document.getElementById('lembrete-backup-texto').textContent = dias!==null
+    ? `Já fazem ${dias} dias desde o último backup. Seus dados ficam só neste aparelho — vale a pena fazer um agora.`
+    : 'Você ainda não fez nenhum backup. Seus dados ficam só neste aparelho — se ele perder ou quebrar, tudo se vai. Vale a pena fazer um agora.';
+  openModal('modal-lembrete-backup');
+}
+
+function lembreteBackupAgora(){
+  closeModal('modal-lembrete-backup');
+  compartilharBackup();
+}
+
+function lembreteBackupDepois(){
+  state.snoozeBackupAte = Date.now() + (1000*60*60*24); // pergunta de novo amanhã
+  marcarAlterado();
+  closeModal('modal-lembrete-backup');
 }
 
 // ============ BUSCA GLOBAL ============

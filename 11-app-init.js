@@ -76,3 +76,4 @@ atualizarAlertBells();
 setTimeout(renderChartDash, 100);
 setTimeout(ajustarStickyTabela, 150);
 setTimeout(renderChart30Dias, 100);
+setTimeout(verificarLembreteBackup, 1200);

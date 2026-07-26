@@ -815,6 +815,20 @@
   </div>
 </div>
 
+<!-- LEMBRETE DE BACKUP -->
+<div class="modal-overlay" id="modal-lembrete-backup">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h3>💾 Que tal um backup?</h3><button class="modal-close" onclick="lembreteBackupDepois()">✕</button></div>
+    <div class="modal-body">
+      <p id="lembrete-backup-texto" style="font-size:14px;color:var(--text);margin-bottom:18px"></p>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="lembreteBackupDepois()">Lembrar amanhã</button>
+        <button class="btn btn-primary" onclick="lembreteBackupAgora()">📤 Fazer backup agora</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- BACKUP EXPORTADO -->
 <div class="modal-overlay" id="modal-backup-exportado">
   <div class="modal" style="max-width:400px">
