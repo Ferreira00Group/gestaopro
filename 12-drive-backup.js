@@ -117,7 +117,10 @@ async function enviarBackupParaDrive(){
       salvarDados();
       showToast('Backup salvo no Google Drive ✓','green');
     } else {
-      showToast('Backup no Google Drive falhou — tenta de novo mais tarde','red');
+      let detalhe = '';
+      try{ const corpoErro = await resposta.json(); detalhe = corpoErro.error && corpoErro.error.message ? corpoErro.error.message : ''; }catch(e){}
+      showToast(`Backup no Drive falhou (${resposta.status}${detalhe?': '+detalhe:''})`,'red');
+      console.warn('[GestãoPRO] Falha no backup do Drive:', resposta.status, detalhe);
     }
   }catch(e){
     console.warn('[GestãoPRO] Erro ao enviar backup pro Drive:', e);
@@ -134,10 +137,26 @@ function atualizarStatusDrive(){
   }
   btn.style.display = 'block';
   if(state.driveBackupAtivo){
-    btn.innerHTML = '☁️ <span style="color:var(--green)">Drive conectado</span> — <span style="color:var(--red)">desconectar</span>';
+    btn.innerHTML = '☁️ <span style="color:var(--green)" onclick="event.stopPropagation();testarBackupDriveAgora()">Drive conectado (tocar p/ testar)</span> — <span style="color:var(--red)" onclick="event.stopPropagation();desconectarGoogleDrive()">desconectar</span>';
+    btn.onclick = null;
   } else {
     btn.innerHTML = '<span style="color:#2980B9">☁️ Conectar Google Drive (backup automático)</span>';
+    btn.onclick = conectarGoogleDrive;
   }
+}
+async function testarBackupDriveAgora(){
+  if(!driveAccessToken){
+    showToast('Renovando acesso ao Drive...','');
+    driveTokenClient.callback = async (resposta)=>{
+      if(resposta.error){ showToast('Não foi possível renovar o acesso ao Drive — tenta desconectar e conectar de novo','red'); return; }
+      driveAccessToken = resposta.access_token;
+      await enviarBackupParaDrive();
+    };
+    driveTokenClient.requestAccessToken({prompt:''});
+    return;
+  }
+  showToast('Enviando backup de teste...','');
+  await enviarBackupParaDrive();
 }
 function cliqueBotaoDrive(){
   if(state.driveBackupAtivo) desconectarGoogleDrive();

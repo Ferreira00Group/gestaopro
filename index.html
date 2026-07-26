@@ -105,16 +105,21 @@
   </nav>
 
   <div class="sidebar-footer">
-    <div style="margin-bottom:6px">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
-    <div class="footer-actions">
-      <a onclick="exportarBackup()" class="footer-action-link" style="color:#27AE60">⬇ Exportar backup</a>
-      <a onclick="compartilharBackup()" class="footer-action-link" style="color:#E67E22">📤 Compartilhar backup</a>
-      <label class="footer-action-link" style="color:#2980B9">⬆ Importar backup
-        <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
-      </label>
-      <a onclick="closeSidebar();verificarAtualizacao()" class="footer-action-link" style="color:#8E44AD">🔄 Verificar atualização</a>
-      <a onclick="forcarLimpezaCache()" class="footer-action-link" style="color:#7F8C8D">🧹 Limpar cache e recarregar</a>
-      <a id="drive-status-btn" onclick="cliqueBotaoDrive()" class="footer-action-link" style="display:none"></a>
+    <div style="margin-bottom:2px">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
+    <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:#B8C2CC;display:flex;justify-content:space-between;align-items:center">
+      <span>⚙️ Backup e manutenção</span><span id="footer-toggle-icon">▾</span>
+    </a>
+    <div id="footer-actions-collapsible" style="display:none">
+      <div class="footer-actions">
+        <a onclick="exportarBackup()" class="footer-action-link" style="color:#27AE60">⬇ Exportar backup</a>
+        <a onclick="compartilharBackup()" class="footer-action-link" style="color:#E67E22">📤 Compartilhar backup</a>
+        <label class="footer-action-link" style="color:#2980B9">⬆ Importar backup
+          <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
+        </label>
+        <a onclick="closeSidebar();verificarAtualizacao()" class="footer-action-link" style="color:#8E44AD">🔄 Verificar atualização</a>
+        <a onclick="forcarLimpezaCache()" class="footer-action-link" style="color:#7F8C8D">🧹 Limpar cache e recarregar</a>
+        <a id="drive-status-btn" onclick="cliqueBotaoDrive()" class="footer-action-link" style="display:none"></a>
+      </div>
     </div>
   </div>
 </div>

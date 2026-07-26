@@ -476,6 +476,13 @@ function toggleSidebar(){
   bd.classList.toggle('open',open);
   hb.classList.toggle('open',open);
 }
+function toggleFooterMenu(){
+  const el=document.getElementById('footer-actions-collapsible');
+  const icon=document.getElementById('footer-toggle-icon');
+  const abrindo=el.style.display==='none';
+  el.style.display=abrindo?'block':'none';
+  icon.textContent=abrindo?'▴':'▾';
+}
 function closeSidebar(){
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-backdrop').classList.remove('open');
