@@ -105,14 +105,16 @@
   </nav>
 
   <div class="sidebar-footer">
-    v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente<br>
-    <a onclick="exportarBackup()" style="color:#27AE60;cursor:pointer;text-decoration:underline">⬇ Exportar backup</a> ·
-    <a onclick="compartilharBackup()" style="color:#E67E22;cursor:pointer;text-decoration:underline">📤 Compartilhar</a> ·
-    <label style="color:#2980B9;cursor:pointer;text-decoration:underline">⬆ Importar
-      <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
-    </label> ·
-    <a onclick="closeSidebar();verificarAtualizacao()" style="color:#8E44AD;cursor:pointer;text-decoration:underline">🔄 Atualizar</a><br>
-    <span id="drive-status-texto"></span><a id="drive-status-btn" onclick="cliqueBotaoDrive()" style="cursor:pointer;text-decoration:underline;display:none"></a>
+    <div style="margin-bottom:6px">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
+    <div class="footer-actions">
+      <a onclick="exportarBackup()" class="footer-action-link" style="color:#27AE60">⬇ Exportar backup</a>
+      <a onclick="compartilharBackup()" class="footer-action-link" style="color:#E67E22">📤 Compartilhar backup</a>
+      <label class="footer-action-link" style="color:#2980B9">⬆ Importar backup
+        <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
+      </label>
+      <a onclick="closeSidebar();verificarAtualizacao()" class="footer-action-link" style="color:#8E44AD">🔄 Verificar atualização</a>
+      <a id="drive-status-btn" onclick="cliqueBotaoDrive()" class="footer-action-link" style="display:none"></a>
+    </div>
   </div>
 </div>
 

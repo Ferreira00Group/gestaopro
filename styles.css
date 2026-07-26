@@ -61,7 +61,13 @@
   nav a:active{background:rgba(255,255,255,.12)}
   nav a.active{color:#fff;background:rgba(255,255,255,.1);border-left-color:#27AE60}
   nav a .icon{font-size:18px;width:22px;text-align:center}
-  .sidebar-footer{padding:14px 20px;border-top:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);font-size:11px}
+  .sidebar-footer{padding:14px 20px 18px;border-top:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);font-size:11px}
+  .footer-actions{display:flex;flex-direction:column;gap:1px;margin-top:4px}
+  .footer-actions a,.footer-actions label{
+    display:block;padding:10px 8px;margin:0 -8px;font-size:13px;cursor:pointer;
+    border-radius:8px;line-height:1.3;-webkit-tap-highlight-color:transparent;
+  }
+  .footer-actions a:active,.footer-actions label:active{background:rgba(255,255,255,.1)}
   .nav-dot{display:none;width:8px;height:8px;border-radius:50%;margin-left:auto;flex-shrink:0}
   .nav-dot.has-alert{display:inline-block;animation:pulse-dot 1.8s infinite}
   #bell-estoque.has-alert{background:var(--yellow)}

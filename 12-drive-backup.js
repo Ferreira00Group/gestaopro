@@ -126,24 +126,17 @@ async function enviarBackupParaDrive(){
 
 // ── UI do rodapé da sidebar ──
 function atualizarStatusDrive(){
-  const texto = document.getElementById('drive-status-texto');
   const btn = document.getElementById('drive-status-btn');
-  if(!texto || !btn) return;
+  if(!btn) return;
   if(!driveDisponivel()){
-    texto.textContent = '';
     btn.style.display = 'none';
     return;
   }
-  btn.style.display = 'inline';
+  btn.style.display = 'block';
   if(state.driveBackupAtivo){
-    texto.textContent = '☁️ Google Drive conectado — ';
-    texto.style.color = 'var(--green)';
-    btn.textContent = 'desconectar';
-    btn.style.color = 'var(--red)';
+    btn.innerHTML = '☁️ <span style="color:var(--green)">Drive conectado</span> — <span style="color:var(--red)">desconectar</span>';
   } else {
-    texto.textContent = '';
-    btn.textContent = '☁️ Conectar Google Drive (backup automático)';
-    btn.style.color = '#2980B9';
+    btn.innerHTML = '<span style="color:#2980B9">☁️ Conectar Google Drive (backup automático)</span>';
   }
 }
 function cliqueBotaoDrive(){
