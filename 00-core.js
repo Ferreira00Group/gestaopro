@@ -217,6 +217,11 @@ async function verificarAtualizacao(){
   }
   if(btn){btn.textContent='🔄';btn.disabled=false;}
 }
+function forcarLimpezaCache(){
+  confirmarAcao('Isso limpa os arquivos guardados em cache e recarrega o app com a versão mais recente do servidor. Seus dados (vendas, clientes, estoque etc.) não são apagados — eles ficam salvos separadamente e continuam intactos. Continuar?', ()=>{
+    aplicarAtualizacao();
+  });
+}
 function abrirModalAtualizacao(novaVersao,html){
   let modal=document.getElementById('modal-update');
   if(!modal){
