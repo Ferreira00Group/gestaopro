@@ -374,7 +374,7 @@
   .cat-pill.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 
   /* BOTÃO FLUTUANTE COM MENU DE AÇÕES RÁPIDAS */
-  #fab-wrap{position:fixed;bottom:28px;right:18px;z-index:500;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  #fab-wrap{position:fixed;bottom:28px;right:18px;z-index:500;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
   #fab-nova-venda{
     background:var(--green);color:#fff;
     border:none;border-radius:50%;
@@ -387,6 +387,7 @@
     -webkit-tap-highlight-color:transparent;
     line-height:1;
     flex-shrink:0;
+    pointer-events:all;
   }
   #fab-nova-venda:active{transform:scale(.92)}
   #fab-wrap.open #fab-nova-venda{transform:rotate(45deg);background:var(--navy);box-shadow:0 6px 20px rgba(30,45,64,.45)}
