@@ -1503,6 +1503,24 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- DIAGNÓSTICO TEMPORÁRIO — pode remover depois de achar o bug -->
+<div id="debug-error-box" onclick="this.style.display='none';this.textContent=''" style="display:none;position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#c0392b;color:#fff;padding:12px 14px;border-radius:10px;font-size:11.5px;font-family:monospace;max-height:45vh;overflow:auto;white-space:pre-wrap;box-shadow:0 4px 20px rgba(0,0,0,.4)"></div>
+<script>
+(function(){
+  function mostrarErro(msg){
+    var box=document.getElementById('debug-error-box');
+    box.style.display='block';
+    box.textContent += (box.textContent?'\n\n':'') + '[Toque aqui pra fechar]\n' + msg;
+  }
+  window.addEventListener('error',function(e){
+    mostrarErro('ERRO JS: '+e.message+'\nArquivo: '+(e.filename||'?')+' linha '+e.lineno+':'+e.colno);
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    mostrarErro('PROMISE REJEITADA: '+(e.reason&&e.reason.message?e.reason.message:e.reason));
+  });
+})();
+</script>
+
 <script src="00a-config.js"></script>
 <script src="00-core.js"></script>
 <script src="01-ui-nav.js"></script>
