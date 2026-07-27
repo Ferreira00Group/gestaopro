@@ -78,8 +78,12 @@ setTimeout(ajustarStickyTabela, 150);
 setTimeout(renderChart30Dias, 100);
 
 // Ícones do menu lateral (Lucide) — tenta de novo se o CDN ainda não carregou
-function inicializarIconesLucide(){
-  if(typeof lucide==='undefined'){ setTimeout(inicializarIconesLucide, 400); return; }
+function inicializarIconesLucide(tentativas=0){
+  if(typeof lucide==='undefined'){
+    if(tentativas>=15){ console.warn('[GestãoPRO] Lucide não carregou (CDN bloqueado/offline) — ícones do menu não serão exibidos.'); return; }
+    setTimeout(()=>inicializarIconesLucide(tentativas+1), 400);
+    return;
+  }
   lucide.createIcons();
 }
 inicializarIconesLucide();
