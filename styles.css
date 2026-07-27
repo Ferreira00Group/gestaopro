@@ -60,7 +60,7 @@
   nav a{display:flex;align-items:center;gap:12px;padding:13px 20px;color:rgba(255,255,255,.65);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;border-left:3px solid transparent;text-decoration:none;-webkit-tap-highlight-color:transparent}
   nav a:active{background:rgba(255,255,255,.12)}
   nav a.active{color:#fff;background:rgba(255,255,255,.1);border-left-color:#27AE60}
-  nav a .icon{font-size:18px;width:22px;text-align:center}
+  nav a .icon{width:19px;height:19px;flex-shrink:0;stroke-width:2px}
   .sidebar-footer{padding:14px 20px 18px;border-top:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);font-size:11px}
   .footer-actions{display:flex;flex-direction:column;gap:1px;margin-top:4px}
   .footer-actions a,.footer-actions label{

@@ -14,6 +14,10 @@ function dashTabSwitch(group,tab,btn){
 
 // ============ CHARTS ============
 let chartDash=null, chartFin=null, chartRel=null, chartHistPreco=null, chart30Dias=null;
+if(typeof Chart!=='undefined'){
+  Chart.defaults.font.family="'Inter', sans-serif";
+  Chart.defaults.color='#8A94A3';
+}
 
 function renderChart30Dias(){
   destroyChart(chart30Dias);
@@ -30,24 +34,32 @@ function renderChart30Dias(){
 
   const ctx=document.getElementById('chart-vendas-30d');
   if(!ctx)return;
+
+  // Gradiente suave por trás da linha (efeito "area chart" mais refinado)
+  const gradiente=ctx.getContext('2d').createLinearGradient(0,0,0,ctx.clientHeight||220);
+  gradiente.addColorStop(0,'rgba(39,174,96,0.28)');
+  gradiente.addColorStop(1,'rgba(39,174,96,0)');
+
   chart30Dias=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[{
       label:'Vendas',data:valoresPorDia,
-      borderColor:'#2980B9',backgroundColor:'rgba(41,128,185,0.1)',
-      fill:true,tension:.35,pointRadius:2,pointHoverRadius:5,
-      pointBackgroundColor:'#2980B9',borderWidth:2
+      borderColor:'#27AE60',backgroundColor:gradiente,
+      fill:true,tension:.4,borderWidth:3,
+      pointRadius:3,pointHoverRadius:6,
+      pointBackgroundColor:'#27AE60',pointBorderColor:'#fff',pointBorderWidth:2,
+      pointHoverBorderWidth:3,
     }]},
     options:{
       responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{backgroundColor:'#1E2D40',padding:12,cornerRadius:10,callbacks:{title:c=>`📅 ${c[0].label}`,label:c=>` ${fmt(c.parsed.y)}`}}
+        tooltip:{backgroundColor:'#1E2D40',padding:12,cornerRadius:10,displayColors:false,titleFont:{weight:'600'},callbacks:{title:c=>`📅 ${c[0].label}`,label:c=>` ${fmt(c.parsed.y)}`}}
       },
       scales:{
-        y:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'#F0F2F5'}},
-        x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:8}}
+        y:{border:{display:false},ticks:{callback:v=>fmt(v),font:{size:10.5}},grid:{color:'#EEF1F4'}},
+        x:{border:{display:false},grid:{display:false},ticks:{font:{size:9.5},maxRotation:0,autoSkip:true,maxTicksLimit:8}}
       }
     }
   });

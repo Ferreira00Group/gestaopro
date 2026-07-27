@@ -14,6 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://unpkg.com/lucide@latest"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -92,16 +93,16 @@
 <div id="sidebar">
   <div class="logo"><h1>GestãoPRO</h1><span>Powered by Ferreira Group</span></div>
   <nav>
-    <a class="active" onclick="goto('dashboard')" data-page="dashboard"><span class="icon">📊</span> Dashboard</a>
-    <a onclick="goto('clientes')" data-page="clientes"><span class="icon">👥</span> Clientes</a>
-    <a onclick="goto('vendas')" data-page="vendas"><span class="icon">🛒</span> Vendas / Pedidos</a>
-    <a onclick="goto('receber')" data-page="receber"><span class="icon">📥</span> Contas a Receber<span class="nav-dot" id="bell-cobranca"></span></a>
-    <a onclick="goto('producao')" data-page="producao"><span class="icon">🏭</span> Produção</a>
-    <a onclick="goto('estoque')" data-page="estoque"><span class="icon">📦</span> Estoque<span class="nav-dot" id="bell-estoque"></span></a>
-    <a onclick="goto('planejamento')" data-page="planejamento"><span class="icon">🧮</span> Planejamento</a>
-    <a onclick="goto('precificacao')" data-page="precificacao"><span class="icon">🏷️</span> Precificação</a>
-    <a onclick="goto('financeiro')" data-page="financeiro"><span class="icon">📈</span> Financeiro</a>
-    <a onclick="goto('relatorio')" data-page="relatorio"><span class="icon">📅</span> Relatório por Período</a>
+    <a class="active" onclick="goto('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard" class="icon"></i> Dashboard</a>
+    <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
+    <a onclick="goto('vendas')" data-page="vendas"><i data-lucide="shopping-cart" class="icon"></i> Vendas / Pedidos</a>
+    <a onclick="goto('receber')" data-page="receber"><i data-lucide="wallet" class="icon"></i> Contas a Receber<span class="nav-dot" id="bell-cobranca"></span></a>
+    <a onclick="goto('producao')" data-page="producao"><i data-lucide="factory" class="icon"></i> Produção</a>
+    <a onclick="goto('estoque')" data-page="estoque"><i data-lucide="package" class="icon"></i> Estoque<span class="nav-dot" id="bell-estoque"></span></a>
+    <a onclick="goto('planejamento')" data-page="planejamento"><i data-lucide="calculator" class="icon"></i> Planejamento</a>
+    <a onclick="goto('precificacao')" data-page="precificacao"><i data-lucide="tag" class="icon"></i> Precificação</a>
+    <a onclick="goto('financeiro')" data-page="financeiro"><i data-lucide="trending-up" class="icon"></i> Financeiro</a>
+    <a onclick="goto('relatorio')" data-page="relatorio"><i data-lucide="calendar-days" class="icon"></i> Relatório por Período</a>
   </nav>
 
   <div class="sidebar-footer">
