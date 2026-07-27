@@ -170,6 +170,29 @@ function criarLinhaItemVenda(item){
   const uid='vi'+Math.random().toString(36).slice(2,9);
   return {uid,...item};
 }
+// Quantidade: lista suspensa de 1 a 10 + opção "Livre" pra digitar qualquer valor.
+// it.qtdLivre guarda a escolha explícita do usuário; sem ela, deduz do próprio
+// qtd (assim itens antigos com qtd fora de 1-10 já abrem direto no modo livre).
+function itemVendaUsaQtdLivre(it){
+  if(typeof it.qtdLivre==='boolean') return it.qtdLivre;
+  return !(Number.isInteger(it.qtd)&&it.qtd>=1&&it.qtd<=10);
+}
+function opcoesQtdSelect(it){
+  const livre=itemVendaUsaQtdLivre(it);
+  let opts='';
+  for(let i=1;i<=10;i++){
+    opts+=`<option value="${i}" ${!livre&&it.qtd===i?'selected':''}>${i}</option>`;
+  }
+  opts+=`<option value="livre" ${livre?'selected':''}>Livre</option>`;
+  return opts;
+}
+function renderQtdItemVenda(it){
+  const livre=itemVendaUsaQtdLivre(it);
+  return `<span style="display:flex;gap:4px;align-items:center">
+        <select class="form-control" style="width:64px" onchange="atualizarItemVenda('${it.uid}','qtdSelect',this.value)">${opcoesQtdSelect(it)}</select>
+        ${livre?`<input type="number" min="1" value="${it.qtd}" class="form-control" style="width:52px" oninput="atualizarItemVenda('${it.uid}','qtd',this.value)">`:''}
+      </span>`;
+}
 function renderVendaItensLista(){
   const el=document.getElementById('venda-itens-lista');
   el.innerHTML=vendaItensTemp.map((it,i)=>`
@@ -177,7 +200,7 @@ function renderVendaItensLista(){
       <select class="form-control" style="flex:2" onchange="atualizarItemVenda('${it.uid}','produto',this.value)">
         ${opcoesProdutosSelect(it.produtoId,it.varianteId)}
       </select>
-      <input type="number" min="1" value="${it.qtd}" class="form-control" style="width:64px" oninput="atualizarItemVenda('${it.uid}','qtd',this.value)">
+      ${renderQtdItemVenda(it)}
       <input type="number" step="0.01" value="${it.preco}" class="form-control" style="width:84px" oninput="atualizarItemVenda('${it.uid}','preco',this.value)">
       <button class="icon-btn del" onclick="removerItemVenda('${it.uid}')">✕</button>
     </div>
@@ -195,6 +218,12 @@ function atualizarItemVenda(uid,campo,valor){
     const canalId=parseInt(document.getElementById('venda-canal')?.value)||null;
     const canal=canalId?(state.canais||[]).find(c=>c.id===canalId):null;
     it.preco=canal?getPrecoCanal(precoBase,canal):precoBase;
+    renderVendaItensLista();
+    return;
+  }
+  if(campo==='qtdSelect'){
+    if(valor==='livre'){ it.qtdLivre=true; }
+    else { it.qtd=parseInt(valor)||1; it.qtdLivre=false; }
     renderVendaItensLista();
     return;
   }
@@ -335,6 +364,7 @@ function abrirNovaVenda(){
   cs.innerHTML='<option value="">Selecione...</option>'+state.clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
   document.getElementById('venda-edit-id').value='';
   document.getElementById('venda-obs').value='';
+  document.getElementById('venda-data').value=today();
   document.getElementById('venda-vencimento').value='';
   document.getElementById('venda-forma').value='fiado';
   document.getElementById('venda-pag-misto-check').checked=false;
@@ -359,6 +389,7 @@ function duplicarVenda(id){
   const cs=document.getElementById('venda-cliente');
   cs.innerHTML='<option value="">Selecione...</option>'+state.clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
   document.getElementById('venda-edit-id').value='';
+  document.getElementById('venda-data').value=today();
   document.getElementById('modal-venda-title').textContent='Nova Venda (duplicada)';
   document.getElementById('venda-cliente').value=v.clienteId;
   document.getElementById('venda-forma').value=v.forma==='fiado'?'fiado':v.forma;
@@ -417,6 +448,7 @@ function salvarVenda(){
   const eid=document.getElementById('venda-edit-id').value;
   const clienteId=parseInt(document.getElementById('venda-cliente').value);
   const obs=document.getElementById('venda-obs').value;
+  const dataVenda=document.getElementById('venda-data').value||today();
   const itensValidos=vendaItensTemp.filter(it=>it.produtoId&&it.qtd>0);
   if(!clienteId||itensValidos.length===0){showToast('Selecione o cliente e ao menos um item','red');return;}
 
@@ -482,7 +514,7 @@ function salvarVenda(){
   if(eid){
     const v=state.vendas.find(v=>v.id==eid);
     v.itens.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd));
-    v.clienteId=clienteId;v.itens=itensFinal;v.total=total;v.forma=forma;v.pagamentos=pagamentos;v.status=status;v.obs=obs;v.vencimento=vencimento;v.statusPedido=statusPedido;v.canalId=canalId;v.descontoExtra=descontoExtra;v.tipo='venda';delete v.statusOrc;
+    v.clienteId=clienteId;v.itens=itensFinal;v.total=total;v.forma=forma;v.pagamentos=pagamentos;v.status=status;v.obs=obs;v.data=dataVenda;v.vencimento=vencimento;v.statusPedido=statusPedido;v.canalId=canalId;v.descontoExtra=descontoExtra;v.tipo='venda';delete v.statusOrc;
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     showToast('Venda atualizada','green');
   } else if(parcelar && numParcelas >= 2){
@@ -497,19 +529,19 @@ function salvarVenda(){
         id:nextId('vendas'),clienteId,
         itens: i===0 ? itensFinal : [],
         total:valParc,forma:'fiado',pagamentos:null,status:'em_aberto',
-        data:today(),obs:(obs?(obs+' · '):'')+'Parcela '+(i+1)+'/'+numParcelas,
+        data:dataVenda,obs:(obs?(obs+' · '):'')+'Parcela '+(i+1)+'/'+numParcelas,
         vencimento:dataParc,parcelaDe:total,parcelaNum:i+1,parcelaTotal:numParcelas,statusPedido,canalId,descontoExtra:i===0?descontoExtra:0,tipo:'venda'
       });
     }
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     showToast(`Venda parcelada em ${numParcelas}x criada! ✓`,'green');
   } else {
-    state.vendas.push({id:nextId('vendas'),clienteId,itens:itensFinal,total,forma,pagamentos,status,data:today(),obs,vencimento,statusPedido,canalId,descontoExtra,tipo:'venda'});
+    state.vendas.push({id:nextId('vendas'),clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento,statusPedido,canalId,descontoExtra,tipo:'venda'});
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     const valorNaoFiado=total-valorFiado;
     if(valorNaoFiado>0.01){
       const desc=itensFinal.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', ');
-      state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`,valor:valorNaoFiado,data:today()});
+      state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`,valor:valorNaoFiado,data:dataVenda});
     }
     showToast('Venda registrada! ✓','green');
   }
@@ -525,6 +557,7 @@ function editarVenda(id){
   document.getElementById('modal-venda-title').textContent=isOrc?'Editar Orçamento':'Editar Venda';
   document.getElementById('venda-cliente').value=v.clienteId;
   document.getElementById('venda-obs').value=v.obs||'';
+  document.getElementById('venda-data').value=v.data||today();
   document.getElementById('venda-vencimento').value=v.vencimento||'';
   document.getElementById('venda-status-pedido').value=v.statusPedido||'preparando';
   if(v.pagamentos&&v.pagamentos.length>0){
