@@ -121,8 +121,11 @@ const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 //   2 → adicionado _version, fichasVariante, orcamentos, fornecedores, compras, baixasEstoque
 //   3 → adicionado metas, fechamentos, custosFixos, canais
 //   4 → vendas migradas para itens[], variantes nos produtos
-//   5 → (versão atual) versionamento formal implantado
-const SCHEMA_VERSION = 5;
+//   5 → versionamento formal implantado
+//   6 → (versão atual) novo modelo de venda parcelada (1 registro com parcelas[] em vez de
+//       N vendas separadas). Reset único de clientes/vendas/pagamentos para evitar dados
+//       inconsistentes do modelo antigo (cada parcela era uma "venda" própria).
+const SCHEMA_VERSION = 6;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -154,6 +157,18 @@ const MIGRATIONS = {
   },
   // v4 → v5: versionamento formal — nada muda nos dados, só registra a versão
   4: (d) => d,
+  // v5 → v6: novo modelo de parcelamento. As vendas parceladas antigas viravam N registros
+  // separados em state.vendas (um por parcela), o que inflava ticket médio/contagem de vendas
+  // e deixava o vencimento de cada parcela "preso" mesmo depois de pago via saldo geral.
+  // Decisão combinada com o usuário: resetar clientes, vendas e pagamentos (uma única vez,
+  // automaticamente nesta atualização) em vez de tentar migrar os registros antigos.
+  5: (d) => {
+    d.clientes   = [];
+    d.vendas     = [];
+    d.pagamentos = [];
+    d.nextId = { ...(d.nextId||{}), clientes:1, vendas:1, pagamentos:1 };
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -386,6 +401,99 @@ function getSaldoCliente(cId){
   const totalFiado=state.vendas.filter(v=>v.clienteId==cId&&v.forma=='fiado').reduce((s,v)=>s+v.total,0);
   const totalPago=state.pagamentos.filter(p=>p.clienteId==cId).reduce((s,p)=>s+p.valor,0);
   return Math.max(0,totalFiado-totalPago);
+}
+
+// ============ SITUAÇÃO DE PAGAMENTO (FIADO / PARCELADO) ============
+// O saldo devedor é um "poço" único por cliente: os pagamentos (state.pagamentos) não ficam
+// vinculados a uma venda ou parcela específica. Estas funções calculam, na hora (nunca
+// gravado/cacheado), quais parcelas/vendas fiado já estão cobertas por esse total pago,
+// alocando o valor pago das dívidas mais antigas (por vencimento) para as mais novas — FIFO.
+// Isso resolve dois problemas do modelo antigo:
+//  1) pagar um valor "quebrado" (que não bate com uma parcela exata) agora é distribuído
+//     automaticamente entre as parcelas em aberto, começando pela mais antiga;
+//  2) uma parcela/venda só continua aparecendo "em atraso" se, de fato, ainda não foi coberta
+//     pelo total pago pelo cliente até agora.
+function getUnidadesFiadoFlat(){
+  const porCliente={};
+  state.vendas.forEach(v=>{
+    if(v.tipo==='orcamento'||v.forma!=='fiado')return;
+    (porCliente[v.clienteId]=porCliente[v.clienteId]||[]).push(v);
+  });
+  const flat=[];
+  Object.keys(porCliente).forEach(cIdStr=>{
+    const cId=parseInt(cIdStr);
+    const unidades=[];
+    porCliente[cIdStr].forEach(v=>{
+      if(v.parcelado&&Array.isArray(v.parcelas)&&v.parcelas.length>0){
+        v.parcelas.forEach((p,idx)=>unidades.push({
+          clienteId:cId,vendaId:v.id,parcelaIdx:idx,parcelaNum:idx+1,parcelaTotal:v.parcelas.length,
+          valor:p.valor,vencimento:p.vencimento,data:v.data
+        }));
+      } else {
+        unidades.push({
+          clienteId:cId,vendaId:v.id,parcelaIdx:null,parcelaNum:null,parcelaTotal:null,
+          valor:v.total,vencimento:v.vencimento,data:v.data
+        });
+      }
+    });
+    // ordena da dívida mais antiga para a mais nova (por vencimento; sem vencimento, pela data da venda)
+    unidades.sort((a,b)=>(a.vencimento||a.data||'').localeCompare(b.vencimento||b.data||'')||(a.data||'').localeCompare(b.data||''));
+    let saldoPago=state.pagamentos.filter(p=>p.clienteId==cId).reduce((s,p)=>s+p.valor,0);
+    unidades.forEach(u=>{
+      let status,valorPago;
+      if(saldoPago<=0.009){ status='aberto'; valorPago=0; }
+      else if(saldoPago>=u.valor-0.009){ status='pago'; valorPago=u.valor; saldoPago-=u.valor; }
+      else { status='parcial'; valorPago=saldoPago; saldoPago=0; }
+      u.status=status; u.valorPago=valorPago; u.valorRestante=Math.max(0,u.valor-valorPago);
+      flat.push(u);
+    });
+  });
+  return flat;
+}
+// Agrupa as unidades por venda (útil pra tela de Vendas: 1 linha por venda, mesmo parcelada)
+function getMapaSituacaoFiado(){
+  const flat=getUnidadesFiadoFlat();
+  const mapa={};
+  flat.forEach(u=>{
+    if(!mapa[u.vendaId]) mapa[u.vendaId]={parcelas:[],statusList:[]};
+    mapa[u.vendaId].parcelas.push(u);
+    mapa[u.vendaId].statusList.push(u.status);
+  });
+  Object.keys(mapa).forEach(vid=>{
+    const m=mapa[vid];
+    m.parcelas.sort((a,b)=>(a.parcelaNum||0)-(b.parcelaNum||0));
+    m.status = m.statusList.every(s=>s==='pago') ? 'pago' : (m.statusList.every(s=>s==='aberto') ? 'em_aberto' : 'parcial');
+    const pendente = m.parcelas.find(p=>p.status!=='pago');
+    m.vencimentoPendente = pendente ? pendente.vencimento : null;
+    m.valorRestante = m.parcelas.reduce((s,p)=>s+p.valorRestante,0);
+    m.pagas = m.statusList.filter(s=>s==='pago').length;
+    m.totalParcelas = m.parcelas.length;
+  });
+  return mapa;
+}
+// Situação "efetiva" de uma venda: pra vendas não-fiado, é sempre o status gravado (pago).
+// Pra fiado (simples ou parcelado), vem do cálculo FIFO acima.
+function situacaoVenda(v,mapaOpcional){
+  if(v.tipo==='orcamento'||v.forma!=='fiado'){
+    return {status:v.status,vencimentoPendente:v.status!=='pago'?v.vencimento:null,valorRestante:0,parcelas:null,pagas:0,totalParcelas:0};
+  }
+  const mapa=mapaOpcional||getMapaSituacaoFiado();
+  const m=mapa[v.id];
+  if(!m) return {status:'pago',vencimentoPendente:null,valorRestante:0,parcelas:v.parcelado?[]:null,pagas:v.parcelado?(v.parcelas||[]).length:0,totalParcelas:v.parcelado?(v.parcelas||[]).length:0};
+  return {status:m.status,vencimentoPendente:m.vencimentoPendente,valorRestante:m.valorRestante,parcelas:v.parcelado?m.parcelas:null,pagas:m.pagas,totalParcelas:m.totalParcelas};
+}
+// Quanto falta pagar (a partir de agora) pra que uma unidade específica (venda ou parcela)
+// fique quitada, respeitando a ordem FIFO — ou seja, também quita tudo que é mais antigo que
+// ela e ainda está em aberto. Usado pelas ações "marcar como pago".
+function valorParaQuitarAte(clienteId,vendaId,parcelaIdx){
+  const flat=getUnidadesFiadoFlat().filter(u=>u.clienteId==clienteId);
+  flat.sort((a,b)=>(a.vencimento||a.data||'').localeCompare(b.vencimento||b.data||'')||(a.data||'').localeCompare(b.data||''));
+  let soma=0;
+  for(const u of flat){
+    if(u.status!=='pago') soma+=u.valorRestante;
+    if(u.vendaId===vendaId && (parcelaIdx==null?true:u.parcelaIdx===parcelaIdx)) break;
+  }
+  return parseFloat(soma.toFixed(2));
 }
 function showToast(msg,type=''){
   const t=document.getElementById('toast');

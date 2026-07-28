@@ -338,9 +338,10 @@ function calcularSnapshotMes(mes){
   const lucroLiquido=lucroBruto-custosFixos-outrasSaidas+entradasExtras;
   const margemLiq=receita>0?(lucroLiquido/receita*100):0;
 
-  // inadimplência no momento do fechamento
+  // inadimplência no momento do fechamento (por parcela/unidade de dívida em aberto, valor
+  // que de fato ainda falta — não o total da venda inteira, que pode já estar parcialmente paga)
   const hoje=today();
-  const inadimplentesValor=state.vendas.filter(v=>v.status!=='pago'&&v.vencimento&&v.vencimento<=mes+'-31').reduce((s,v)=>s+v.total,0);
+  const inadimplentesValor=getUnidadesFiadoFlat().filter(u=>u.status!=='pago'&&u.vencimento&&u.vencimento<=mes+'-31').reduce((s,u)=>s+u.valorRestante,0);
 
   return {mes,receita,custoMP,custosFixos,outrasSaidas,entradasExtras,recebimentosFiado,lucroBruto,lucroLiquido,margemLiq,inadimplentesValor,vendasCount:vendas.length,comprasCount:compras.length};
 }

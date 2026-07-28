@@ -250,10 +250,11 @@ function gerarFluxo(){
   const hoje=today();
   const eventos=[];
 
-  // Entradas: vendas fiado com vencimento futuro ainda não pagas
-  state.vendas.filter(v=>v.vencimento&&v.vencimento>=hoje&&v.status!=='pago').forEach(v=>{
-    const c=getCliente(v.clienteId);
-    eventos.push({data:v.vencimento,tipo:'entrada',descricao:`Recebimento fiado — ${c.nome}`,valor:v.total,fonte:'fiado'});
+  // Entradas: parcelas/vendas fiado com vencimento futuro ainda não totalmente pagas
+  // (cada parcela em aberto vira um evento na sua própria data, com o valor que de fato falta)
+  getUnidadesFiadoFlat().filter(u=>u.vencimento&&u.vencimento>=hoje&&u.status!=='pago').forEach(u=>{
+    const c=getCliente(u.clienteId);
+    eventos.push({data:u.vencimento,tipo:'entrada',descricao:`Recebimento fiado — ${c.nome}${u.parcelaNum?` (parcela ${u.parcelaNum}/${u.parcelaTotal})`:''}`,valor:u.valorRestante,fonte:'fiado'});
   });
 
   // Saídas: lançamentos futuros de saída no financeiro
@@ -348,16 +349,17 @@ function gerarInadimplencia(){
   const hoje=today();
   const hojeDate=new Date(hoje);
 
-  // Clientes com fiado vencido
+  // Clientes com fiado vencido (por parcela/unidade de dívida — uma venda parcelada
+  // pode ter só parte das parcelas vencidas)
   const clientesMap={};
-  state.vendas.filter(v=>v.status!=='pago'&&v.vencimento&&v.vencimento<hoje).forEach(v=>{
-    const vencDate=new Date(v.vencimento);
+  getUnidadesFiadoFlat().filter(u=>u.status!=='pago'&&u.vencimento&&u.vencimento<hoje).forEach(u=>{
+    const vencDate=new Date(u.vencimento);
     const diffDias=Math.floor((hojeDate-vencDate)/(1000*60*60*24));
     if(diffDias<diasAtraso) return;
-    if(!clientesMap[v.clienteId]) clientesMap[v.clienteId]={vendas:[],totalAberto:0,maiorAtraso:0};
-    clientesMap[v.clienteId].vendas.push({...v,diasAtraso:diffDias});
-    clientesMap[v.clienteId].totalAberto+=v.total;
-    clientesMap[v.clienteId].maiorAtraso=Math.max(clientesMap[v.clienteId].maiorAtraso,diffDias);
+    if(!clientesMap[u.clienteId]) clientesMap[u.clienteId]={vendas:[],totalAberto:0,maiorAtraso:0};
+    clientesMap[u.clienteId].vendas.push({vencimento:u.vencimento,total:u.valorRestante,parcelaNum:u.parcelaNum,parcelaTotal:u.parcelaTotal,diasAtraso:diffDias});
+    clientesMap[u.clienteId].totalAberto+=u.valorRestante;
+    clientesMap[u.clienteId].maiorAtraso=Math.max(clientesMap[u.clienteId].maiorAtraso,diffDias);
   });
 
   const lista=Object.entries(clientesMap).map(([cid,d])=>({

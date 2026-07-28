@@ -58,10 +58,12 @@ function renderDashboard(){
   document.getElementById('dash-caixa-atual').textContent=fmt(Math.abs(caixaAtual));
   document.getElementById('dash-caixa-sub').textContent=caixaAtual>=0?'dinheiro disponível':'⚠️ caixa negativo';
 
-  // Contas Vencidas e Vencem Hoje
-  const vendasEmAberto=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.status!=='pago'&&v.vencimento);
-  const vencidas=vendasEmAberto.filter(v=>v.vencimento<hoje);
-  const vencemHojeArr=vendasEmAberto.filter(v=>v.vencimento===hoje);
+  // Contas Vencidas e Vencem Hoje (por parcela/unidade de dívida, não por venda —
+  // uma venda parcelada de 3x pode ter 2 parcelas atrasadas e 1 em dia)
+  const flatFiado=getUnidadesFiadoFlat();
+  const pendentesFiado=flatFiado.filter(u=>u.status!=='pago'&&u.vencimento);
+  const vencidas=pendentesFiado.filter(u=>u.vencimento<hoje);
+  const vencemHojeArr=pendentesFiado.filter(u=>u.vencimento===hoje);
   document.getElementById('dash-contas-vencidas').textContent=vencidas.length;
   document.getElementById('dash-contas-vencidas-sub').textContent=vencidas.length===1?'1 parcela atrasada':vencidas.length+' parcelas atrasadas';
   document.getElementById('dash-vencem-hoje').textContent=vencemHojeArr.length;
@@ -108,26 +110,26 @@ function renderDashboard(){
   // META DE VENDAS
   renderMetaVendas(vendasMes.reduce((s,v)=>s+v.total,0));
   // Cobranças vencidas + vencendo em breve (até 3 dias)
-  const alertasVenc=state.vendas
-    .filter(v=>v.vencimento && v.status!=='pago')
-    .filter(v=>{const d=diasParaVencimento(v.vencimento,hoje);return d<=3;})
+  const alertasVenc=flatFiado
+    .filter(u=>u.vencimento && u.status!=='pago')
+    .filter(u=>{const d=diasParaVencimento(u.vencimento,hoje);return d<=3;})
     .sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
   const vistosD=new Set();
-  const alertasUnicos=alertasVenc.filter(v=>{if(vistosD.has(v.clienteId))return false;vistosD.add(v.clienteId);return true;});
+  const alertasUnicos=alertasVenc.filter(u=>{if(vistosD.has(u.clienteId))return false;vistosD.add(u.clienteId);return true;});
   const tb=document.getElementById('dash-devedores');
   if(alertasUnicos.length===0){
     tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Nenhuma cobrança vencida 🎉</td></tr>';
   } else {
-    tb.innerHTML=alertasUnicos.slice(0,6).map(v=>{
-      const c=getCliente(v.clienteId);
-      const saldo=getSaldoCliente(v.clienteId);
-      const dias=diasParaVencimento(v.vencimento,hoje);
+    tb.innerHTML=alertasUnicos.slice(0,6).map(u=>{
+      const c=getCliente(u.clienteId);
+      const saldo=getSaldoCliente(u.clienteId);
+      const dias=diasParaVencimento(u.vencimento,hoje);
       const statusVenc=dias<0?`${Math.abs(dias)}d atraso`:dias===0?'Hoje':dias===1?'Amanhã':`Em ${dias}d`;
       const cor=dias<0?'var(--red)':dias<=1?'#d35400':'var(--yellow)';
       return `<tr>
         <td><strong>${c.nome}</strong></td>
-        <td><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(v.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${statusVenc}</span></td>
-        <td class="debt-amount">${fmt(saldo>0?saldo:v.total)}</td>
+        <td><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(u.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${statusVenc}</span></td>
+        <td class="debt-amount">${fmt(saldo>0?saldo:u.valor)}</td>
         <td><button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})">📲</button></td>
       </tr>`;
     }).join('');

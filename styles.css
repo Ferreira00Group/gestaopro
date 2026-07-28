@@ -245,6 +245,18 @@
   .form-group label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
   .form-control{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;font-family:inherit;color:var(--text);outline:none;transition:border .15s;-webkit-appearance:none}
   .form-control:focus{border-color:var(--navy)}
+  /* selects usam .form-control junto com inputs de texto/número, mas sem uma seta visível
+     fica indistinguível de um campo digitável (ex: quantidade na Nova Venda parecia um número
+     comum, mas já era um <select> — só faltava esse indicador visual). */
+  select.form-control{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%237F8C8D'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 9px center;
+    background-size:15px;
+    padding-right:28px;
+    cursor:pointer;
+  }
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .modal-footer{display:flex;gap:10px;justify-content:flex-end;padding-top:8px}
 

@@ -9,16 +9,41 @@ function statusLabel(status){
   return{cls:'badge-yellow',txt:'Em aberto'};
 }
 let vendasSelecionadas=new Set();
+let vendasExpandidas=new Set();
 function statusPedidoLabel(sp){
   if(sp==='entregue') return {cls:'badge-green',txt:'✅ Entregue'};
   return {cls:'badge-orange',txt:'⏳ Em Preparação'};
 }
+function toggleExpandirParcelas(id){
+  if(vendasExpandidas.has(id)) vendasExpandidas.delete(id);
+  else vendasExpandidas.add(id);
+  renderVendas();
+}
+// Linha de detalhe de uma parcela (usada dentro da venda parcelada expandida)
+function renderLinhaParcela(v,p,hoje2){
+  const vencHtml = p.status==='pago'
+    ? `<span style="font-size:12px;color:var(--green)">✓ ${fmtDate(p.vencimento)}</span>`
+    : vencBadge(p.vencimento,hoje2);
+  const stLabel = p.status==='pago' ? {cls:'badge-green',txt:'Pago'} : p.status==='parcial' ? {cls:'badge-yellow',txt:'Parcial'} : {cls:'badge-yellow',txt:'Em aberto'};
+  const valorTxt = p.status==='parcial'
+    ? `${fmt(p.valorPago)} de ${fmt(p.valor)}`
+    : fmt(p.valor);
+  return `<div class="parcela-linha" style="padding:7px 0">
+    <span class="parcela-num">${p.parcelaNum}/${p.parcelaTotal}</span>
+    <span style="flex:1;font-size:12px">${vencHtml}</span>
+    <span style="font-size:12px;font-weight:600">${valorTxt}</span>
+    <span class="badge ${stLabel.cls}" style="font-size:10px">${stLabel.txt}</span>
+  </div>`;
+}
 function renderVendas(){
   let list=state.vendas;
+  const mapaFiado=getMapaSituacaoFiado();
+  const sitCache=new Map();
+  const sitDe=(v)=>{ if(!sitCache.has(v.id)) sitCache.set(v.id,situacaoVenda(v,mapaFiado)); return sitCache.get(v.id); };
   if(state.venda_filter)list=list.filter(v=>getCliente(v.clienteId).nome.toLowerCase().includes(state.venda_filter)||v.itens.some(it=>getNomeCompletoItem(it.produtoId,it.varianteId).toLowerCase().includes(state.venda_filter)));
   if(state.venda_tipo_filter==='orcamento')list=list.filter(v=>v.tipo==='orcamento');
-  else if(state.venda_tipo_filter==='fiado')list=list.filter(v=>v.tipo!=='orcamento'&&v.status!=='pago');
-  else if(state.venda_tipo_filter==='pago')list=list.filter(v=>v.tipo!=='orcamento'&&v.status==='pago');
+  else if(state.venda_tipo_filter==='fiado')list=list.filter(v=>v.tipo!=='orcamento'&&sitDe(v).status!=='pago');
+  else if(state.venda_tipo_filter==='pago')list=list.filter(v=>v.tipo!=='orcamento'&&sitDe(v).status==='pago');
   else list=list.filter(v=>v.tipo!=='orcamento');
   list=[...list].sort((a,b)=>b.data.localeCompare(a.data));
   const tb=document.getElementById('vendas-table');
@@ -31,14 +56,17 @@ function renderVendas(){
   const hoje2=today();
   tb.innerHTML=list.map(v=>{
     const isOrc=v.tipo==='orcamento';
-    const itensTxt=v.itens&&v.itens.length>0?v.itens.map(it=>`${getNomeCompletoItem(it.produtoId,it.varianteId)} ×${it.qtd}`).join(', '):(v.parcelaNum?`Parcela ${v.parcelaNum}/${v.parcelaTotal}`:'—');
-    const formaTxt=isOrc?'—':(v.pagamentos&&v.pagamentos.length>1?v.pagamentos.map(p=>formaLabel(p.forma)+' '+fmt(p.valor)).join(' + '):(v.parcelaNum?`📝 Fiado (${v.parcelaNum}/${v.parcelaTotal})`:formaLabel(v.forma)));
-    const st=statusLabel(v.status);
+    const sit=isOrc?null:sitDe(v);
+    const itensTxt=v.itens&&v.itens.length>0?v.itens.map(it=>`${getNomeCompletoItem(it.produtoId,it.varianteId)} ×${it.qtd}`).join(', '):'—';
+    const expandido=vendasExpandidas.has(v.id);
+    const formaTxt=isOrc?'—':(v.parcelado
+      ? `📝 Fiado parcelado <button class="icon-btn" style="width:auto;height:auto;padding:1px 6px;font-size:11px;vertical-align:middle" onclick="toggleExpandirParcelas(${v.id})">${sit.pagas}/${sit.totalParcelas} pagas ${expandido?'▾':'▸'}</button>`
+      : (v.pagamentos&&v.pagamentos.length>1?v.pagamentos.map(p=>formaLabel(p.forma)+' '+fmt(p.valor)).join(' + '):formaLabel(v.forma)));
+    const st=isOrc?null:statusLabel(sit.status);
     const sp=statusPedidoLabel(v.statusPedido);
-    const venc=v.vencimento;
-    const vencHtml=isOrc?'<span style="color:var(--muted);font-size:12px">—</span>':(venc&&v.status!=='pago'
-      ? vencBadge(venc,hoje2)
-      : (venc?`<span style="font-size:12px;color:var(--muted)">${fmtDate(venc)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'));
+    const vencHtml=isOrc?'<span style="color:var(--muted);font-size:12px">—</span>':(sit.vencimentoPendente
+      ? vencBadge(sit.vencimentoPendente,hoje2)
+      : (sit.status==='pago'?'<span style="font-size:12px;color:var(--green)">✓ Pago</span>':'<span style="color:var(--muted);font-size:12px">—</span>'));
     const sel=vendasSelecionadas.has(v.id);
     const orcBadge=v.statusOrc==='aprovado'?{cls:'badge-green',txt:'✅ Aprovado'}:{cls:'badge-yellow',txt:'📝 Rascunho'};
     const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>`:`<span class="badge ${st.cls}">${st.txt}</span>`;
@@ -52,7 +80,7 @@ function renderVendas(){
          <button class="icon-btn" onclick="duplicarVenda(${v.id})" title="Duplicar">📑</button>
          <button class="icon-btn edit" onclick="editarVenda(${v.id})" title="Editar">✏️</button>
          <button class="icon-btn del" onclick="excluirVenda(${v.id})" title="Excluir">🗑️</button>`;
-    return `<tr style="${sel?'background:#EBF5FB;':''}" id="venda-row-${v.id}">
+    const linhaPrincipal=`<tr style="${sel?'background:#EBF5FB;':''}" id="venda-row-${v.id}">
     <td><input type="checkbox" class="venda-check" data-id="${v.id}" ${sel?'checked':''} onchange="toggleSelecaoVenda(${v.id},this.checked)" style="cursor:pointer;width:15px;height:15px"></td>
     <td data-label="Código" style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">${isOrc?'OR':'VD'}${String(v.id).padStart(4,'0')}</td>
     <td data-label="Data">${fmtDate(v.data)}</td>
@@ -64,12 +92,20 @@ function renderVendas(){
     <td data-label="Pedido">${pedidoCell}</td>
     <td data-label="Status">${statusCell}</td>
     <td><div class="actions-cell">${acoes}</div></td>
-  </tr>`;}).join('');
+  </tr>`;
+    if(!isOrc && v.parcelado && expandido && sit.parcelas){
+      const detalhe=`<tr id="venda-row-${v.id}-detalhe"><td></td><td colspan="10" style="padding:2px 14px 12px 14px;background:#FAFBFC">
+        <div class="parcelas-wrap">${sit.parcelas.map(p=>renderLinhaParcela(v,p,hoje2)).join('')}</div>
+      </td></tr>`;
+      return linhaPrincipal+detalhe;
+    }
+    return linhaPrincipal;
+  }).join('');
 
   // TOTALIZADOR RODAPÉ
   const listVendasOnly=list.filter(v=>v.tipo!=='orcamento');
-  const totalPago=listVendasOnly.filter(v=>v.status==='pago').reduce((s,v)=>s+v.total,0);
-  const totalAberto=listVendasOnly.filter(v=>v.status!=='pago').reduce((s,v)=>s+v.total,0);
+  const totalPago=listVendasOnly.filter(v=>sitDe(v).status==='pago').reduce((s,v)=>s+v.total,0);
+  const totalAberto=listVendasOnly.filter(v=>sitDe(v).status!=='pago').reduce((s,v)=>s+v.total,0);
   const totalGeral=list.reduce((s,v)=>s+v.total,0);
   if(tfoot) tfoot.innerHTML=`<tr style="background:#FAFBFC;border-top:2px solid var(--border)">
     <td colspan="6" style="padding:11px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">
@@ -130,27 +166,34 @@ function limparSelecaoVendas(){
 function marcarLotePago(){
   if(vendasSelecionadas.size===0) return;
   const ids=[...vendasSelecionadas];
-  const pagas=ids.filter(id=>{const v=state.vendas.find(v=>v.id===id);return v&&v.status==='pago';});
-  const aPagar=ids.length-pagas.length;
-  if(aPagar===0){showToast('Todas as selecionadas já estão pagas','green');return;}
-  confirmarAcao(`Marcar ${aPagar} venda${aPagar!==1?'s':''} como paga${aPagar!==1?'s':''}? Esta ação não pode ser desfeita.`,()=>{
+  const mapaFiado=getMapaSituacaoFiado();
+  const pendentes=ids.map(id=>state.vendas.find(v=>v.id===id)).filter(v=>v&&situacaoVenda(v,mapaFiado).status!=='pago');
+  if(pendentes.length===0){showToast('Todas as selecionadas já estão pagas','green');return;}
+  confirmarAcao(`Marcar ${pendentes.length} venda${pendentes.length!==1?'s':''} como paga${pendentes.length!==1?'s':''}? O saldo devedor é único por cliente, então isso também quita qualquer dívida mais antiga em aberto do mesmo cliente. Esta ação não pode ser desfeita.`,()=>{
     const hj=today();
-    ids.forEach(id=>{
-      const v=state.vendas.find(v=>v.id===id);
-      if(!v||v.status==='pago') return;
-      v.status='pago';
-      // registra pagamento automático se fiado
-      if(v.forma==='fiado'||v.forma==='misto'){
-        const saldo=getSaldoCliente(v.clienteId);
-        if(saldo>0){
-          state.pagamentos.push({id:nextId('pagamentos'),clienteId:v.clienteId,valor:v.total,forma:'Lote',obs:'Marcado em lote',data:hj});
-        }
+    // agrupa as pendentes por cliente e paga, de cada cliente, até a mais recente selecionada
+    // (isso já cobre automaticamente qualquer outra selecionada — ou mais antiga — do mesmo cliente, via FIFO)
+    const porCliente={};
+    pendentes.forEach(v=>{ if(v.forma!=='fiado') return; (porCliente[v.clienteId]=porCliente[v.clienteId]||[]).push(v); });
+    Object.keys(porCliente).forEach(cIdStr=>{
+      const cId=parseInt(cIdStr);
+      const vendasCli=porCliente[cIdStr];
+      let alvo=vendasCli[0], vencAlvo=alvo.parcelado?alvo.parcelas[alvo.parcelas.length-1].vencimento:alvo.vencimento;
+      vendasCli.forEach(v=>{
+        const venc=v.parcelado?v.parcelas[v.parcelas.length-1].vencimento:v.vencimento;
+        if((venc||'')>(vencAlvo||'')){vencAlvo=venc;alvo=v;}
+      });
+      const parcelaIdxAlvo = alvo.parcelado ? alvo.parcelas.length-1 : null;
+      const valor=valorParaQuitarAte(cId,alvo.id,parcelaIdxAlvo);
+      if(valor>0.009){
+        state.pagamentos.push({id:nextId('pagamentos'),clienteId:cId,valor,forma:'Lote',obs:'Marcado em lote',data:hj});
+        state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado (lote) — ${getCliente(cId).nome}`,valor,data:hj});
       }
     });
     marcarAlterado();salvarDados();
     vendasSelecionadas.clear();
     renderVendas();renderDashboard();renderClientes();
-    showToast(`${aPagar} venda${aPagar!==1?'s':''} marcada${aPagar!==1?'s':''} como paga${aPagar!==1?'s':''}!`,'green');
+    showToast(`${pendentes.length} venda${pendentes.length!==1?'s':''} marcada${pendentes.length!==1?'s':''} como paga${pendentes.length!==1?'s':''}!`,'green');
   });
 }
 function filterVendas(v){state.venda_filter=v.toLowerCase();renderVendas();}
@@ -189,7 +232,7 @@ function opcoesQtdSelect(it){
 function renderQtdItemVenda(it){
   const livre=itemVendaUsaQtdLivre(it);
   return `<span style="display:flex;gap:4px;align-items:center">
-        <select class="form-control" style="width:64px" onchange="atualizarItemVenda('${it.uid}','qtdSelect',this.value)">${opcoesQtdSelect(it)}</select>
+        <select class="form-control" style="width:72px;padding-left:10px" onchange="atualizarItemVenda('${it.uid}','qtdSelect',this.value)">${opcoesQtdSelect(it)}</select>
         ${livre?`<input type="number" min="1" value="${it.qtd}" class="form-control" style="width:52px" oninput="atualizarItemVenda('${it.uid}','qtd',this.value)">`:''}
       </span>`;
 }
@@ -373,6 +416,8 @@ function abrirNovaVenda(){
   document.getElementById('venda-parcelar-check').checked=false;
   document.getElementById('venda-parcelas-wrap').style.display='none';
   document.getElementById('venda-fiado-wrap').style.display='block';
+  document.getElementById('venda-parcelado-edit-note').style.display='none';
+  { const parcelarRow=document.getElementById('venda-parcelar-check').closest('span'); if(parcelarRow) parcelarRow.style.display='flex'; }
   vendaPagamentosTemp=[];
   document.getElementById('modal-venda-title').textContent='Nova Venda';
   vendaItensTemp=[criarLinhaItemVenda()];
@@ -415,6 +460,8 @@ function clearVendaForm(){
   document.getElementById('venda-parcelas-wrap').style.display='none';
   document.getElementById('venda-num-parcelas').value=2;
   document.getElementById('venda-parcelas-lista').innerHTML='';
+  document.getElementById('venda-parcelado-edit-note').style.display='none';
+  { const parcelarRow=document.getElementById('venda-parcelar-check').closest('span'); if(parcelarRow) parcelarRow.style.display='flex'; }
   popularCanalVenda();
   document.getElementById('venda-canal').value='';
   document.getElementById('venda-desconto-extra').value='';
@@ -513,26 +560,36 @@ function salvarVenda(){
 
   if(eid){
     const v=state.vendas.find(v=>v.id==eid);
+    if(v.parcelado && forma!=='fiado'){showToast('Uma venda parcelada precisa continuar como Fiado','red');return;}
     v.itens.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd));
-    v.clienteId=clienteId;v.itens=itensFinal;v.total=total;v.forma=forma;v.pagamentos=pagamentos;v.status=status;v.obs=obs;v.data=dataVenda;v.vencimento=vencimento;v.statusPedido=statusPedido;v.canalId=canalId;v.descontoExtra=descontoExtra;v.tipo='venda';delete v.statusOrc;
+    v.clienteId=clienteId;v.itens=itensFinal;v.total=total;v.forma=forma;v.pagamentos=pagamentos;v.obs=obs;v.data=dataVenda;v.statusPedido=statusPedido;v.canalId=canalId;v.descontoExtra=descontoExtra;v.tipo='venda';delete v.statusOrc;
+    if(v.parcelado && Array.isArray(v.parcelas) && v.parcelas.length>0){
+      // mantém as mesmas datas de vencimento já definidas, só redistribui o novo total entre elas
+      const n=v.parcelas.length;
+      const valorParcela=parseFloat((total/n).toFixed(2));
+      v.parcelas=v.parcelas.map((p,i)=>({vencimento:p.vencimento,valor:i===n-1?parseFloat((total-(valorParcela*(n-1))).toFixed(2)):valorParcela}));
+      v.vencimento=v.parcelas[0].vencimento;
+    } else {
+      v.vencimento=vencimento;
+    }
+    v.status=status; // baseline; para fiado a situação real é sempre recalculada (getMapaSituacaoFiado)
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     showToast('Venda atualizada','green');
   } else if(parcelar && numParcelas >= 2){
-    // gera uma parcela por vez, deduz estoque apenas na primeira
+    // uma única venda, com o cronograma de parcelas guardado dentro dela (não gera mais
+    // um registro por parcela — isso é o que inflava ticket médio e contagem de vendas)
     const totalParcela = parseFloat((total/numParcelas).toFixed(2));
+    const parcelas=[];
     for(let i=0;i<numParcelas;i++){
       const dataParc = document.getElementById(`parcela-data-${i}`)?.value || vencimento;
       const valParc = i===numParcelas-1 ? parseFloat((total-(totalParcela*(numParcelas-1))).toFixed(2)) : totalParcela;
-      // itensFinal só vai na primeira parcela para não duplicar estoque
-      const itensParc = i===0 ? itensFinal : itensFinal.map(it=>({...it,qtd:0,total:0}));
-      state.vendas.push({
-        id:nextId('vendas'),clienteId,
-        itens: i===0 ? itensFinal : [],
-        total:valParc,forma:'fiado',pagamentos:null,status:'em_aberto',
-        data:dataVenda,obs:(obs?(obs+' · '):'')+'Parcela '+(i+1)+'/'+numParcelas,
-        vencimento:dataParc,parcelaDe:total,parcelaNum:i+1,parcelaTotal:numParcelas,statusPedido,canalId,descontoExtra:i===0?descontoExtra:0,tipo:'venda'
-      });
+      parcelas.push({vencimento:dataParc,valor:valParc});
     }
+    state.vendas.push({
+      id:nextId('vendas'),clienteId,itens:itensFinal,total,forma:'fiado',pagamentos:null,status:'em_aberto',
+      data:dataVenda,obs,vencimento:parcelas[0].vencimento,statusPedido,canalId,descontoExtra,tipo:'venda',
+      parcelado:true,parcelas
+    });
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     showToast(`Venda parcelada em ${numParcelas}x criada! ✓`,'green');
   } else {
@@ -579,6 +636,18 @@ function editarVenda(id){
   document.getElementById('venda-canal').value=v.canalId||'';
   document.getElementById('venda-desconto-extra').value=v.descontoExtra||'';
   calcTotalVendaGeral();
+  // vendas já parceladas: não é possível reabrir o assistente de parcelamento (isso criaria
+  // um novo cronograma do zero); em vez disso mostramos uma nota explicando o comportamento.
+  const parcelarRow=document.getElementById('venda-parcelar-check').closest('span');
+  document.getElementById('venda-parcelas-wrap').style.display='none';
+  document.getElementById('venda-parcelar-check').checked=false;
+  if(v.parcelado){
+    if(parcelarRow) parcelarRow.style.display='none';
+    document.getElementById('venda-parcelado-edit-note').style.display='block';
+  } else {
+    if(parcelarRow) parcelarRow.style.display='flex';
+    document.getElementById('venda-parcelado-edit-note').style.display='none';
+  }
   document.getElementById('venda-tipo-toggle-wrap').style.display=isOrc?'block':'none';
   setVendaTipo(isOrc?'orcamento':'venda');
   document.getElementById('modal-venda').classList.add('open');
@@ -608,6 +677,10 @@ function abrirRecibo(id){
   if(!v)return;
   reciboVendaIdAtual=id;
   const {c,linhas,pagTxt}=gerarTextoRecibo(v);
+  const sit=situacaoVenda(v);
+  const parcelasTxt=(v.parcelado&&sit.parcelas)?sit.parcelas.map(p=>
+    `<div>Parcela ${p.parcelaNum}/${p.parcelaTotal} — ${fmtDate(p.vencimento)} — ${fmt(p.valor)} ${p.status==='pago'?'✓ paga':p.status==='parcial'?`(pago ${fmt(p.valorPago)})`:'em aberto'}</div>`
+  ).join('') : '';
   document.getElementById('recibo-conteudo').innerHTML=`
     <div style="text-align:center;margin-bottom:10px">
       <strong style="font-size:15px">GestãoPRO</strong><br>
@@ -623,7 +696,8 @@ function abrirRecibo(id){
     <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>TOTAL</span><span>${fmt(v.total)}</span></div>
     <div style="margin-top:6px;font-size:12px;color:var(--muted)"><strong>Pagamento:</strong> ${pagTxt}</div>
-    <div style="margin-top:6px;font-size:12px;color:${v.status==='pago'?'var(--green)':'var(--red)'}"><strong>Status:</strong> ${statusLabel(v.status).txt}</div>
+    <div style="margin-top:6px;font-size:12px;color:${sit.status==='pago'?'var(--green)':'var(--red)'}"><strong>Status:</strong> ${statusLabel(sit.status).txt}</div>
+    ${parcelasTxt?`<div style="margin-top:6px;font-size:12px">${parcelasTxt}</div>`:''}
     <div style="margin-top:6px;font-size:12px"><strong>Pedido:</strong> ${statusPedidoLabel(v.statusPedido).txt}</div>
     ${v.obs?`<div style="margin-top:8px;font-size:12px;color:var(--muted)"><strong>Obs:</strong> ${v.obs}</div>`:''}
   `;
@@ -639,7 +713,8 @@ function enviarReciboWhatsapp(){
   const v=state.vendas.find(v=>v.id===reciboVendaIdAtual);
   if(!v)return;
   const {c,linhas,pagTxt}=gerarTextoRecibo(v);
-  const vencimentoLinha=v.vencimento?`\n📅 Vencimento: ${fmtDate(v.vencimento)}`:'';
+  const sit=situacaoVenda(v);
+  const vencimentoLinha=sit.vencimentoPendente?`\n📅 Vencimento: ${fmtDate(sit.vencimentoPendente)}${v.parcelado?` (parcela ${(sit.parcelas.find(p=>p.status!=='pago')||{}).parcelaNum||''}/${sit.totalParcelas})`:''}`:'';
   const descontoLinha=v.descontoExtra>0?`\n🏷️ Desconto: −${fmt(v.descontoExtra)}`:'';
   const pedidoTxt=(v.statusPedido&&v.statusPedido!=='indefinido')?statusPedidoLabel(v.statusPedido).txt.replace(/^\S+\s/,''):'';
   const statusPedidoLinha=pedidoTxt?`\n📦 Pedido: ${pedidoTxt}`:'';
@@ -831,7 +906,8 @@ function registrarPagamento(){
 function cobrarWhatsapp(clienteId){
   const c=getCliente(clienteId);
   const saldo=getSaldoCliente(clienteId);
-  const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&v.status!=='pago');
+  const mapaFiado=getMapaSituacaoFiado();
+  const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&situacaoVenda(v,mapaFiado).status!=='pago');
   const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n');
   const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*\n\nQualquer dúvida estou à disposição! 😊`;
   const tel=c.tel.replace(/\D/g,'');

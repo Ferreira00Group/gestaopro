@@ -178,17 +178,17 @@ function renderDropCobranca(){
   let html='';
 
   // Vencimentos próximos (até 3 dias), não vencidos ainda
-  const proximosVenc=state.vendas.filter(v=>v.vencimento&&v.status!=='pago'&&diasParaVencimento(v.vencimento,hj)>=0&&diasParaVencimento(v.vencimento,hj)<=3);
+  const proximosVenc=getUnidadesFiadoFlat().filter(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)>=0&&diasParaVencimento(u.vencimento,hj)<=3);
   if(proximosVenc.length>0){
     html+=`<div class="busca-grupo-titulo">⏰ Vencendo em breve</div>`;
-    html+=proximosVenc.map(v=>{
-      const c=getCliente(v.clienteId);
-      const dias=diasParaVencimento(v.vencimento,hj);
+    html+=proximosVenc.map(u=>{
+      const c=getCliente(u.clienteId);
+      const dias=diasParaVencimento(u.vencimento,hj);
       const label=dias===0?'Hoje':dias===1?'Amanhã':`Em ${dias}d`;
       return `<div class="alert-item">
         <div class="alert-item-info">
           <strong>${c.nome}</strong>
-          <span><b style="color:#d35400">${label} · ${fmtDate(v.vencimento)}</b> · ${fmt(v.total)}</span>
+          <span><b style="color:#d35400">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
         </div>
         <div class="alert-item-action">
           <button class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:5px 9px" onclick="closeAlertDrop('drop-cobranca');cobrarWhatsapp(${c.id})">📲</button>
@@ -233,7 +233,7 @@ function atualizarAlertBells(){
   // cobrança: devedor OU vencimento em até 3 dias
   const hj=today();
   const temDevedor=state.clientes.some(c=>getSaldoCliente(c.id)>0.01);
-  const temVencProx=state.vendas.some(v=>v.vencimento&&v.status!=='pago'&&diasParaVencimento(v.vencimento,hj)<=3&&diasParaVencimento(v.vencimento,hj)>=0);
+  const temVencProx=getUnidadesFiadoFlat().some(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)<=3&&diasParaVencimento(u.vencimento,hj)>=0);
   const bc=document.getElementById('bell-cobranca');if(bc)bc.classList.toggle('has-alert',temDevedor||temVencProx);
 }
 
