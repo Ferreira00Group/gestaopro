@@ -63,7 +63,7 @@ function renderEstoque(){
     renderSemiacabados();
   } else {
     head.innerHTML='<tr><th>Matéria-Prima</th><th>Estoque</th><th>Unidade</th><th>Custo/un</th><th>Mínimo</th><th>Fornecedor</th><th>Status</th><th>Previsão</th><th>Ações</th></tr>';
-    let list=state.materias;
+    let list=materiasOrdenadas();
     if(state.estoque_filter)list=list.filter(m=>m.nome.toLowerCase().includes(state.estoque_filter));
     tb.innerHTML=list.map(m=>{
       const prev=calcularPrevisaoConsumo(m.id);
@@ -129,7 +129,7 @@ function renderSemiMPLista(){
   if(!wrap) return;
   if(semiMPsTemp.length===0){wrap.innerHTML='<p style="color:var(--muted);font-size:12px">Nenhuma MP adicionada.</p>';return;}
   wrap.innerHTML=semiMPsTemp.map((mp,i)=>{
-    const opts=state.materias.map(m=>`<option value="${m.id}" ${m.id===mp.mpId?'selected':''}>${m.nome} (${m.unidade})</option>`).join('');
+    const opts=materiasOrdenadas().map(m=>`<option value="${m.id}" ${m.id===mp.mpId?'selected':''}>${m.nome} (${m.unidade})</option>`).join('');
     return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
       <select class="form-control" style="flex:2" onchange="semiMPsTemp[${i}].mpId=parseInt(this.value)">
         <option value="">Selecione MP...</option>${opts}
@@ -211,7 +211,7 @@ function renderBaixaItens(){
       return [`<option value="p:${p.id}:">${p.nome} (est: ${p.estoque})</option>`];
     }).join('');
   } else {
-    sel.innerHTML = '<option value="">Selecione...</option>' + state.materias.map(m =>
+    sel.innerHTML = '<option value="">Selecione...</option>' + materiasOrdenadas().map(m =>
       `<option value="m:${m.id}">${m.nome} — est: ${m.qtd} ${m.unidade}</option>`
     ).join('');
   }
@@ -315,7 +315,7 @@ function renderEntradaItens(){
       `<option value="s:${s.id}">${s.nome} — est: ${s.estoque} ${s.unidade}</option>`
     ).join('');
   } else {
-    sel.innerHTML = '<option value="">Selecione...</option>' + state.materias.map(m =>
+    sel.innerHTML = '<option value="">Selecione...</option>' + materiasOrdenadas().map(m =>
       `<option value="m:${m.id}">${m.nome} — est: ${m.qtd} ${m.unidade}</option>`
     ).join('');
   }

@@ -214,7 +214,7 @@ function carregarFicha(){
 // (exclui o próprio semiacabado que está sendo editado, para evitar auto-referência)
 function opcoesIngredientesFicha(){
   const {tipo,prodId}=fichaKeyAtual();
-  const optsMp=state.materias.map(m=>`<option value="mp_${m.id}">${m.nome} (${m.unidade})</option>`).join('');
+  const optsMp=materiasOrdenadas().map(m=>`<option value="mp_${m.id}">${m.nome} (${m.unidade})</option>`).join('');
   const semis=(state.semiacabados||[]).filter(s=>!(tipo==='s'&&s.id===prodId));
   const optsSemi=semis.map(s=>`<option value="semi_${s.id}">🧪 ${s.nome} (${s.unidade})</option>`).join('');
   let html='';

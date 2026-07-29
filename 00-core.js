@@ -356,6 +356,12 @@ function getProduto(id){return state.produtos.find(p=>p.id==id)||{nome:'?',preco
 function getSemiacabado(id){return (state.semiacabados||[]).find(s=>s.id==id)||{nome:'?',estoque:0}}
 function getMateria(id){return state.materias.find(m=>m.id==id)||{nome:'?',custo:0,unidade:'',qtd:0}}
 function getFornecedor(id){return state.fornecedores.find(f=>f.id==id)||null}
+// Matérias-primas não ficam ordenadas em state.materias (são só empilhadas na ordem em que
+// foram cadastradas). Esta função devolve a lista pronta pra exibir (lista e dropdowns),
+// sem alterar a ordem/índices salvos no state.
+function materiasOrdenadas(){
+  return [...state.materias].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}));
+}
 function getVariante(produtoId,varianteId){
   if(!varianteId) return null;
   const p=getProduto(produtoId);

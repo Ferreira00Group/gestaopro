@@ -237,7 +237,7 @@ function renderCompraItensLista(){
     return;
   }
   wrap.innerHTML = compraItensTemp.map((item, i) => {
-    const opts = state.materias.map(m => `<option value="${m.id}" ${m.id===item.mpId?'selected':''}>${m.nome} (${m.unidade})</option>`).join('');
+    const opts = materiasOrdenadas().map(m => `<option value="${m.id}" ${m.id===item.mpId?'selected':''}>${m.nome} (${m.unidade})</option>`).join('');
     return `<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:10px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-size:12px;font-weight:700;color:var(--muted)">ITEM ${i+1}</span>
@@ -542,7 +542,7 @@ function npRenderMPLista(){
   if(!wrap)return;
   if(npMPsTemp.length===0){wrap.innerHTML='<p style="color:var(--muted);font-size:12px">Nenhuma MP adicionada.</p>';return;}
   wrap.innerHTML=npMPsTemp.map((mp,i)=>{
-    const opts=state.materias.map(m=>`<option value="${m.id}" ${m.id===mp.mpId?'selected':''}>${m.nome} (${m.unidade})</option>`).join('');
+    const opts=materiasOrdenadas().map(m=>`<option value="${m.id}" ${m.id===mp.mpId?'selected':''}>${m.nome} (${m.unidade})</option>`).join('');
     return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
       <select class="form-control" style="flex:2" onchange="npMPsTemp[${i}].mpId=parseInt(this.value)">
         <option value="">Selecione MP...</option>${opts}
