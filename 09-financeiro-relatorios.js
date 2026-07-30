@@ -1,4 +1,26 @@
 // ============ FINANCEIRO ============
+// Categoria é livre (texto), só usada pra separar "Outras Saídas" no relatório de Despesas.
+// Sugestões: algumas prontas + o que já foi usado antes (evita "Gasolina" x "gasolina" x "combustível").
+const CATEGORIAS_DESPESA_SUGERIDAS=['Gasolina','Manutenção Veículo','Aluguel','Internet/Telefone','Embalagens','Outros'];
+function getCategoriasDespesaExistentes(){
+  const usadas=state.financeiro.filter(f=>f.tipo==='saida'&&f.categoria).map(f=>f.categoria.trim());
+  const vistas=new Set();
+  const resultado=[];
+  [...CATEGORIAS_DESPESA_SUGERIDAS,...usadas].forEach(c=>{
+    const k=c.toLowerCase();
+    if(!vistas.has(k)){vistas.add(k);resultado.push(c);}
+  });
+  return resultado;
+}
+function popularCategoriasDespesaLista(){
+  const dl=document.getElementById('lanc-categoria-lista');
+  if(!dl) return;
+  dl.innerHTML=getCategoriasDespesaExistentes().map(c=>`<option value="${c}">`).join('');
+}
+function toggleCategoriaLanc(){
+  const tipo=document.getElementById('lanc-tipo').value;
+  document.getElementById('lanc-categoria-wrap').style.display=tipo==='saida'?'block':'none';
+}
 function renderFinanceiro(){
   const mesEl=document.getElementById('fin-filtro-mes');
   if(!mesEl.value) mesEl.value=today().slice(0,7);
@@ -23,7 +45,7 @@ function renderFinanceiro(){
   if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma movimentação neste período</td></tr>';return;}
   tb.innerHTML=list.map(f=>`<tr>
     <td data-label="Data">${fmtDate(f.data)}</td>
-    <td data-label="Descrição">${f.desc}</td>
+    <td data-label="Descrição">${f.desc}${(f.tipo==='saida'&&f.categoria)?`<div style="margin-top:2px"><span class="cat-pill" style="cursor:default;font-size:10px">${f.categoria}</span></div>`:''}</td>
     <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'📥 Entrada':'📤 Saída'}</span></td>
     <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
     <td><div class="actions-cell">
@@ -38,13 +60,14 @@ function salvarLancamento(){
   const desc=document.getElementById('lanc-desc').value.trim();
   const valor=parseFloat(document.getElementById('lanc-valor').value);
   const data=document.getElementById('lanc-data').value||today();
+  const categoria=tipo==='saida'?(document.getElementById('lanc-categoria').value.trim()||'Outros'):null;
   if(!desc||!valor){showToast('Preencha todos os campos','red');return;}
   if(eid){
     const f=state.financeiro.find(f=>f.id==eid);
-    f.tipo=tipo;f.desc=desc;f.valor=valor;f.data=data;
+    f.tipo=tipo;f.desc=desc;f.valor=valor;f.data=data;f.categoria=categoria;
     showToast('Lançamento atualizado','green');
   } else {
-    state.financeiro.push({id:nextId('financeiro'),tipo,desc,valor,data});
+    state.financeiro.push({id:nextId('financeiro'),tipo,desc,valor,data,categoria});
     showToast('Lançamento registrado','green');
   }
   closeModal('modal-lancamento');marcarAlterado();renderFinanceiro();setTimeout(renderChartFinanceiro,50);
@@ -57,6 +80,9 @@ function editarLancamento(id){
   document.getElementById('lanc-desc').value=f.desc;
   document.getElementById('lanc-valor').value=f.valor;
   document.getElementById('lanc-data').value=f.data;
+  popularCategoriasDespesaLista();
+  document.getElementById('lanc-categoria').value=f.categoria||'';
+  toggleCategoriaLanc();
   document.getElementById('modal-lancamento').classList.add('open');
 }
 function excluirLancamento(id){
@@ -185,8 +211,10 @@ function gerarDRE(){
   // CUSTOS FIXOS cadastrados
   const totalCF=(state.custosFixos||[]).reduce((s,c)=>s+(c.valor||0),0);
 
-  // OUTRAS DESPESAS = saídas no financeiro excluindo as que têm tag "MP"
-  const outrasDespesas=fin.filter(f=>f.tipo==='saida').reduce((s,f)=>s+f.valor,0);
+  // OUTRAS DESPESAS = saídas no financeiro excluindo as que têm tag "MP" (compraId) — essas já
+  // entram em "Custo de Matéria-Prima" acima (via state.compras); somar de novo aqui contaria
+  // a mesma compra 2x no lucro líquido.
+  const outrasDespesas=fin.filter(f=>f.tipo==='saida'&&!f.compraId).reduce((s,f)=>s+f.valor,0);
 
   // ENTRADAS EXTRAS (lançamentos de entrada que não são vendas)
   const entradasExtras=fin.filter(f=>f.tipo==='entrada').reduce((s,f)=>s+f.valor,0);

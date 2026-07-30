@@ -122,10 +122,13 @@ const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 //   3 → adicionado metas, fechamentos, custosFixos, canais
 //   4 → vendas migradas para itens[], variantes nos produtos
 //   5 → versionamento formal implantado
-//   6 → (versão atual) novo modelo de venda parcelada (1 registro com parcelas[] em vez de
+//   6 → novo modelo de venda parcelada (1 registro com parcelas[] em vez de
 //       N vendas separadas). Reset único de clientes/vendas/pagamentos para evitar dados
 //       inconsistentes do modelo antigo (cada parcela era uma "venda" própria).
-const SCHEMA_VERSION = 6;
+//   7 → (versão atual) custo de matéria-prima passa a contar só na COMPRA, não mais na
+//       Produção (evita contar o mesmo gasto 2x). Remove os lançamentos antigos de despesa
+//       de "Produção" do financeiro, que duplicavam o custo já lançado na compra.
+const SCHEMA_VERSION = 7;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -167,6 +170,15 @@ const MIGRATIONS = {
     d.vendas     = [];
     d.pagamentos = [];
     d.nextId = { ...(d.nextId||{}), clientes:1, vendas:1, pagamentos:1 };
+    return d;
+  },
+  // v6 → v7: remove lançamentos antigos de "Produção X" no financeiro — o custo da matéria-prima
+  // consumida já tinha sido lançado como despesa na hora da COMPRA (state.compras), então esses
+  // lançamentos contavam o mesmo gasto uma segunda vez em DRE/Fechamento/Despesas por Origem.
+  6: (d) => {
+    d.financeiro = (d.financeiro || []).filter(f =>
+      !(f.tipo === 'saida' && (f.categoria === 'Produção (consumo de MP)' || (f.desc || '').startsWith('Produção ')))
+    );
     return d;
   },
 };

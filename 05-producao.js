@@ -117,7 +117,10 @@ function registrarProducao(){
   }
   state.producoes.push({id:nextId('producoes'),produtoId:prodId,varianteId,qtd,custo,data:today(),consumo,validade});
   ajustarEstoque(prodId,varianteId,qtd);
-  state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Produção ${getNomeCompletoItem(prodId,varianteId)} — ${qtd} un.`,valor:custo,data:today()});
+  // Não lança mais uma "saída" financeira aqui: o custo da matéria-prima consumida já virou
+  // despesa quando ela foi COMPRADA (state.compras/financeiro em 08-compras-fornecedores.js).
+  // Lançar de novo aqui contaria o mesmo gasto duas vezes. O campo "custo" acima fica só como
+  // referência histórica de quanto essa produção consumiu em matéria-prima.
   marcarAlterado();
   showToast(`Produção registrada! +${qtd} no estoque`,'green');
   closeModal('modal-producao');renderProducao();renderEstoque();renderAlertaEstoquePage();

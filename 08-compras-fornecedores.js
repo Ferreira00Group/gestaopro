@@ -210,8 +210,8 @@ function registrarCompraDaNota(){
     });
   });
 
-  if(parsed.frete>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Frete — ${fornNome}${parsed.pedido?' Ped.'+parsed.pedido:''}`,valor:parsed.frete,data:parsed.data});
-  if(parsed.taxa>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Taxa maquineta — ${fornNome}`,valor:parsed.taxa,data:parsed.data});
+  if(parsed.frete>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Frete — ${fornNome}${parsed.pedido?' Ped.'+parsed.pedido:''}`,valor:parsed.frete,data:parsed.data,categoria:'Frete'});
+  if(parsed.taxa>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Taxa maquineta — ${fornNome}`,valor:parsed.taxa,data:parsed.data,categoria:'Taxa Maquineta'});
 
   showToast(`${parsed.itens.length} item(s) registrados com sucesso!`,'green');
   marcarAlterado();
@@ -359,8 +359,8 @@ function registrarCompra(){
     });
   });
   // Lançar frete e taxa separado se existirem
-  if(frete>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Frete — ${fornNome}${pedido?' Ped.'+pedido:''}`,valor:frete,data});
-  if(taxa>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Taxa maquineta — ${fornNome}`,valor:taxa,data});
+  if(frete>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Frete — ${fornNome}${pedido?' Ped.'+pedido:''}`,valor:frete,data,categoria:'Frete'});
+  if(taxa>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Taxa maquineta — ${fornNome}`,valor:taxa,data,categoria:'Taxa Maquineta'});
 
   showToast(`Compra registrada! ${itensValidos.length} item(s) — ${fmt(total)}`,'green');
   marcarAlterado();

@@ -193,6 +193,18 @@ function showFinTab(tab,btn){
   if(tab==='fechamento') renderFechamentoHistorico();
 }
 
+// Agrupa lançamentos de saída por categoria, ignorando diferenças de maiúsculas/espaços
+// (ex: "Gasolina" e "gasolina " caem no mesmo grupo). Sem categoria definida vira "Outros".
+function agruparDespesasPorCategoria(itens){
+  const map={};
+  itens.forEach(f=>{
+    const raw=(f.categoria||'Outros').trim()||'Outros';
+    const key=raw.toLowerCase();
+    if(!map[key]) map[key]={label:raw,total:0};
+    map[key].total+=f.valor;
+  });
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
 function renderDespesasCategoria(){
   const mesEl=document.getElementById('desp-mes');
   if(!mesEl) return;
@@ -201,7 +213,9 @@ function renderDespesasCategoria(){
 
   // CATEGORIAS: compras de MP, custos fixos (cadastrados), outros lançamentos de saída
   const comprasMes=state.compras.filter(c=>c.data.startsWith(mes));
-  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&f.data.startsWith(mes));
+  // exclui lançamentos com compraId: são o mesmo valor já contado em totalMP (via state.compras),
+  // então incluí-los aqui contaria a mesma compra 2x em totalDespesas
+  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&f.data.startsWith(mes)&&!f.compraId);
   const finEntradas=state.financeiro.filter(f=>f.tipo==='entrada'&&f.data.startsWith(mes));
   const vendasMes=state.vendas.filter(v=>v.data.startsWith(mes));
 
@@ -252,6 +266,25 @@ function renderDespesasCategoria(){
     if(oldLeg)oldLeg.remove();
     const div=document.createElement('div');div.className='desp-leg';div.innerHTML=legHtml;
     legEl.appendChild(div);
+
+    // Detalhamento de "Outras Saídas" por categoria (ex: Gasolina, Manutenção...)
+    const oldDet=legEl.querySelector('.desp-leg-detalhe');
+    if(oldDet)oldDet.remove();
+    if(totalOutros>0){
+      const porCategoria=agruparDespesasPorCategoria(finSaidas);
+      let detHtml=`<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🔎 Outras Saídas — por categoria</div>`;
+      porCategoria.forEach(({label,total})=>{
+        const pct=totalOutros>0?(total/totalOutros*100).toFixed(1):0;
+        detHtml+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="font-size:12px;flex:1;color:var(--text)">${label}</span>
+          <strong style="font-size:12px">${fmt(total)} <span style="color:var(--muted);font-weight:400;font-size:11px">${pct}%</span></strong>
+        </div>`;
+      });
+      detHtml+='</div>';
+      const detDiv=document.createElement('div');detDiv.className='desp-leg-detalhe';detDiv.innerHTML=detHtml;
+      legEl.appendChild(detDiv);
+    }
   } else if(ctx1){ctx1.parentElement.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Sem despesas registradas neste mês</div>';}
 
   const ctx2=document.getElementById('chart-despesas-vs');
@@ -325,7 +358,9 @@ function calcularSnapshotMes(mes){
   const vendas=state.vendas.filter(v=>v.data.startsWith(mes));
   const compras=state.compras.filter(c=>c.data.startsWith(mes));
   const finEntradas=state.financeiro.filter(f=>f.tipo==='entrada'&&f.data.startsWith(mes));
-  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&f.data.startsWith(mes));
+  // exclui lançamentos de compra (compraId): já contados em custoMP via state.compras — somar
+  // de novo aqui contaria a mesma compra 2x no lucro líquido do fechamento.
+  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&f.data.startsWith(mes)&&!f.compraId);
   const pagamentos=state.pagamentos.filter(p=>p.data.startsWith(mes));
 
   const receita=vendas.reduce((s,v)=>s+v.total,0);
@@ -575,6 +610,12 @@ function openModal(id){
     document.getElementById('lanc-data').value=today();
     document.getElementById('lanc-edit-id').value='';
     document.getElementById('modal-lanc-title').textContent='Novo Lançamento';
+    document.getElementById('lanc-desc').value='';
+    document.getElementById('lanc-valor').value='';
+    document.getElementById('lanc-categoria').value='';
+    document.getElementById('lanc-tipo').value='entrada';
+    popularCategoriasDespesaLista();
+    toggleCategoriaLanc();
   }
   if(id==='modal-custos-fixos')openModalCustosFixos();
   if(id==='modal-canais')openModalCanais();
