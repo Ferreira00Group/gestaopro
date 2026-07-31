@@ -24,7 +24,7 @@ function renderClientes(){
       const freq=Math.round(diffTotal/(datas.length-1));
       freqTxt=`a cada ${freq}d`;
     } else if(vendasCliente.length===1){freqTxt='1 compra';}
-    return`<tr>
+    return`<tr id="cliente-row-${c.id}">
       <td data-label="Nº"><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtClienteNum(c.id)}</span></td>
       <td data-label="Nome"><strong>${c.nome}</strong><br><span style="font-size:11px;color:var(--muted)">${c.end||''}</span></td>
       <td data-label="Telefone">${c.tel}</td>

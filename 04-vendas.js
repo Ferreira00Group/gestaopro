@@ -89,7 +89,7 @@ function renderVendas(){
     <td><input type="checkbox" class="venda-check" data-id="${v.id}" ${sel?'checked':''} onchange="toggleSelecaoVenda(${v.id},this.checked)" style="cursor:pointer;width:15px;height:15px"></td>
     <td data-label="Código" style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">${isOrc?'OR':'VD'}${String(v.id).padStart(4,'0')}</td>
     <td data-label="Data">${fmtDate(v.data)}</td>
-    <td data-label="Cliente"><strong>${getCliente(v.clienteId).nome}</strong></td>
+    <td data-label="Cliente"><strong style="cursor:pointer;color:var(--blue)" onclick="gotoCliente(${v.clienteId})">${getCliente(v.clienteId).nome}</strong></td>
     <td data-label="Itens" class="td-block" style="max-width:200px;white-space:normal">${itensTxt}</td>
     <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
     <td data-label="Forma" style="font-size:12px">${formaTxt}</td>

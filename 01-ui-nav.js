@@ -564,6 +564,27 @@ function gotoFornecedores(){
   const btn=document.querySelector('#page-estoque .tabs .tab:nth-child(4)');
   if(btn) showEstoqueTab('fornecedores',btn);
 }
+// Vai pra aba Clientes já filtrada nesse cliente específico (usado ao clicar no nome do
+// cliente em outras telas, como Vendas), e destaca a linha dele por alguns segundos.
+function gotoCliente(clienteId){
+  const c=getCliente(clienteId);
+  goto('clientes');
+  document.getElementById('cliente-status-filter').value='';
+  document.getElementById('clientes-rota-filter').value='';
+  state.cliente_status_filter='';
+  state.cliente_rota_filter='';
+  document.getElementById('cliente-busca-input').value=c.nome;
+  state.cliente_filter=c.nome.toLowerCase();
+  renderClientes();
+  setTimeout(()=>{
+    const row=document.getElementById(`cliente-row-${clienteId}`);
+    if(row){
+      row.scrollIntoView({behavior:'smooth',block:'center'});
+      row.classList.add('row-highlight');
+      setTimeout(()=>row.classList.remove('row-highlight'),2000);
+    }
+  },80);
+}
 function imprimirPagina(){
   // atualiza data de impressão
   const pg=document.querySelector('.page.active');
