@@ -248,8 +248,11 @@ function renderDespesasCategoria(){
         }
       }
     });
-    // legenda customizada abaixo
-    const legEl=ctx1.parentElement;
+    // legenda customizada abaixo — importante: NÃO anexar dentro de .chart-wrap (ele tem
+    // altura fixa, só pro canvas do gráfico); um container com altura fixa não cresce pra
+    // caber conteúdo extra, e o que passar do limite invade visualmente o card seguinte.
+    // Por isso anexamos no .chart-card (o pai do .chart-wrap), que tem altura livre.
+    const cardEl=ctx1.parentElement.parentElement;
     const legRows=[['#E74C3C','Matéria-Prima',totalMP],['#F39C12','Custos Fixos',totalCF],['#8E44AD','Outras Saídas',totalOutros]];
     let legHtml='<div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">';
     legRows.forEach(([cor,nome,val])=>{
@@ -262,13 +265,13 @@ function renderDespesasCategoria(){
     });
     legHtml+='</div>';
     // remove legenda anterior se existir
-    const oldLeg=legEl.querySelector('.desp-leg');
+    const oldLeg=cardEl.querySelector('.desp-leg');
     if(oldLeg)oldLeg.remove();
     const div=document.createElement('div');div.className='desp-leg';div.innerHTML=legHtml;
-    legEl.appendChild(div);
+    cardEl.appendChild(div);
 
     // Detalhamento de "Outras Saídas" por categoria (ex: Gasolina, Manutenção...)
-    const oldDet=legEl.querySelector('.desp-leg-detalhe');
+    const oldDet=cardEl.querySelector('.desp-leg-detalhe');
     if(oldDet)oldDet.remove();
     if(totalOutros>0){
       const porCategoria=agruparDespesasPorCategoria(finSaidas);
@@ -283,7 +286,7 @@ function renderDespesasCategoria(){
       });
       detHtml+='</div>';
       const detDiv=document.createElement('div');detDiv.className='desp-leg-detalhe';detDiv.innerHTML=detHtml;
-      legEl.appendChild(detDiv);
+      cardEl.appendChild(detDiv);
     }
   } else if(ctx1){ctx1.parentElement.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Sem despesas registradas neste mês</div>';}
 
