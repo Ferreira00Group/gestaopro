@@ -64,6 +64,7 @@ function mostrarFicha(){
   const varianteId=parseInt(document.getElementById('prod-variante').value)||null;
   const qtd=parseInt(document.getElementById('prod-qtd').value)||1;
   const ficha=getFichaProdutoVariante(prodId,varianteId);
+  const rendimento=getRendimentoFicha(prodId,varianteId)||1;
   const pv=document.getElementById('prod-ficha-preview');
   const cv=document.getElementById('prod-custo-preview');
   if(!prodId||!ficha||ficha.length===0){pv.innerHTML=prodId?'<p style="color:var(--muted);font-size:12.5px;margin-top:8px">Este produto ainda não tem ficha técnica cadastrada.</p>':'';cv.style.display='none';return;}
@@ -71,7 +72,7 @@ function mostrarFicha(){
   const html=ficha.map(f=>{
     const tipo=f.tipo||'mp';
     const {nome,unidade,disponivel}=nomeUnidadeItemFicha(tipo,f.mpId);
-    const qtdNec=f.qtd*qtd;
+    const qtdNec=(f.qtd/rendimento)*qtd;
     custo+=qtdNec*custoItemFicha(tipo,f.mpId);
     const ok=disponivel>=qtdNec;
     return`<div class="recipe-item">
@@ -92,10 +93,11 @@ function registrarProducao(){
   if(!prodId||!qtd){showToast('Selecione produto e quantidade','red');return;}
   const ficha=getFichaProdutoVariante(prodId,varianteId);
   if(!ficha||ficha.length===0){showToast('Cadastre a ficha técnica primeiro','red');return;}
+  const rendimento=getRendimentoFicha(prodId,varianteId)||1;
   let custo=0;const consumo=[];
   for(const f of ficha){
     const tipo=f.tipo||'mp';
-    const qtdNec=f.qtd*qtd;
+    const qtdNec=(f.qtd/rendimento)*qtd;
     if(tipo==='semi'){
       const s=getSemiacabado(f.mpId);
       if(s.estoque<qtdNec){showToast(`Semiacabado insuficiente: ${s.nome}`,'red');return;}
@@ -106,7 +108,7 @@ function registrarProducao(){
   }
   for(const f of ficha){
     const tipo=f.tipo||'mp';
-    const qtdNec=f.qtd*qtd;
+    const qtdNec=(f.qtd/rendimento)*qtd;
     custo+=qtdNec*custoItemFicha(tipo,f.mpId);
     if(tipo==='semi'){
       getSemiacabado(f.mpId).estoque-=qtdNec;
@@ -139,6 +141,7 @@ function populateFichaModal(){
   ps.innerHTML=html;
   document.getElementById('ficha-novo-item-form').style.display='none';
   document.getElementById('ficha-variante-wrap').style.display='none';
+  document.getElementById('ficha-rendimento-wrap').style.display='none';
   document.getElementById('ficha-itens').innerHTML='';
 }
 function onFichaProdutoChange(){
@@ -150,6 +153,7 @@ function onFichaProdutoChange(){
     form.dataset.tipo=raw==='__new_p'?'p':'s';
     form.style.display='block';
     document.getElementById('ficha-variante-wrap').style.display='none';
+    document.getElementById('ficha-rendimento-wrap').style.display='none';
     document.getElementById('ficha-itens').innerHTML='';
     document.getElementById('ficha-novo-item-nome').focus();
     return;
@@ -208,9 +212,17 @@ function fichaKeyAtual(){
   return {tipo,prodId,varianteId,key:varianteId?`${prodId}-${varianteId}`:null};
 }
 function carregarFicha(){
-  const {tipo,prodId,key}=fichaKeyAtual();
-  if(!tipo){renderFichaItens([]);return;}
+  const {tipo,prodId,varianteId,key}=fichaKeyAtual();
+  const rendWrap=document.getElementById('ficha-rendimento-wrap');
+  if(!tipo){renderFichaItens([]);rendWrap.style.display='none';return;}
   const ficha=tipo==='s'?(getSemiacabado(prodId).mps||[]):(key?(state.fichasVariante[key]||[]):(state.fichas[prodId]||[]));
+  // sugestão de 250 quando a ficha ainda não tem rendimento salvo (a maioria das suas receitas
+  // rende 250) — é só o valor mostrado no campo; os cálculos (custo, consumo, planejamento)
+  // continuam usando 1 até você realmente clicar em "Salvar Ficha" com esse valor, pra não
+  // mudar de repente o resultado de fichas antigas que ninguém configurou ainda.
+  const rendimentoSalvo=tipo==='s'?getSemiacabado(prodId).rendimento:state.fichaRendimento[varianteId?key:prodId];
+  document.getElementById('ficha-rendimento').value=rendimentoSalvo||250;
+  rendWrap.style.display='block';
   renderFichaItens(ficha);
 }
 // Monta as opções de ingrediente disponíveis: matérias-primas do estoque + semiacabados já cadastrados
@@ -283,12 +295,14 @@ function lerItensFichaDoForm(qtdItens){
   });
 }
 function salvarFicha(){
-  const {tipo,prodId,key}=fichaKeyAtual();
+  const {tipo,prodId,varianteId,key}=fichaKeyAtual();
   if(!tipo){showToast('Selecione o produto','red');return;}
+  const rendimento=parseFloat(document.getElementById('ficha-rendimento').value)||1;
   if(tipo==='s'){
     const s=getSemiacabado(prodId);
     const ficha=s.mps||[];
     s.mps=lerItensFichaDoForm(ficha.length);
+    s.rendimento=rendimento;
     marcarAlterado();
     showToast('Ficha técnica salva!','green');closeModal('modal-ficha');
     return;
@@ -296,6 +310,7 @@ function salvarFicha(){
   const ficha=key?(state.fichasVariante[key]||[]):(state.fichas[prodId]||[]);
   const nova=lerItensFichaDoForm(ficha.length);
   if(key)state.fichasVariante[key]=nova;else state.fichas[prodId]=nova;
+  setRendimentoFicha(prodId,varianteId,rendimento);
   marcarAlterado();
   showToast('Ficha técnica salva!','green');closeModal('modal-ficha');
 }
@@ -305,7 +320,8 @@ function custoItemFicha(tipo,itemId,visitados=new Set()){
     if(visitados.has(itemId))return 0; // evita loop em caso de referência circular
     visitados.add(itemId);
     const s=getSemiacabado(itemId);
-    return (s.mps||[]).reduce((sum,m)=>sum+m.qtd*custoItemFicha(m.tipo||'mp',m.mpId,visitados),0);
+    const rendS=s.rendimento||1;
+    return (s.mps||[]).reduce((sum,m)=>sum+(m.qtd/rendS)*custoItemFicha(m.tipo||'mp',m.mpId,visitados),0);
   }
   return getMateria(itemId).custo;
 }

@@ -55,6 +55,9 @@ const DEFAULT_STATE = {
     '6-1':[{mpId:10,qtd:0.18},{mpId:8,qtd:0.01},{mpId:14,qtd:1}],
     '6-2':[{mpId:10,qtd:0.18},{mpId:9,qtd:0.01},{mpId:14,qtd:1}],
   },
+  // Quantas unidades cada ficha (chave = produtoId, ou "produtoId-varianteId") rende.
+  // Ausente = 1 (as quantidades da ficha já são "por unidade", comportamento de sempre).
+  fichaRendimento:{},
   vendas:[
     {id:1,clienteId:1,itens:[{produtoId:1,varianteId:null,qtd:6,preco:9.90,total:59.40}],total:59.40,forma:'fiado',status:'em_aberto',data:'2026-06-18',obs:'',tipo:'venda'},
     {id:2,clienteId:2,itens:[{produtoId:2,varianteId:1,qtd:12,preco:4.50,total:54.00}],total:54.00,forma:'fiado',status:'em_aberto',data:'2026-06-17',obs:'',tipo:'venda'},
@@ -125,10 +128,15 @@ const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 //   6 → novo modelo de venda parcelada (1 registro com parcelas[] em vez de
 //       N vendas separadas). Reset único de clientes/vendas/pagamentos para evitar dados
 //       inconsistentes do modelo antigo (cada parcela era uma "venda" própria).
-//   7 → (versão atual) custo de matéria-prima passa a contar só na COMPRA, não mais na
+//   7 → custo de matéria-prima passa a contar só na COMPRA, não mais na
 //       Produção (evita contar o mesmo gasto 2x). Remove os lançamentos antigos de despesa
 //       de "Produção" do financeiro, que duplicavam o custo já lançado na compra.
-const SCHEMA_VERSION = 7;
+//   8 → (versão atual) ficha técnica ganha "Rendimento" (quantas unidades uma mistura rende),
+//       pra não precisar pré-dividir as quantidades dos ingredientes na mão. Garante que
+//       fichaRendimento exista e que semiacabados tenham rendimento definido (default 1 —
+//       mesmo comportamento de antes, quantidades continuam "por unidade" até o usuário
+//       preencher um rendimento diferente).
+const SCHEMA_VERSION = 8;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -179,6 +187,13 @@ const MIGRATIONS = {
     d.financeiro = (d.financeiro || []).filter(f =>
       !(f.tipo === 'saida' && (f.categoria === 'Produção (consumo de MP)' || (f.desc || '').startsWith('Produção ')))
     );
+    return d;
+  },
+  // v7 → v8: garante que o mapa de rendimento exista e que semiacabados tenham rendimento
+  // explícito (default 1 = mesmo comportamento de sempre, sem mudar nenhum cálculo existente).
+  7: (d) => {
+    d.fichaRendimento = d.fichaRendimento || {};
+    (d.semiacabados || []).forEach(s => { if (s.rendimento == null) s.rendimento = 1; });
     return d;
   },
 };
@@ -406,9 +421,23 @@ function getFichaProdutoVariante(produtoId,varianteId){
   }
   return state.fichas[produtoId]||[];
 }
+// Rendimento = quantas unidades a ficha (as quantidades de ingrediente cadastradas) produz.
+// Sem valor definido = 1 (quantidades já são "por unidade", comportamento de sempre).
+function getRendimentoFicha(produtoId,varianteId){
+  if(varianteId){
+    const key=`${produtoId}-${varianteId}`;
+    if(state.fichaRendimento[key]) return state.fichaRendimento[key];
+  }
+  return state.fichaRendimento[produtoId]||1;
+}
+function setRendimentoFicha(produtoId,varianteId,valor){
+  const key=varianteId?`${produtoId}-${varianteId}`:produtoId;
+  state.fichaRendimento[key]=valor||1;
+}
 function calcularCustoFicha(produtoId,varianteId,qtd=1){
   const ficha=getFichaProdutoVariante(produtoId,varianteId);
-  return ficha.reduce((s,f)=>s+(f.qtd*qtd*custoItemFicha(f.tipo||'mp',f.mpId)),0);
+  const rendimento=getRendimentoFicha(produtoId,varianteId)||1;
+  return ficha.reduce((s,f)=>s+((f.qtd/rendimento)*qtd*custoItemFicha(f.tipo||'mp',f.mpId)),0);
 }
 function nextId(k){return state.nextId[k]++}
 function debounce(fn,delay=220){

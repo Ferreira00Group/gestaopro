@@ -55,10 +55,11 @@ function calcularNecessidadeMaterias(produtosFaltantes){
   const necSemiBruta = {};  // semiId -> quantidade bruta necessária (antes de descontar estoque)
   const semiExplodido = new Set();
 
-  function acumular(ficha, multiplicador){
+  function acumular(ficha, multiplicador, rendimento){
+    const rend = rendimento || 1;
     (ficha||[]).forEach(f=>{
       const tipo = f.tipo || 'mp';
-      const qtd = f.qtd * multiplicador;
+      const qtd = (f.qtd/rend) * multiplicador;
       if(tipo === 'semi') necSemiBruta[f.mpId] = (necSemiBruta[f.mpId]||0) + qtd;
       else necMaterias[f.mpId] = (necMaterias[f.mpId]||0) + qtd;
     });
@@ -66,7 +67,7 @@ function calcularNecessidadeMaterias(produtosFaltantes){
 
   produtosFaltantes.forEach(p=>{
     if(p.faltanteProduzir <= 1e-9) return;
-    acumular(getFichaProdutoVariante(p.produtoId, p.varianteId), p.faltanteProduzir);
+    acumular(getFichaProdutoVariante(p.produtoId, p.varianteId), p.faltanteProduzir, getRendimentoFicha(p.produtoId, p.varianteId));
   });
 
   // processa semiacabados em rodadas — cobre múltiplos níveis de BOM,
@@ -80,7 +81,7 @@ function calcularNecessidadeMaterias(produtosFaltantes){
       semiExplodido.add(id);
       const s = getSemiacabado(id);
       const liquido = Math.max(0, necSemiBruta[id] - (s.estoque||0));
-      if(liquido > 1e-9){ acumular(s.mps, liquido); mudou = true; }
+      if(liquido > 1e-9){ acumular(s.mps, liquido, s.rendimento||1); mudou = true; }
     });
   }
 
