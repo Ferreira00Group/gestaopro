@@ -11,25 +11,31 @@ importScripts('00a-config.js');
 
 const CACHE_NAME = 'gestaopro-cache-v' + APP_VERSION;
 
+// index.html agora pede estes arquivos com "?v=APP_VERSION" (cache-busting, pra forçar o
+// navegador a buscar de novo em vez de reusar uma cópia antiga guardada no cache HTTP normal
+// dele — camada que nem o Service Worker nem "limpar cache" do app conseguem alcançar sozinhos).
+// Por isso o precache abaixo também precisa das mesmas URLs com "?v=", senão o SW guardaria
+// uma versão desalinhada (a de baixo, sem query) que a página nunca chega a pedir de verdade.
+const v = '?v=' + APP_VERSION;
 const ASSETS = [
   './',
   './index.html',
-  './styles.css',
-  './00-core.js',
-  './00a-config.js',
-  './01-ui-nav.js',
-  './02-dashboard.js',
-  './03-clientes.js',
-  './04-vendas.js',
-  './05-producao.js',
-  './06-estoque.js',
-  './07-precificacao.js',
-  './08-compras-fornecedores.js',
-  './09-financeiro-relatorios.js',
-  './10-fab-inline.js',
-  './10b-planejamento.js',
-  './12-drive-backup.js',
-  './11-app-init.js',
+  './styles.css' + v,
+  './00-core.js' + v,
+  './00a-config.js' + v,
+  './01-ui-nav.js' + v,
+  './02-dashboard.js' + v,
+  './03-clientes.js' + v,
+  './04-vendas.js' + v,
+  './05-producao.js' + v,
+  './06-estoque.js' + v,
+  './07-precificacao.js' + v,
+  './08-compras-fornecedores.js' + v,
+  './09-financeiro-relatorios.js' + v,
+  './10-fab-inline.js' + v,
+  './10b-planejamento.js' + v,
+  './12-drive-backup.js' + v,
+  './11-app-init.js' + v,
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
