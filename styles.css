@@ -384,6 +384,7 @@
   .cat-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
   .cat-pill{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;border:1.5px solid var(--border);color:var(--muted)}
   .cat-pill.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .qtd-pill{display:inline-block;min-width:26px;text-align:center;padding:2px 9px;border-radius:11px;background:var(--border);color:var(--text);font-size:11px;font-weight:700;flex-shrink:0}
 
   /* BOTÃO FLUTUANTE COM MENU DE AÇÕES RÁPIDAS */
   #fab-wrap{position:fixed;bottom:28px;right:18px;z-index:500;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}

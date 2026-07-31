@@ -57,7 +57,12 @@ function renderVendas(){
   tb.innerHTML=list.map(v=>{
     const isOrc=v.tipo==='orcamento';
     const sit=isOrc?null:sitDe(v);
-    const itensTxt=v.itens&&v.itens.length>0?v.itens.map(it=>`${getNomeCompletoItem(it.produtoId,it.varianteId)} ×${it.qtd}`).join(', '):'—';
+    const itensTxt=v.itens&&v.itens.length>0?`<div style="display:flex;flex-direction:column;gap:4px">${v.itens.map(it=>
+      `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getNomeCompletoItem(it.produtoId,it.varianteId)}</span>
+        <span class="qtd-pill">${String(it.qtd).padStart(2,'0')}</span>
+      </div>`
+    ).join('')}</div>`:'—';
     const expandido=vendasExpandidas.has(v.id);
     const formaTxt=isOrc?'—':(v.parcelado
       ? `📝 Fiado parcelado <button class="icon-btn" style="width:auto;height:auto;padding:1px 6px;font-size:11px;vertical-align:middle" onclick="toggleExpandirParcelas(${v.id})">${sit.pagas}/${sit.totalParcelas} pagas ${expandido?'▾':'▸'}</button>`
