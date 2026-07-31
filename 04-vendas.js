@@ -878,6 +878,7 @@ function abrirPagamento(clienteId){
   document.getElementById('pag-cliente-nome-label').textContent=c.nome;
   document.getElementById('pag-valor').value='';
   document.getElementById('pag-restante').value='';
+  document.getElementById('pag-data').value=today();
   document.getElementById('modal-pagamento').classList.add('open');
 }
 function calcRestante(){
@@ -890,11 +891,12 @@ function registrarPagamento(){
   const valor=parseFloat(document.getElementById('pag-valor').value);
   const forma=document.getElementById('pag-forma').value;
   const obs=document.getElementById('pag-obs').value;
+  const data=document.getElementById('pag-data').value||today();
   const saldo=getSaldoCliente(clienteId);
   if(!valor||valor<=0){showToast('Informe o valor pago','red');return;}
   if(valor>saldo){showToast('Valor maior que o saldo devedor','red');return;}
-  state.pagamentos.push({id:nextId('pagamentos'),clienteId,valor,forma,obs,data:today()});
-  state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado — ${getCliente(clienteId).nome}`,valor,data:today()});
+  state.pagamentos.push({id:nextId('pagamentos'),clienteId,valor,forma,obs,data});
+  state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado — ${getCliente(clienteId).nome}`,valor,data});
   marcarAlterado();
   showToast(`Pagamento de ${fmt(valor)} registrado!`,'green');
   closeModal('modal-pagamento');
