@@ -39,7 +39,7 @@ function excluirProducao(id){
 }
 function populateProducaoModal(){
   const ps=document.getElementById('prod-produto');
-  ps.innerHTML='<option value="">Selecione...</option>'+state.produtos.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  ps.innerHTML='<option value="">Selecione...</option>'+state.produtos.filter(p=>estaAtivo(p)).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
   document.getElementById('prod-qtd').value=1;
   document.getElementById('prod-validade').value='';
   document.getElementById('prod-variante-wrap').style.display='none';

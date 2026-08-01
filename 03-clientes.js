@@ -2,12 +2,15 @@
 function fmtClienteNum(id){return '#'+String(id).padStart(3,'0')}
 function renderClientes(){
   let list=state.clientes;
+  if(!state.cliente_mostrar_arquivados)list=list.filter(c=>estaAtivo(c));
   if(state.cliente_filter)list=list.filter(c=>c.nome.toLowerCase().includes(state.cliente_filter)||c.tel.includes(state.cliente_filter)||fmtClienteNum(c.id).toLowerCase().includes(state.cliente_filter));
   if(state.cliente_status_filter==='devendo')list=list.filter(c=>getSaldoCliente(c.id)>0);
   if(state.cliente_status_filter==='em-dia')list=list.filter(c=>getSaldoCliente(c.id)===0);
   if(state.cliente_rota_filter==='none')list=list.filter(c=>!c.rotaId);
   else if(state.cliente_rota_filter)list=list.filter(c=>String(c.rotaId||'')===String(state.cliente_rota_filter));
   populateRotaFiltro();
+  const chkArq=document.getElementById('clientes-mostrar-arquivados');
+  if(chkArq) chkArq.checked=!!state.cliente_mostrar_arquivados;
   const tb=document.getElementById('clientes-table');
   if(list.length===0){tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">Nenhum cliente encontrado</td></tr>';return;}
   tb.innerHTML=list.map(c=>{
@@ -24,9 +27,10 @@ function renderClientes(){
       const freq=Math.round(diffTotal/(datas.length-1));
       freqTxt=`a cada ${freq}d`;
     } else if(vendasCliente.length===1){freqTxt='1 compra';}
-    return`<tr id="cliente-row-${c.id}">
+    const arquivado=!estaAtivo(c);
+    return`<tr id="cliente-row-${c.id}" style="${arquivado?'opacity:.6':''}">
       <td data-label="Nº"><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtClienteNum(c.id)}</span></td>
-      <td data-label="Nome"><strong>${c.nome}</strong><br><span style="font-size:11px;color:var(--muted)">${c.end||''}</span></td>
+      <td data-label="Nome"><strong>${c.nome}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}<br><span style="font-size:11px;color:var(--muted)">${c.end||''}</span></td>
       <td data-label="Telefone">${c.tel}</td>
       <td data-label="Rota">${rota?`<span class="badge badge-blue">🗺️ ${rota.nome}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td data-label="Saldo" class="${saldo>0?'debt-amount debt-pulse':'debt-zero'}">${saldo>0?fmt(saldo):'Em dia ✓'}</td>
@@ -37,8 +41,10 @@ function renderClientes(){
       <td><div class="actions-cell">
         ${saldo>0?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})">📲</button>`:''}
         ${saldo>0?`<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})">💰</button>`:''}
-        <button class="icon-btn edit" onclick="editarCliente(${c.id})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="excluirCliente(${c.id})" title="Excluir">🗑️</button>
+        ${arquivado
+          ?`<button class="btn btn-outline btn-sm" onclick="reativarCliente(${c.id})">↩️ Reativar</button>`
+          :`<button class="icon-btn edit" onclick="editarCliente(${c.id})" title="Editar">✏️</button>
+        <button class="icon-btn del" onclick="excluirCliente(${c.id})" title="Excluir/Arquivar">🗑️</button>`}
       </div></td>
     </tr>`;
   }).join('');
@@ -50,6 +56,7 @@ function populateRotaFiltro(){
   sel.innerHTML='<option value="">Todas as rotas</option>'+state.rotas.map(r=>`<option value="${r.id}">${r.nome}</option>`).join('')+'<option value="none">Sem rota</option>';
   sel.value=atual;
 }
+function filterClienteArquivados(checked){state.cliente_mostrar_arquivados=checked;renderClientes();}
 function filterClientes(v){state.cliente_filter=v.toLowerCase();renderClientes();}
 const filterClientesDebounced=debounce(filterClientes);
 function filterClienteStatus(v){state.cliente_status_filter=v;renderClientes();}
@@ -130,7 +137,7 @@ function salvarCliente(){
     c.nome=nome;c.tel=tel;c.end=end;c.rotaId=rotaId;
     showToast('Cliente atualizado','green');
   } else {
-    state.clientes.push({id:nextId('clientes'),nome,tel,end,rotaId});
+    state.clientes.push({id:nextId('clientes'),nome,tel,end,rotaId,ativo:true});
     showToast('Cliente cadastrado','green');
   }
   marcarAlterado();
@@ -205,13 +212,35 @@ function editarCliente(id){
   document.getElementById('modal-cliente-title').textContent=`Editar Cliente ${fmtClienteNum(c.id)}`;
   document.getElementById('modal-cliente').classList.add('open');
 }
+// Exclusão "inteligente": se o cliente já tem venda ou pagamento registrado, apagar de
+// verdade destruiria esse histórico dos relatórios (DRE, ticket médio, etc. de meses já
+// fechados mudariam retroativamente). Nesse caso arquivamos (ativo=false) em vez de remover:
+// ele some das listas e seletores de venda nova, mas o histórico continua intacto e
+// getCliente() continua resolvendo o nome normalmente em qualquer relatório antigo.
+// Só é removido de verdade quando não há nenhuma venda/pagamento vinculado — aí sim é seguro.
 function excluirCliente(id){
-  confirmarAcao('Excluir este cliente? As vendas e pagamentos também serão removidos.',()=>{
+  const c=state.clientes.find(c=>c.id===id);
+  if(!c) return;
+  const temHistorico=state.vendas.some(v=>v.clienteId===id)||state.pagamentos.some(p=>p.clienteId===id);
+  if(temHistorico){
+    confirmarAcao('Este cliente já tem vendas ou pagamentos registrados — excluir de verdade apagaria esse histórico dos relatórios. Em vez disso ele será arquivado: some da lista e não pode mais receber vendas novas, mas todo o histórico financeiro continua intacto (e você pode reativá-lo a qualquer momento). Continuar?',()=>{
+      c.ativo=false;
+      marcarAlterado();salvarDados();
+      showToast('Cliente arquivado ✓','green');renderClientes();renderDashboard();
+    });
+    return;
+  }
+  confirmarAcao('Excluir este cliente? Ele não tem nenhuma venda ou pagamento registrado.',()=>{
     state.clientes=state.clientes.filter(c=>c.id!==id);
-    state.vendas=state.vendas.filter(v=>v.clienteId!==id);
-    state.pagamentos=state.pagamentos.filter(p=>p.clienteId!==id);
     marcarAlterado();salvarDados();
     showToast('Cliente excluído','green');renderClientes();renderDashboard();
   });
+}
+function reativarCliente(id){
+  const c=state.clientes.find(c=>c.id===id);
+  if(!c) return;
+  c.ativo=true;
+  marcarAlterado();salvarDados();
+  showToast('Cliente reativado ✓','green');renderClientes();
 }
 

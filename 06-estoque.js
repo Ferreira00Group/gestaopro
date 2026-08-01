@@ -13,10 +13,13 @@ function showEstoqueTab(tab,btn){
     return;
   }
   showEstoqueSearch(tab!=='semiacabados');
+  const chkArq=document.getElementById('estoque-mostrar-arquivados');
+  if(chkArq) chkArq.style.display=(tab==='produtos')?'inline-flex':'none';
   renderEstoque();
 }
 function filterEstoque(v){state.estoque_filter=v.toLowerCase();renderEstoque();}
 const filterEstoqueDebounced=debounce(filterEstoque);
+function filterEstoqueArquivados(checked){state.estoque_mostrar_arquivados=checked;renderEstoque();}
 function showEstoqueSearch(show){
   const sw=document.querySelector('#page-estoque .search-bar');
   if(sw) sw.style.display=show?'':'none';
@@ -39,15 +42,19 @@ function renderEstoque(){
   if(state.estoque_tab==='produtos'){
     head.innerHTML='<tr><th>Produto</th><th>SKU</th><th>Categoria</th><th>Preço Venda</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ações</th></tr>';
     let list=state.produtos;
+    if(!state.estoque_mostrar_arquivados)list=list.filter(p=>estaAtivo(p));
     if(state.estoque_filter)list=list.filter(p=>p.nome.toLowerCase().includes(state.estoque_filter)||(p.sku||'').toLowerCase().includes(state.estoque_filter));
     if(state.estoque_categoria_filter)list=list.filter(p=>p.categoria===state.estoque_categoria_filter);
+    const chkArq=document.getElementById('estoque-mostrar-arquivados');
+    if(chkArq){chkArq.style.display='inline-flex';chkArq.querySelector('input').checked=!!state.estoque_mostrar_arquivados;}
     tb.innerHTML=list.map(p=>{
       const temVariantes=p.variantes&&p.variantes.length>0;
       const estoqueTotal=temVariantes?p.variantes.reduce((s,v)=>s+v.estoque,0):p.estoque;
       const baixo=temVariantes?p.variantes.some(v=>v.estoque<=p.minimo):p.estoque<=p.minimo;
       const variantesTxt=temVariantes?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${p.variantes.map(v=>`<span class="variante-tag">${v.nome}: ${v.estoque}</span>`).join('')}</div>`:'';
-      return `<tr>
-      <td data-label="Produto"><strong>${p.nome}</strong>${variantesTxt}</td>
+      const arquivado=!estaAtivo(p);
+      return `<tr style="${arquivado?'opacity:.6':''}">
+      <td data-label="Produto"><strong>${p.nome}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}${variantesTxt}</td>
       <td data-label="SKU" style="font-size:12px;color:var(--muted)">${p.sku||'-'}</td>
       <td data-label="Categoria">${p.categoria?`<span class="cat-pill" style="cursor:default">${p.categoria}</span>`:'-'}</td>
       <td data-label="Preço Venda">${fmt(p.preco)}</td>
@@ -55,8 +62,9 @@ function renderEstoque(){
       <td data-label="Mínimo">${p.minimo}</td>
       <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'⚠️ Baixo':'OK'}</span></td>
       <td><div class="actions-cell">
+        ${arquivado?`<button class="btn btn-outline btn-sm" onclick="reativarProduto(${p.id})">↩️ Reativar</button>`:`
         <button class="icon-btn edit" onclick="editarProduto(${p.id})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="excluirProduto(${p.id})" title="Excluir">🗑️</button>
+        <button class="icon-btn del" onclick="excluirProduto(${p.id})" title="Excluir/Arquivar">🗑️</button>`}
       </div></td>
     </tr>`;}).join('');
   } else if(state.estoque_tab==='semiacabados'){

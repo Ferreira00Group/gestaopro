@@ -97,6 +97,8 @@ const DEFAULT_STATE = {
   estoque_tab:'produtos',
   cliente_filter:'',
   cliente_status_filter:'',
+  cliente_mostrar_arquivados:false,
+  estoque_mostrar_arquivados:false,
   venda_filter:'',
   venda_tipo_filter:'',
   estoque_filter:'',
@@ -131,12 +133,25 @@ const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 //   7 → custo de matéria-prima passa a contar só na COMPRA, não mais na
 //       Produção (evita contar o mesmo gasto 2x). Remove os lançamentos antigos de despesa
 //       de "Produção" do financeiro, que duplicavam o custo já lançado na compra.
-//   8 → (versão atual) ficha técnica ganha "Rendimento" (quantas unidades uma mistura rende),
+//   8 → ficha técnica ganha "Rendimento" (quantas unidades uma mistura rende),
 //       pra não precisar pré-dividir as quantidades dos ingredientes na mão. Garante que
 //       fichaRendimento exista e que semiacabados tenham rendimento definido (default 1 —
 //       mesmo comportamento de antes, quantidades continuam "por unidade" até o usuário
 //       preencher um rendimento diferente).
-const SCHEMA_VERSION = 8;
+//   9 → lançamentos do Financeiro (state.financeiro) passam a poder carregar
+//       "vendaId" e "pagamentoId", do mesmo jeito que "compraId" já existia — ligando o
+//       lançamento automático à venda/pagamento que o gerou. Isso permite: (a) editar uma
+//       venda e o valor do lançamento acompanhar; (b) excluir uma venda e o lançamento sumir
+//       junto (antes ficava "fantasma" no Financeiro/Fluxo de Caixa); (c) excluir o lançamento
+//       de um pagamento recebido e o pagamento em si ser desfeito (antes o saldo do cliente e
+//       o Financeiro ficavam divergentes). Não precisa migrar nada: lançamentos antigos
+//       simplesmente não têm esses campos (tratados como manuais) — não dá pra reconstruir
+//       o vínculo retroativamente com segurança, então não tentamos.
+//   10 → (versão atual) clientes e produtos ganham arquivamento (campo "ativo"). Excluir um
+//        cliente/produto que já tem venda/produção vinculada agora arquiva em vez de apagar
+//        (ver excluirCliente/excluirProduto). Sem migração de dados — ver comentário na
+//        migração 9→10 abaixo.
+const SCHEMA_VERSION = 10;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -196,6 +211,18 @@ const MIGRATIONS = {
     (d.semiacabados || []).forEach(s => { if (s.rendimento == null) s.rendimento = 1; });
     return d;
   },
+  // v8 → v9: nenhuma transformação de dados — só passamos a permitir os campos opcionais
+  // "vendaId"/"pagamentoId" em novos lançamentos do financeiro (ver histórico acima).
+  8: (d) => d,
+  // v9 → v10: nenhuma transformação de dados. Clientes e Produtos passam a poder ter um campo
+  // "ativo" (true/false). Convenção igual à de fichaRendimento: campo AUSENTE = true (ativo) —
+  // por isso registros antigos não precisam de migração, eles já nascem "ativos" por omissão.
+  // Motivo: excluir um cliente/produto que já tem venda/produção associada apagava esse
+  // histórico (ou deixava referências soltas). Agora, nesse caso, "excluir" arquiva
+  // (ativo=false) em vez de remover — o registro some das listas/seletores de coisa nova,
+  // mas os relatórios antigos continuam batendo, porque getCliente/getProduto continuam
+  // achando o registro pelo id de qualquer forma.
+  9: (d) => d,
 };
 
 function migrarDados(parsed) {
@@ -378,6 +405,8 @@ function vencBadge(venc,hoje){
   if(dias<=7) return `<span class="badge badge-yellow" style="opacity:.85">⏳ ${dias}d p/ vencer</span>`;
   return `<span style="font-size:12px;color:var(--muted)">${fmtDate(venc)}</span>`;
 }
+// Convenção: campo "ativo" ausente = ativo (evita precisar migrar registros antigos).
+function estaAtivo(obj){return obj && obj.ativo!==false}
 function getCliente(id){return state.clientes.find(c=>c.id==id)||{nome:'?',tel:''}}
 function getProduto(id){return state.produtos.find(p=>p.id==id)||{nome:'?',preco:0,estoque:0}}
 function getSemiacabado(id){return (state.semiacabados||[]).find(s=>s.id==id)||{nome:'?',estoque:0}}

@@ -191,8 +191,9 @@ function marcarLotePago(){
       const parcelaIdxAlvo = alvo.parcelado ? alvo.parcelas.length-1 : null;
       const valor=valorParaQuitarAte(cId,alvo.id,parcelaIdxAlvo);
       if(valor>0.009){
-        state.pagamentos.push({id:nextId('pagamentos'),clienteId:cId,valor,forma:'Lote',obs:'Marcado em lote',data:hj});
-        state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado (lote) — ${getCliente(cId).nome}`,valor,data:hj});
+        const pagId=nextId('pagamentos');
+        state.pagamentos.push({id:pagId,clienteId:cId,valor,forma:'Lote',obs:'Marcado em lote',data:hj});
+        state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado (lote) — ${getCliente(cId).nome}`,valor,data:hj,pagamentoId:pagId});
       }
     });
     marcarAlterado();salvarDados();
@@ -205,13 +206,25 @@ function filterVendas(v){state.venda_filter=v.toLowerCase();renderVendas();}
 const filterVendasDebounced=debounce(filterVendas);
 function filterVendaTipo(v){state.venda_tipo_filter=v;const sel=document.getElementById('venda-tipo-filter-select');if(sel)sel.value=v;renderVendas();}
 
+// Produtos arquivados não aparecem pra quem tá adicionando um item novo (não vendemos mais
+// aquilo), mas se o item já existente referencia um produto arquivado, ele continua aparecendo
+// nessa linha específica (marcado) — senão o <select> ficaria sem opção correspondente e a
+// venda perderia essa referência ao ser salva de novo.
 function opcoesProdutosSelect(selectedProdutoId,selectedVarianteId){
-  return '<option value="">Selecione...</option>'+state.produtos.map(p=>{
+  const lista=state.produtos.filter(p=>estaAtivo(p)||p.id==selectedProdutoId);
+  return '<option value="">Selecione...</option>'+lista.map(p=>{
+    const tagArq=!estaAtivo(p)?' (arquivado)':'';
     if(p.variantes&&p.variantes.length>0){
-      return p.variantes.map(v=>`<option value="${p.id}::${v.id}" data-preco="${p.preco}" ${p.id==selectedProdutoId&&v.id==selectedVarianteId?'selected':''}>${p.nome} — ${v.nome} (est: ${v.estoque})</option>`).join('');
+      return p.variantes.map(v=>`<option value="${p.id}::${v.id}" data-preco="${p.preco}" ${p.id==selectedProdutoId&&v.id==selectedVarianteId?'selected':''}>${p.nome}${tagArq} — ${v.nome} (est: ${v.estoque})</option>`).join('');
     }
-    return `<option value="${p.id}::" data-preco="${p.preco}" ${p.id==selectedProdutoId&&!selectedVarianteId?'selected':''}>${p.nome} (est: ${p.estoque})</option>`;
+    return `<option value="${p.id}::" data-preco="${p.preco}" ${p.id==selectedProdutoId&&!selectedVarianteId?'selected':''}>${p.nome}${tagArq} (est: ${p.estoque})</option>`;
   }).join('');
+}
+// Mesma lógica pra clientes: só ativos pra escolher em vendas novas, mas preservando o
+// cliente já selecionado (edição/duplicação de venda existente) mesmo se arquivado.
+function opcoesClientesSelect(selectedId){
+  const lista=state.clientes.filter(c=>estaAtivo(c)||c.id===selectedId);
+  return '<option value="">Selecione...</option>'+lista.map(c=>`<option value="${c.id}">${c.nome}${!estaAtivo(c)?' (arquivado)':''}</option>`).join('');
 }
 function criarLinhaItemVenda(item){
   item=item||{produtoId:'',varianteId:null,qtd:1,preco:0};
@@ -409,7 +422,7 @@ function setVendaTipo(tipo){
 }
 function abrirNovaVenda(){
   const cs=document.getElementById('venda-cliente');
-  cs.innerHTML='<option value="">Selecione...</option>'+state.clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  cs.innerHTML=opcoesClientesSelect(null);
   document.getElementById('venda-edit-id').value='';
   document.getElementById('venda-obs').value='';
   document.getElementById('venda-data').value=today();
@@ -437,7 +450,7 @@ function duplicarVenda(id){
   const v=state.vendas.find(v=>v.id===id);
   if(!v){showToast('Venda não encontrada','red');return;}
   const cs=document.getElementById('venda-cliente');
-  cs.innerHTML='<option value="">Selecione...</option>'+state.clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  cs.innerHTML=opcoesClientesSelect(v.clienteId);
   document.getElementById('venda-edit-id').value='';
   document.getElementById('venda-data').value=today();
   document.getElementById('modal-venda-title').textContent='Nova Venda (duplicada)';
@@ -496,6 +509,25 @@ function gerarParcelasVenda(){
   el.innerHTML = linhas.join('');
 }
 
+// ============ RECONCILIAÇÃO VENDA ↔ FINANCEIRO ============
+// Toda venda com parte não-fiado gera UM lançamento de entrada no Financeiro, marcado com
+// vendaId (mesmo padrão que state.compras já usa via compraId). Esta função é o único lugar
+// que cria/atualiza/remove esse lançamento, então criar, editar (mudar total/forma/data) e
+// excluir uma venda sempre mantêm os dois lados em sincronia — antes, editar ou excluir uma
+// venda deixava o valor antigo "preso" no Financeiro (e no Fluxo de Caixa/DRE).
+// Vendas 100% fiado (valorNaoFiado ≤ 0) não têm — e não devem ter — lançamento nenhum.
+function sincronizarFinanceiroVenda(vendaId, valorNaoFiado, data, desc){
+  const existente=state.financeiro.find(f=>f.vendaId===vendaId);
+  if(valorNaoFiado>0.01){
+    if(existente){
+      existente.valor=valorNaoFiado;existente.data=data;existente.desc=desc;
+    } else {
+      state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc,valor:valorNaoFiado,data,vendaId});
+    }
+  } else if(existente){
+    state.financeiro=state.financeiro.filter(f=>f.vendaId!==vendaId);
+  }
+}
 function salvarVenda(){
   const eid=document.getElementById('venda-edit-id').value;
   const clienteId=parseInt(document.getElementById('venda-cliente').value);
@@ -579,6 +611,9 @@ function salvarVenda(){
     }
     v.status=status; // baseline; para fiado a situação real é sempre recalculada (getMapaSituacaoFiado)
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
+    const valorNaoFiadoEdit=total-valorFiado;
+    const descEdit=itensFinal.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', ');
+    sincronizarFinanceiroVenda(v.id,valorNaoFiadoEdit,dataVenda,`Venda ${descEdit} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
     showToast('Venda atualizada','green');
   } else if(parcelar && numParcelas >= 2){
     // uma única venda, com o cronograma de parcelas guardado dentro dela (não gera mais
@@ -598,13 +633,12 @@ function salvarVenda(){
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     showToast(`Venda parcelada em ${numParcelas}x criada! ✓`,'green');
   } else {
-    state.vendas.push({id:nextId('vendas'),clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento,statusPedido,canalId,descontoExtra,tipo:'venda'});
+    const novoVendaId=nextId('vendas');
+    state.vendas.push({id:novoVendaId,clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento,statusPedido,canalId,descontoExtra,tipo:'venda'});
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     const valorNaoFiado=total-valorFiado;
-    if(valorNaoFiado>0.01){
-      const desc=itensFinal.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', ');
-      state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`,valor:valorNaoFiado,data:dataVenda});
-    }
+    const desc=itensFinal.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', ');
+    sincronizarFinanceiroVenda(novoVendaId,valorNaoFiado,dataVenda,`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
     showToast('Venda registrada! ✓','green');
   }
   marcarAlterado();
@@ -613,7 +647,7 @@ function salvarVenda(){
 function editarVenda(id){
   const v=state.vendas.find(v=>v.id===id);
   const cs=document.getElementById('venda-cliente');
-  cs.innerHTML='<option value="">Selecione...</option>'+state.clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  cs.innerHTML=opcoesClientesSelect(v.clienteId);
   document.getElementById('venda-edit-id').value=id;
   const isOrc=v.tipo==='orcamento';
   document.getElementById('modal-venda-title').textContent=isOrc?'Editar Orçamento':'Editar Venda';
@@ -662,8 +696,11 @@ function excluirVenda(id){
     const v=state.vendas.find(v=>v.id===id);
     v.itens.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd));
     state.vendas=state.vendas.filter(v=>v.id!==id);
+    // remove também o lançamento de entrada gerado pela parte não-fiado desta venda
+    // (sem isso, ficava uma entrada "fantasma" pra sempre no Financeiro/Fluxo de Caixa)
+    state.financeiro=state.financeiro.filter(f=>f.vendaId!==id);
     marcarAlterado();salvarDados();
-    showToast('Venda excluída','green');renderVendas();renderDashboard();renderEstoque();
+    showToast('Venda excluída','green');renderVendas();renderDashboard();renderEstoque();renderFinanceiro();
   });
 }
 
@@ -736,7 +773,7 @@ function enviarReciboWhatsapp(){
 // ============ ORÇAMENTO (absorvido pela Venda) ============
 function abrirNovoOrcamento(){
   const cs=document.getElementById('venda-cliente');
-  cs.innerHTML='<option value="">Selecione...</option>'+state.clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  cs.innerHTML=opcoesClientesSelect(null);
   document.getElementById('venda-edit-id').value='';
   document.getElementById('venda-obs').value='';
   document.getElementById('venda-vencimento').value='';
@@ -900,8 +937,12 @@ function registrarPagamento(){
   const saldo=getSaldoCliente(clienteId);
   if(!valor||valor<=0){showToast('Informe o valor pago','red');return;}
   if(valor>saldo){showToast('Valor maior que o saldo devedor','red');return;}
-  state.pagamentos.push({id:nextId('pagamentos'),clienteId,valor,forma,obs,data});
-  state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado — ${getCliente(clienteId).nome}`,valor,data});
+  const pagId=nextId('pagamentos');
+  state.pagamentos.push({id:pagId,clienteId,valor,forma,obs,data});
+  // pagamentoId liga este lançamento ao pagamento acima — se o lançamento for excluído no
+  // Financeiro, o pagamento é desfeito junto (ver excluirLancamento em 09-financeiro-relatorios.js),
+  // senão o saldo devedor do cliente ficaria divergente do Financeiro
+  state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado — ${getCliente(clienteId).nome}`,valor,data,pagamentoId:pagId});
   marcarAlterado();
   showToast(`Pagamento de ${fmt(valor)} registrado!`,'green');
   closeModal('modal-pagamento');

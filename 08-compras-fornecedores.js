@@ -589,7 +589,8 @@ function salvarNovoProduto(){
       preco:parseFloat(document.getElementById('np-preco').value)||0,
       estoque:parseInt(document.getElementById('np-estoque').value)||0,
       minimo:parseInt(document.getElementById('np-minimo').value)||0,
-      variantes:[]
+      variantes:[],
+      ativo:true
     };
     state.produtos.push(novo);
     showToast('Produto cadastrado ✓','green');
@@ -640,12 +641,34 @@ function salvarEdicaoProduto(){
   closeModal('modal-editar-produto');
   renderEstoque();renderPrecificacao();
 }
+// Mesma lógica de exclusão inteligente usada em excluirCliente (03-clientes.js): se o
+// produto já tem venda ou produção registrada, apagar de verdade quebraria/distorceria
+// relatórios antigos (histórico de vendas ficaria com item "?", custo/margem de meses
+// fechados mudariam). Nesse caso arquivamos em vez de remover.
 function excluirProduto(id){
-  confirmarAcao('Excluir este produto acabado?',()=>{
+  const p=state.produtos.find(p=>p.id===id);
+  if(!p) return;
+  const temHistorico=state.vendas.some(v=>(v.itens||[]).some(it=>it.produtoId===id))||state.producoes.some(pr=>pr.produtoId===id);
+  if(temHistorico){
+    confirmarAcao('Este produto já tem vendas ou produções registradas — excluir de verdade apagaria esse histórico dos relatórios. Em vez disso ele será arquivado: some do estoque ativo e não pode mais ser vendido/produzido, mas o histórico continua intacto (e você pode reativá-lo a qualquer momento). Continuar?',()=>{
+      p.ativo=false;
+      marcarAlterado();salvarDados();
+      showToast('Produto arquivado ✓','green');renderEstoque();renderAlertaEstoquePage();
+    });
+    return;
+  }
+  confirmarAcao('Excluir este produto acabado? Ele não tem nenhuma venda ou produção registrada.',()=>{
     state.produtos=state.produtos.filter(p=>p.id!==id);
     marcarAlterado();salvarDados();
     showToast('Produto excluído','green');renderEstoque();renderAlertaEstoquePage();
   });
+}
+function reativarProduto(id){
+  const p=state.produtos.find(p=>p.id===id);
+  if(!p) return;
+  p.ativo=true;
+  marcarAlterado();salvarDados();
+  showToast('Produto reativado ✓','green');renderEstoque();
 }
 function atualizarListaCategorias(){}
 

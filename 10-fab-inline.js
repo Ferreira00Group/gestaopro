@@ -50,13 +50,17 @@ function salvarNovoClienteInline(){
   if(!nome){showToast('Informe o nome do cliente','red');document.getElementById('nci-nome').focus();return;}
   var tel=document.getElementById('nci-tel').value.trim();
   var end=document.getElementById('nci-end').value.trim();
-  var id=Date.now();
-  state.clientes.push({id:id,nome:nome,tel:tel,endereco:end});
+  // Correção: usava Date.now() como id (inconsistente com o resto do app, que usa nextId — risco
+  // de colisão futura com o contador) e salvava o endereço em "endereco", campo que nenhuma
+  // outra tela lê (todo o resto do sistema usa "end") — o endereço digitado aqui nunca aparecia.
+  var id=nextId('clientes');
+  state.clientes.push({id:id,nome:nome,tel:tel,end:end,ativo:true});
+  marcarAlterado();
   salvarDados();
   renderClientes();
-  // Atualiza o select da venda mantendo todos os clientes
+  // Atualiza o select da venda mantendo o filtro de arquivados consistente com o resto do app
   var cs=document.getElementById('venda-cliente');
-  cs.innerHTML='<option value="">Selecione...</option>'+state.clientes.map(function(c){return'<option value="'+c.id+'">'+(c.nome)+'</option>';}).join('');
+  cs.innerHTML=opcoesClientesSelect(id);
   cs.value=id;
   document.getElementById('novo-cliente-inline').style.display='none';
   showToast('\u2705 Cliente "'+nome+'" cadastrado e selecionado!','green');

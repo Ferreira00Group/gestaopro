@@ -35,7 +35,10 @@ function getPrecoCanal(precoBase,canal){
 
 function getLinhasPrecificacao(){
   const linhas=[];
-  state.produtos.forEach(p=>{
+  // produtos arquivados ficam fora daqui — não fazem sentido em "margem média", "sem ficha
+  // técnica" etc. de itens que não são mais vendidos. Histórico de DRE/Relatório não usa esta
+  // função (itera state.vendas direto), então isso não afeta relatórios de meses fechados.
+  state.produtos.filter(p=>estaAtivo(p)).forEach(p=>{
     if(p.variantes&&p.variantes.length>0){
       p.variantes.forEach(v=>{
         const custoMP=calcularCustoFicha(p.id,v.id,1);
@@ -165,7 +168,7 @@ function renderSimulador(){
   const sp=document.getElementById('sim-produto');
   const sc=document.getElementById('sim-canal');
   if(!sp||!sc) return;
-  sp.innerHTML='<option value="">Selecione o produto...</option>'+state.produtos.flatMap(p=>
+  sp.innerHTML='<option value="">Selecione o produto...</option>'+state.produtos.filter(p=>estaAtivo(p)).flatMap(p=>
     p.variantes&&p.variantes.length>0
       ?p.variantes.map(v=>`<option value="${p.id}::${v.id}">${getNomeCompletoItem(p.id,v.id)}</option>`)
       :[`<option value="${p.id}::">${p.nome}</option>`]
