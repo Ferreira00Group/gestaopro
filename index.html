@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.15.0">
+<link rel="stylesheet" href="styles.css?v=5.17.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#1B2838;display:none;align-items:center;justify-content:center;padding:24px">
@@ -97,6 +97,7 @@
     <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
     <a onclick="goto('vendas')" data-page="vendas"><i data-lucide="shopping-cart" class="icon"></i> Vendas / Pedidos</a>
     <a onclick="goto('receber')" data-page="receber"><i data-lucide="wallet" class="icon"></i> Contas a Receber<span class="nav-dot" id="bell-cobranca"></span></a>
+    <a onclick="goto('pagar')" data-page="pagar"><i data-lucide="credit-card" class="icon"></i> Contas a Pagar</a>
     <a onclick="goto('producao')" data-page="producao"><i data-lucide="factory" class="icon"></i> Produção</a>
     <a onclick="goto('estoque')" data-page="estoque"><i data-lucide="package" class="icon"></i> Estoque<span class="nav-dot" id="bell-estoque"></span></a>
     <a onclick="goto('planejamento')" data-page="planejamento"><i data-lucide="calculator" class="icon"></i> Planejamento</a>
@@ -317,6 +318,18 @@
     </div>
   </div>
   <div id="receber-lista"></div>
+</div>
+
+<!-- CONTAS A PAGAR -->
+<div id="page-pagar" class="page">
+  <div class="print-header"><h1>GestãoPRO — Contas a Pagar</h1><p id="print-date-pagar"></p></div>
+  <div class="page-header">
+    <div><h2>Contas a Pagar</h2><p>Compras a prazo e pagamentos a fornecedor</p></div>
+    <div class="page-header-actions">
+      <button class="btn btn-outline" onclick="abrirRegistrarCompra()">🛒 Registrar Compra</button>
+    </div>
+  </div>
+  <div id="pagar-lista"></div>
 </div>
 
 <!-- PRODUÇÃO -->
@@ -746,6 +759,7 @@
     <button class="fab-mini" onclick="fabAction('compra')"><span>📦</span> Compra</button>
     <button class="fab-mini" onclick="fabAction('orcamento')"><span>📝</span> Orçamento</button>
     <button class="fab-mini" onclick="fabAction('cliente')"><span>👤</span> Cliente</button>
+    <button class="fab-mini" onclick="fabAction('receber')"><span>💰</span> Receber</button>
     <button class="fab-mini" onclick="fabAction('venda')"><span>🛒</span> Nova Venda</button>
   </div>
   <button id="fab-nova-venda" onclick="toggleFabMenu()" title="Ações rápidas">+</button>
@@ -892,9 +906,15 @@
         </div>
       </div>
       <div class="form-group"><label>Cliente</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select class="form-control" id="venda-cliente" style="flex:1"><option value="">Selecione o cliente...</option></select>
-          <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="toggleNovoClienteInline()">+ Novo</button>
+        <div id="venda-cliente-combo-wrap" style="position:relative">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="hidden" id="venda-cliente">
+            <input class="form-control" id="venda-cliente-busca" style="flex:1" autocomplete="off" placeholder="🔍 Buscar por nome, telefone ou nº..."
+              oninput="document.getElementById('venda-cliente').value='';renderClienteComboResultados(this.value)"
+              onfocus="this.select();renderClienteComboResultados(this.value)">
+            <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="toggleNovoClienteInline()">+ Novo</button>
+          </div>
+          <div id="venda-cliente-resultados" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:10px;box-shadow:var(--shadow-lg);max-height:240px;overflow-y:auto;z-index:50;margin-top:4px"></div>
         </div>
         <!-- MINI-FORM NOVO CLIENTE INLINE -->
         <div id="novo-cliente-inline">
@@ -1035,6 +1055,39 @@
     </div>
   </div>
 </div>
+
+<!-- PAGAMENTO A FORNECEDOR (Contas a Pagar) -->
+<div class="modal-overlay" id="modal-pagamento-fornecedor">
+  <div class="modal">
+    <div class="modal-header"><h3>Pagar Fornecedor</h3><button class="modal-close" onclick="closeModal('modal-pagamento-fornecedor')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pagf-fornecedor-id">
+      <div style="background:#F4ECF7;border:1px solid #8E44AD;border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;color:#7F8C8D;margin-bottom:4px">Saldo em aberto</div>
+        <div style="font-size:24px;font-weight:800;color:#8E44AD" id="pagf-saldo-atual">R$ 0,00</div>
+        <div style="font-size:12px;color:#7F8C8D;margin-top:2px" id="pagf-fornecedor-nome-label"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Valor Pago (R$)</label>
+          <input class="form-control" id="pagf-valor" type="number" step="0.01" placeholder="0,00" oninput="calcRestanteFornecedor()">
+        </div>
+        <div class="form-group"><label>Restante</label>
+          <input class="form-control" id="pagf-restante" readonly style="background:#FAFBFC;font-weight:700;color:#8E44AD">
+        </div>
+      </div>
+      <div class="form-group"><label>Forma</label>
+        <select class="form-control" id="pagf-forma"><option>Dinheiro</option><option>PIX</option><option>Cartão</option><option>Boleto</option></select>
+      </div>
+      <div class="form-group"><label>Data do Pagamento</label><input class="form-control" id="pagf-data" type="date"></div>
+      <div class="form-group"><label>Observação</label><input class="form-control" id="pagf-obs" placeholder="opcional"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-pagamento-fornecedor')">Cancelar</button>
+        <button class="btn btn-green" onclick="registrarPagamentoFornecedor()">✓ Registrar Pagamento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- PRODUÇÃO -->
 <div class="modal-overlay" id="modal-producao">
@@ -1293,14 +1346,37 @@
           </div>
           <div class="form-group">
             <label>Forma de Pagamento</label>
-            <select class="form-control" id="compra-pagamento">
+            <select class="form-control" id="compra-pagamento" onchange="toggleCompraPrazo()">
               <option value="Pix">Pix</option>
               <option value="Cartão de Crédito">Cartão de Crédito</option>
               <option value="Cartão de Débito">Cartão de Débito</option>
               <option value="Boleto">Boleto</option>
               <option value="Dinheiro">Dinheiro</option>
+              <option value="A Prazo">📝 A Prazo</option>
             </select>
           </div>
+        </div>
+        <div id="compra-prazo-wrap" style="display:none">
+          <div class="form-group">
+            <label style="display:flex;justify-content:space-between;align-items:center">
+              <span>Data de Vencimento</span>
+              <span style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;cursor:pointer" onclick="toggleParcelasCompra()">
+                <input type="checkbox" id="compra-parcelar-check" onclick="toggleParcelasCompra()" style="width:auto;margin:0"> Parcelar
+              </span>
+            </label>
+            <input class="form-control" type="date" id="compra-vencimento" placeholder="Quando vence o pagamento ao fornecedor">
+          </div>
+          <div id="compra-parcelas-wrap" style="display:none">
+            <div class="form-group" style="margin-bottom:6px">
+              <label>Número de parcelas</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input class="form-control" type="number" id="compra-num-parcelas" min="2" max="24" value="2" style="max-width:80px" oninput="gerarParcelasCompra()">
+                <span style="font-size:12px;color:var(--muted)">parcelas mensais a partir do vencimento</span>
+              </div>
+            </div>
+            <div class="parcelas-wrap" id="compra-parcelas-lista"></div>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin:-4px 0 14px">Cada item da compra vira uma dívida com o fornecedor (Contas a Pagar) com este vencimento/parcelamento. Não lança saída no Financeiro agora — só quando você registrar o pagamento.</p>
         </div>
         <div class="form-group">
           <label>Itens da Compra</label>
@@ -1589,21 +1665,21 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.15.0"></script>
-<script src="00-core.js?v=5.15.0"></script>
-<script src="01-ui-nav.js?v=5.15.0"></script>
-<script src="02-dashboard.js?v=5.15.0"></script>
-<script src="03-clientes.js?v=5.15.0"></script>
-<script src="04-vendas.js?v=5.15.0"></script>
-<script src="05-producao.js?v=5.15.0"></script>
-<script src="06-estoque.js?v=5.15.0"></script>
-<script src="07-precificacao.js?v=5.15.0"></script>
-<script src="08-compras-fornecedores.js?v=5.15.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.15.0"></script>
-<script src="10-fab-inline.js?v=5.15.0"></script>
-<script src="10b-planejamento.js?v=5.15.0"></script>
-<script src="12-drive-backup.js?v=5.15.0"></script>
-<script src="11-app-init.js?v=5.15.0"></script>
+<script src="00a-config.js?v=5.17.0"></script>
+<script src="00-core.js?v=5.17.0"></script>
+<script src="01-ui-nav.js?v=5.17.0"></script>
+<script src="02-dashboard.js?v=5.17.0"></script>
+<script src="03-clientes.js?v=5.17.0"></script>
+<script src="04-vendas.js?v=5.17.0"></script>
+<script src="05-producao.js?v=5.17.0"></script>
+<script src="06-estoque.js?v=5.17.0"></script>
+<script src="07-precificacao.js?v=5.17.0"></script>
+<script src="08-compras-fornecedores.js?v=5.17.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.17.0"></script>
+<script src="10-fab-inline.js?v=5.17.0"></script>
+<script src="10b-planejamento.js?v=5.17.0"></script>
+<script src="12-drive-backup.js?v=5.17.0"></script>
+<script src="11-app-init.js?v=5.17.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

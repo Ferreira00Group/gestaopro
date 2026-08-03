@@ -408,7 +408,7 @@
   #fab-wrap.open #fab-nova-venda{transform:rotate(45deg);background:var(--navy);box-shadow:0 6px 20px rgba(30,45,64,.45)}
   #fab-menu{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;opacity:0;transform:translateY(8px);transition:opacity .18s,transform .18s}
   #fab-wrap.open #fab-menu{opacity:1;transform:translateY(0);pointer-events:all}
-  .fab-mini{display:flex;align-items:center;gap:8px;background:#fff;color:var(--text);border:none;padding:10px 16px 10px 14px;border-radius:24px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+  .fab-mini{display:flex;align-items:center;justify-content:flex-start;gap:8px;background:#fff;color:var(--text);border:none;padding:10px 16px 10px 14px;border-radius:24px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;width:160px}
   .fab-mini span{font-size:16px}
   .fab-mini:active{transform:scale(.96)}
   #fab-backdrop{display:none;position:fixed;inset:0;z-index:499;background:rgba(0,0,0,0)}

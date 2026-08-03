@@ -68,6 +68,7 @@ const DEFAULT_STATE = {
   pagamentos:[
     {id:1,clienteId:1,valor:10,forma:'Dinheiro',obs:'parcial',data:'2026-06-19'},
   ],
+  pagamentosFornecedor:[],
   producoes:[
     {id:1,produtoId:1,varianteId:null,qtd:50,custo:93.50,data:'2026-06-17',consumo:[{mpId:1,qtdConsumida:4},{mpId:2,qtdConsumida:2.5},{mpId:13,qtdConsumida:50}]},
   ],
@@ -80,7 +81,7 @@ const DEFAULT_STATE = {
   baixasEstoque:[],
   entradasEstoque:[],
   semiacabados:[],
-  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3},
+  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1},
   metas:{},
   fechamentos:[],
   custosFixos:[
@@ -147,11 +148,22 @@ const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 //       o Financeiro ficavam divergentes). Não precisa migrar nada: lançamentos antigos
 //       simplesmente não têm esses campos (tratados como manuais) — não dá pra reconstruir
 //       o vínculo retroativamente com segurança, então não tentamos.
-//   10 → (versão atual) clientes e produtos ganham arquivamento (campo "ativo"). Excluir um
+//   10 → clientes e produtos ganham arquivamento (campo "ativo"). Excluir um
 //        cliente/produto que já tem venda/produção vinculada agora arquiva em vez de apagar
 //        (ver excluirCliente/excluirProduto). Sem migração de dados — ver comentário na
 //        migração 9→10 abaixo.
-const SCHEMA_VERSION = 10;
+//   11 → matérias-primas passam a usar custo médio ponderado (CMP) em vez de
+//        "custo da última compra". Ver migração 10→11 e as funções registrarEntradaMateria/
+//        registrarSaidaMateria/reverterEntradaMateria em 00-core.js.
+//   12 → (versão atual) Contas a Pagar: state.compras ganha "formaPagamento" ('avista'|'prazo'),
+//        "vencimento" e, se parcelada, "parcelado"+"parcelas[]" — mesmo modelo que state.vendas
+//        já usa pro fiado do cliente. Compra "à vista" continua lançando a saída no Financeiro
+//        na hora, como sempre foi; "a prazo" só lança quando o pagamento ao fornecedor é
+//        registrado (novo array state.pagamentosFornecedor, mesmo papel de state.pagamentos).
+//        Sem migração de dados: toda compra já existente não tem "formaPagamento", e o código
+//        trata ausência/qualquer valor ≠ 'prazo' como 'avista' — o que é historicamente correto
+//        (elas já geraram a saída imediata de verdade), não uma aproximação.
+const SCHEMA_VERSION = 12;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -223,6 +235,26 @@ const MIGRATIONS = {
   // mas os relatórios antigos continuam batendo, porque getCliente/getProduto continuam
   // achando o registro pelo id de qualquer forma.
   9: (d) => d,
+  // v10 → v11: matérias-primas ganham "valorEstoque" (valor total em R$ do estoque atual),
+  // usado como livro-razão pro custo médio ponderado (CMP) — ver comentário nas funções
+  // registrarEntradaMateria/registrarSaidaMateria/reverterEntradaMateria em 00-core.js.
+  // Antes, "custo" era sobrescrito pela ÚLTIMA compra a cada entrada; agora é sempre a média
+  // ponderada de tudo que já entrou. Migração: reconstrói valorEstoque = qtd × custo atual
+  // (é a melhor aproximação possível — não temos como saber retroativamente quanto cada
+  // compra histórica contribuiu pro custo atual já sobrescrito nas versões anteriores).
+  10: (d) => {
+    (d.materias || []).forEach(m => {
+      if (m.valorEstoque == null) m.valorEstoque = parseFloat(((m.qtd||0) * (m.custo||0)).toFixed(4));
+    });
+    return d;
+  },
+  // v11 → v12: nenhuma transformação de dados — ver comentário no histórico acima (item 12).
+  // Só garante que o array exista, pra instalações antigas que carregam antes do merge com
+  // DEFAULT_STATE (mesma cautela que semiacabados/rotas já tinham em carregarDados()).
+  11: (d) => {
+    d.pagamentosFornecedor = d.pagamentosFornecedor || [];
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -249,6 +281,7 @@ function carregarDados(){
       state.nextId      = { ...DEFAULT_STATE.nextId, ...parsed.nextId };
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
+      if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
       state._version    = SCHEMA_VERSION;
       showToast('Dados carregados ✓','green');
     } else {
@@ -411,6 +444,56 @@ function getCliente(id){return state.clientes.find(c=>c.id==id)||{nome:'?',tel:'
 function getProduto(id){return state.produtos.find(p=>p.id==id)||{nome:'?',preco:0,estoque:0}}
 function getSemiacabado(id){return (state.semiacabados||[]).find(s=>s.id==id)||{nome:'?',estoque:0}}
 function getMateria(id){return state.materias.find(m=>m.id==id)||{nome:'?',custo:0,unidade:'',qtd:0}}
+
+// ============ CUSTO MÉDIO PONDERADO (CMP) DE MATÉRIA-PRIMA ============
+// Antes, "custo" era sobrescrito a cada compra (= custo da ÚLTIMA compra), o que fazia o custo
+// do produto (e a margem em Precificação/Simulador) pular pra cima ou pra baixo só porque um
+// fornecedor cobrou diferente numa entrega específica. Agora mantemos "valorEstoque" (valor
+// total em R$ do estoque atual) como livro-razão: toda ENTRADA soma quantidade e valor; toda
+// SAÍDA subtrai quantidade e valor ao custo médio vigente. custo = valorEstoque / qtd, sempre.
+// Isso é o método contábil de "custo médio móvel" (moving average cost), o padrão pra estoque
+// fungível (você não sabe fisicamente qual litro de essência veio de qual compra).
+// Convenção igual às outras migrações: mp.valorEstoque ausente = calcula on-the-fly (fallback),
+// só é gravado de fato a partir da primeira entrada/saída processada por estas funções.
+function valorEstoqueMateria(mp){
+  return mp.valorEstoque!=null ? mp.valorEstoque : (mp.qtd||0)*(mp.custo||0);
+}
+// Toda ENTRADA de matéria-prima (compra, entrada manual de estoque) deve passar por aqui.
+function registrarEntradaMateria(mp, qtd, custoUnitario){
+  if(!mp || qtd<=0) return;
+  const valorAntes=valorEstoqueMateria(mp);
+  mp.valorEstoque=parseFloat((valorAntes + qtd*custoUnitario).toFixed(4));
+  mp.qtd=parseFloat(((mp.qtd||0) + qtd).toFixed(4));
+  mp.custo=mp.qtd>0.0001 ? parseFloat((mp.valorEstoque/mp.qtd).toFixed(4)) : custoUnitario;
+}
+// Toda SAÍDA de matéria-prima (consumo em produção, baixa manual) deve passar por aqui.
+// Sai sempre ao custo médio ATUAL — é a própria definição do método: o custo por unidade não
+// muda numa saída, só a quantidade e o valor total.
+function registrarSaidaMateria(mp, qtd){
+  if(!mp || qtd<=0) return;
+  const custoAtual=mp.custo||0;
+  mp.valorEstoque=parseFloat((valorEstoqueMateria(mp) - qtd*custoAtual).toFixed(4));
+  mp.qtd=parseFloat(((mp.qtd||0) - qtd).toFixed(4));
+  if(mp.qtd<=0.0001){mp.qtd=Math.max(0,mp.qtd);mp.valorEstoque=0;} // evita ficar com resto negativo/sujo por arredondamento
+}
+// Usado ao excluir uma compra: desfaz exatamente a entrada que ela tinha causado.
+// Limitação honesta: se já houve consumo (produção/baixa) DEPOIS dessa compra, o custo médio
+// resultante é uma aproximação — custo médio móvel não é perfeitamente reversível quando há
+// saída no meio do caminho (a saída já "gastou" ao custo médio de então, que incluía esta
+// compra). É a mesma limitação que existe em praticamente qualquer ERP com custo médio; a
+// prática usual lá também é evitar excluir compras de períodos já com movimento.
+function reverterEntradaMateria(mp, qtd, custoUnitario){
+  if(!mp || qtd<=0) return;
+  mp.valorEstoque=parseFloat((valorEstoqueMateria(mp) - qtd*custoUnitario).toFixed(4));
+  mp.qtd=parseFloat(Math.max(0,(mp.qtd||0) - qtd).toFixed(4));
+  mp.custo=mp.qtd>0.0001 ? parseFloat((mp.valorEstoque/mp.qtd).toFixed(4)) : 0;
+  if(mp.valorEstoque<0) mp.valorEstoque=0;
+}
+// true se já existe produção usando esta matéria-prima registrada depois da data informada —
+// usado só pra avisar o usuário que excluir uma compra antiga pode deixar o CMP aproximado.
+function materiaTeveConsumoApos(materiaId,data){
+  return state.producoes.some(p=>p.data>data && (p.consumo||[]).some(c=>(c.tipo||'mp')==='mp' && c.mpId===materiaId));
+}
 function getFornecedor(id){return state.fornecedores.find(f=>f.id==id)||null}
 // Matérias-primas não ficam ordenadas em state.materias (são só empilhadas na ordem em que
 // foram cadastradas). Esta função devolve a lista pronta pra exibir (lista e dropdowns),
@@ -571,6 +654,96 @@ function valorParaQuitarAte(clienteId,vendaId,parcelaIdx){
   }
   return parseFloat(soma.toFixed(2));
 }
+
+// ============ CONTAS A PAGAR (FORNECEDOR) ============
+// Espelha 1:1 o motor de "fiado do cliente" acima, só que do lado do fornecedor. Mesma lógica
+// de saldo único por fornecedor (não por compra), mesma alocação FIFO das dívidas mais antigas.
+// Uma compra só entra aqui se formaPagamento==='prazo' — compra "à vista" (o padrão histórico,
+// inclusive todo o histórico anterior a esta versão, que não tinha esse campo) já lança a saída
+// no Financeiro na hora do registro, exatamente como sempre foi; não é "dívida" nenhuma.
+function getSaldoFornecedor(fId){
+  const totalPrazo=state.compras.filter(c=>c.fornecedorId==fId&&c.formaPagamento==='prazo').reduce((s,c)=>s+c.total,0);
+  const totalPago=state.pagamentosFornecedor.filter(p=>p.fornecedorId==fId).reduce((s,p)=>s+p.valor,0);
+  return Math.max(0,totalPrazo-totalPago);
+}
+function getUnidadesPagarFlat(){
+  const porFornecedor={};
+  state.compras.forEach(c=>{
+    if(c.formaPagamento!=='prazo')return;
+    (porFornecedor[c.fornecedorId]=porFornecedor[c.fornecedorId]||[]).push(c);
+  });
+  const flat=[];
+  Object.keys(porFornecedor).forEach(fIdStr=>{
+    const fId=parseInt(fIdStr);
+    const unidades=[];
+    porFornecedor[fIdStr].forEach(c=>{
+      if(c.parcelado&&Array.isArray(c.parcelas)&&c.parcelas.length>0){
+        c.parcelas.forEach((p,idx)=>unidades.push({
+          fornecedorId:fId,compraId:c.id,parcelaIdx:idx,parcelaNum:idx+1,parcelaTotal:c.parcelas.length,
+          valor:p.valor,vencimento:p.vencimento,data:c.data,materiaNome:getMateria(c.materiaId).nome
+        }));
+      } else {
+        unidades.push({
+          fornecedorId:fId,compraId:c.id,parcelaIdx:null,parcelaNum:null,parcelaTotal:null,
+          valor:c.total,vencimento:c.vencimento,data:c.data,materiaNome:getMateria(c.materiaId).nome
+        });
+      }
+    });
+    unidades.sort((a,b)=>(a.vencimento||a.data||'').localeCompare(b.vencimento||b.data||'')||(a.data||'').localeCompare(b.data||''));
+    let saldoPago=state.pagamentosFornecedor.filter(p=>p.fornecedorId==fId).reduce((s,p)=>s+p.valor,0);
+    unidades.forEach(u=>{
+      let status,valorPago;
+      if(saldoPago<=0.009){ status='aberto'; valorPago=0; }
+      else if(saldoPago>=u.valor-0.009){ status='pago'; valorPago=u.valor; saldoPago-=u.valor; }
+      else { status='parcial'; valorPago=saldoPago; saldoPago=0; }
+      u.status=status; u.valorPago=valorPago; u.valorRestante=Math.max(0,u.valor-valorPago);
+      flat.push(u);
+    });
+  });
+  return flat;
+}
+function getMapaSituacaoPagar(){
+  const flat=getUnidadesPagarFlat();
+  const mapa={};
+  flat.forEach(u=>{
+    if(!mapa[u.compraId]) mapa[u.compraId]={parcelas:[],statusList:[]};
+    mapa[u.compraId].parcelas.push(u);
+    mapa[u.compraId].statusList.push(u.status);
+  });
+  Object.keys(mapa).forEach(cid=>{
+    const m=mapa[cid];
+    m.parcelas.sort((a,b)=>(a.parcelaNum||0)-(b.parcelaNum||0));
+    m.status = m.statusList.every(s=>s==='pago') ? 'pago' : (m.statusList.every(s=>s==='aberto') ? 'em_aberto' : 'parcial');
+    const pendente = m.parcelas.find(p=>p.status!=='pago');
+    m.vencimentoPendente = pendente ? pendente.vencimento : null;
+    m.valorRestante = m.parcelas.reduce((s,p)=>s+p.valorRestante,0);
+    m.pagas = m.statusList.filter(s=>s==='pago').length;
+    m.totalParcelas = m.parcelas.length;
+  });
+  return mapa;
+}
+// Situação "efetiva" de uma compra: à vista é sempre 'pago' (já gerou a saída na hora). A prazo
+// vem do cálculo FIFO acima.
+function situacaoCompra(c,mapaOpcional){
+  if(c.formaPagamento!=='prazo'){
+    return {status:'pago',vencimentoPendente:null,valorRestante:0,parcelas:null,pagas:0,totalParcelas:0};
+  }
+  const mapa=mapaOpcional||getMapaSituacaoPagar();
+  const m=mapa[c.id];
+  if(!m) return {status:'pago',vencimentoPendente:null,valorRestante:0,parcelas:c.parcelado?[]:null,pagas:c.parcelado?(c.parcelas||[]).length:0,totalParcelas:c.parcelado?(c.parcelas||[]).length:0};
+  return {status:m.status,vencimentoPendente:m.vencimentoPendente,valorRestante:m.valorRestante,parcelas:c.parcelado?m.parcelas:null,pagas:m.pagas,totalParcelas:m.totalParcelas};
+}
+function valorParaQuitarAteFornecedor(fornecedorId,compraId,parcelaIdx){
+  const flat=getUnidadesPagarFlat().filter(u=>u.fornecedorId==fornecedorId);
+  flat.sort((a,b)=>(a.vencimento||a.data||'').localeCompare(b.vencimento||b.data||'')||(a.data||'').localeCompare(b.data||''));
+  let soma=0;
+  for(const u of flat){
+    if(u.status!=='pago') soma+=u.valorRestante;
+    if(u.compraId===compraId && (parcelaIdx==null?true:u.parcelaIdx===parcelaIdx)) break;
+  }
+  return parseFloat(soma.toFixed(2));
+}
+
 function showToast(msg,type=''){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast '+(type||'');

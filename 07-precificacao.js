@@ -323,10 +323,14 @@ function salvarMateria(){
   if(eid){
     const m=state.materias.find(m=>m.id==eid);
     m.nome=nome;m.unidade=unidade;m.custo=custo;m.minimo=minimo;m.fornecedorId=fornecedorId;
+    // usuário está sobrescrevendo o custo manualmente (override explícito, ex: correção) —
+    // recalcula valorEstoque pra bater com o novo custo declarado, senão o ledger do CMP
+    // ficaria dessincronizado e a próxima compra calcularia a média errada
+    m.valorEstoque=parseFloat((m.qtd*custo).toFixed(4));
     showToast('Matéria-prima atualizada','green');
   } else {
     const estoqueInicial=parseFloat(document.getElementById('mp-estoque').value)||0;
-    state.materias.push({id:nextId('materias'),nome,qtd:estoqueInicial,unidade,custo,minimo,fornecedorId});
+    state.materias.push({id:nextId('materias'),nome,qtd:estoqueInicial,unidade,custo,minimo,fornecedorId,valorEstoque:parseFloat((estoqueInicial*custo).toFixed(4))});
     showToast('Matéria-prima cadastrada','green');
   }
   closeModal('modal-materia');marcarAlterado();renderEstoque();renderAlertaEstoquePage();

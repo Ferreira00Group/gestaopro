@@ -44,14 +44,14 @@ function renderFinanceiro(){
   const tb=document.getElementById('fin-table');
   if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma movimentação neste período</td></tr>';return;}
   tb.innerHTML=list.map(f=>{
-    const origemTxt=f.compraId?'🔗 gerado por compra':f.vendaId?'🔗 gerado por venda':f.pagamentoId?'🔗 gerado por pagamento':null;
+    const origemTxt=f.compraId?'🔗 gerado por compra':f.vendaId?'🔗 gerado por venda':f.pagamentoId?'🔗 gerado por pagamento':f.pagamentoFornecedorId?'🔗 gerado por pagamento a fornecedor':null;
     return `<tr>
     <td data-label="Data">${fmtDate(f.data)}</td>
     <td data-label="Descrição">${f.desc}${(f.tipo==='saida'&&f.categoria)?`<div style="margin-top:2px"><span class="cat-pill" style="cursor:default;font-size:10px">${f.categoria}</span></div>`:''}${origemTxt?`<div style="margin-top:2px;font-size:10.5px;color:var(--muted)">${origemTxt}</div>`:''}</td>
     <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'📥 Entrada':'📤 Saída'}</span></td>
     <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
     <td><div class="actions-cell">
-      <button class="icon-btn edit" onclick="editarLancamento(${f.id})" title="${origemTxt?'Editar na origem':'Editar'}" style="${(f.compraId||f.vendaId||f.pagamentoId)?'opacity:.4':''}">✏️</button>
+      <button class="icon-btn edit" onclick="editarLancamento(${f.id})" title="${origemTxt?'Editar na origem':'Editar'}" style="${(f.compraId||f.vendaId||f.pagamentoId||f.pagamentoFornecedorId)?'opacity:.4':''}">✏️</button>
       <button class="icon-btn del" onclick="excluirLancamento(${f.id})" title="${origemTxt?'Excluir na origem':'Excluir'}" style="${(f.compraId||f.vendaId)?'opacity:.4':''}">🗑️</button>
     </div></td>
   </tr>`;
@@ -83,6 +83,7 @@ function editarLancamento(id){
   if(f && f.compraId){showToast('Este lançamento vem de uma compra. Para editar, vá em Estoque → Fornecedores → Histórico de Compras.','red');return;}
   if(f && f.vendaId){showToast('Este lançamento vem de uma venda. Para editar, vá na tela de Vendas.','red');return;}
   if(f && f.pagamentoId){showToast('Este lançamento vem de um pagamento recebido. Exclua-o (isso desfaz o pagamento) e registre de novo em Contas a Receber, se precisar corrigir.','red');return;}
+  if(f && f.pagamentoFornecedorId){showToast('Este lançamento vem de um pagamento a fornecedor. Exclua-o (isso desfaz o pagamento) e registre de novo em Contas a Pagar, se precisar corrigir.','red');return;}
   document.getElementById('lanc-edit-id').value=id;
   document.getElementById('modal-lanc-title').textContent='Editar Lançamento';
   document.getElementById('lanc-tipo').value=f.tipo;
@@ -102,14 +103,20 @@ function excluirLancamento(id){
   if(f && f.vendaId){showToast('Este lançamento vem de uma venda. Para excluir, vá na tela de Vendas.','red');return;}
   const textoConfirmacao = (f && f.pagamentoId)
     ? 'Excluir este lançamento também vai desfazer o pagamento recebido — o saldo devedor do cliente volta a subir. Continuar?'
+    : (f && f.pagamentoFornecedorId)
+    ? 'Excluir este lançamento também vai desfazer o pagamento ao fornecedor — o saldo em aberto volta a subir. Continuar?'
     : 'Excluir este lançamento?';
   confirmarAcao(textoConfirmacao,()=>{
     if(f && f.pagamentoId){
       state.pagamentos=state.pagamentos.filter(p=>p.id!==f.pagamentoId);
     }
+    if(f && f.pagamentoFornecedorId){
+      state.pagamentosFornecedor=state.pagamentosFornecedor.filter(p=>p.id!==f.pagamentoFornecedorId);
+    }
     state.financeiro=state.financeiro.filter(f=>f.id!==id);
     marcarAlterado();salvarDados();
     showToast('Lançamento excluído','green');renderFinanceiro();setTimeout(renderChartFinanceiro,50);renderClientes();renderDashboard();
+    if(typeof renderPagar==='function') renderPagar();
   });
 }
 
@@ -303,6 +310,14 @@ function gerarFluxo(){
   getUnidadesFiadoFlat().filter(u=>u.vencimento&&u.vencimento>=hoje&&u.status!=='pago').forEach(u=>{
     const c=getCliente(u.clienteId);
     eventos.push({data:u.vencimento,tipo:'entrada',descricao:`Recebimento fiado — ${c.nome}${u.parcelaNum?` (parcela ${u.parcelaNum}/${u.parcelaTotal})`:''}`,valor:u.valorRestante,fonte:'fiado'});
+  });
+
+  // Saídas: compras a prazo com vencimento futuro ainda não totalmente pagas (mesma lógica,
+  // espelhada — sem isso o Fluxo de Caixa ficava "cego" pro que ainda vai ter que pagar a
+  // fornecedor, só enxergava o que já tinha virado saída no Financeiro)
+  getUnidadesPagarFlat().filter(u=>u.vencimento&&u.vencimento>=hoje&&u.status!=='pago').forEach(u=>{
+    const f=getFornecedor(u.fornecedorId);
+    eventos.push({data:u.vencimento,tipo:'saida',descricao:`Pagamento a fornecedor — ${f?f.nome:'?'}${u.parcelaNum?` (parcela ${u.parcelaNum}/${u.parcelaTotal})`:''}`,valor:u.valorRestante,fonte:'pagar'});
   });
 
   // Saídas: lançamentos futuros de saída no financeiro

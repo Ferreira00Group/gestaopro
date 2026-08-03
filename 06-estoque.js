@@ -70,7 +70,7 @@ function renderEstoque(){
   } else if(state.estoque_tab==='semiacabados'){
     renderSemiacabados();
   } else {
-    head.innerHTML='<tr><th>Matéria-Prima</th><th>Estoque</th><th>Unidade</th><th>Custo/un</th><th>Mínimo</th><th>Fornecedor</th><th>Status</th><th>Previsão</th><th>Ações</th></tr>';
+    head.innerHTML='<tr><th>Matéria-Prima</th><th>Estoque</th><th>Unidade</th><th title="Custo médio ponderado: pondera todas as compras já feitas, não só a última">Custo Médio/un ℹ️</th><th>Mínimo</th><th>Fornecedor</th><th>Status</th><th>Previsão</th><th>Ações</th></tr>';
     let list=materiasOrdenadas();
     if(state.estoque_filter)list=list.filter(m=>m.nome.toLowerCase().includes(state.estoque_filter));
     tb.innerHTML=list.map(m=>{
@@ -295,7 +295,7 @@ function confirmarBaixaEstoque(){
     if(!m){showToast('Matéria-prima não encontrada','red');return;}
     estoqueAtual = m.qtd;
     if(qtd > estoqueAtual){showToast(`Estoque insuficiente (${estoqueAtual} ${m.unidade} disponíveis)`,'red');return;}
-    m.qtd = parseFloat((m.qtd - qtd).toFixed(4));
+    registrarSaidaMateria(m, qtd);
     nomeItem = `${m.nome}`;
   }
   const motivoLabel = {quebra:'Quebra/Dano',amostra:'Amostra/Brinde',perda:'Perda/Vencimento',uso_interno:'Uso interno',outro:'Outro'}[motivo]||motivo;
@@ -368,7 +368,10 @@ function confirmarEntradaEstoque(){
   } else {
     const m = state.materias.find(x=>x.id===parseInt(val.split(':')[1]));
     if(!m){showToast('Matéria-prima não encontrada','red');return;}
-    m.qtd = parseFloat((m.qtd + qtd).toFixed(4));
+    // este formulário não pergunta custo unitário, então a entrada é tratada como se custasse
+    // o custo médio ATUAL — matematicamente isso não muda o CMP (é neutro), em vez de diluir
+    // o custo médio pra baixo como aconteceria se somássemos quantidade sem valor
+    registrarEntradaMateria(m, qtd, m.custo||0);
     nomeItem = m.nome;
   }
   state.entradasEstoque.push({id:nextId('entradasEstoque'),item:val,nomeItem,qtd,obs,data:today()});

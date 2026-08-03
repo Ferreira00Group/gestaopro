@@ -20,6 +20,8 @@ function fabAction(tipo){
     } else if(tipo==='compra'){
       abrirRegistrarCompra();
       var f=document.getElementById('fab-wrap'); if(f) f.style.display='none';
+    } else if(tipo==='receber'){
+      goto('receber');
     }
   }, 180);
 }
@@ -58,10 +60,8 @@ function salvarNovoClienteInline(){
   marcarAlterado();
   salvarDados();
   renderClientes();
-  // Atualiza o select da venda mantendo o filtro de arquivados consistente com o resto do app
-  var cs=document.getElementById('venda-cliente');
-  cs.innerHTML=opcoesClientesSelect(id);
-  cs.value=id;
+  // Seleciona no combobox de cliente da venda (ver selecionarClienteVenda em 04-vendas.js)
+  selecionarClienteVenda(id);
   document.getElementById('novo-cliente-inline').style.display='none';
   showToast('\u2705 Cliente "'+nome+'" cadastrado e selecionado!','green');
 }

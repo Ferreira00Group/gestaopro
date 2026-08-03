@@ -15,6 +15,13 @@ function renderDashboard(){
   const totalFiado=devedores.reduce((s,c)=>s+c.saldo,0);
   document.getElementById('dash-total-fiado').textContent=fmt(totalFiado);
   document.getElementById('dash-fiado-count').textContent=devedores.length+' clientes devendo';
+  // Contas a Pagar (fornecedor) — mesmo cálculo, espelhado
+  const fornecedoresDevendo=state.fornecedores.map(f=>({...f,saldo:getSaldoFornecedor(f.id)})).filter(f=>f.saldo>0);
+  const totalAPagar=fornecedoresDevendo.reduce((s,f)=>s+f.saldo,0);
+  const elPagar=document.getElementById('dash-total-pagar');
+  if(elPagar) elPagar.textContent=fmt(totalAPagar);
+  const elPagarSub=document.getElementById('dash-pagar-count');
+  if(elPagarSub) elPagarSub.textContent=fornecedoresDevendo.length+' fornecedor'+(fornecedoresDevendo.length!==1?'es':'')+' em aberto';
   const hoje=today();
   const ontem=new Date(Date.now()-86400000).toISOString().split('T')[0];
   const recHoje=state.pagamentos.filter(p=>p.data===hoje).reduce((s,p)=>s+p.valor,0);
@@ -53,7 +60,11 @@ function renderDashboard(){
   document.getElementById('dash-vendas-hoje-count').textContent=vendasHoje.length+' venda'+(vendasHoje.length!==1?'s':'')+' hoje';
   renderTrend('dash-trend-vendas-hoje',vendasHoje.reduce((s,v)=>s+v.total,0),vendasOntem.reduce((s,v)=>s+v.total,0),'vs ontem');
 
-  // Caixa Atual (saldo acumulado de todo o financeiro: entradas - saídas, desde o início)
+  // Caixa Atual (saldo acumulado de todo o financeiro: entradas - saídas, desde o início).
+  // Compra "a prazo" não lança saída aqui até o pagamento ao fornecedor ser registrado (ver
+  // registrarCompra/registrarPagamentoFornecedor em 08-compras-fornecedores.js) — antes de
+  // existir Contas a Pagar, TODA compra baixava o caixa na hora, mesmo a prazo, o que fazia
+  // esse número ficar errado (mostrava menos dinheiro disponível do que realmente havia).
   const caixaAtual=state.financeiro.reduce((s,f)=>s+(f.tipo==='entrada'?f.valor:-f.valor),0);
   document.getElementById('dash-caixa-atual').textContent=fmt(Math.abs(caixaAtual));
   document.getElementById('dash-caixa-sub').textContent=caixaAtual>=0?'dinheiro disponível':'⚠️ caixa negativo';

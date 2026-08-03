@@ -60,7 +60,7 @@ function renderVendas(){
     const itensTxt=v.itens&&v.itens.length>0?`<div style="display:flex;flex-direction:column;gap:4px">${v.itens.map(it=>
       `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getNomeCompletoItem(it.produtoId,it.varianteId)}</span>
-        <span class="qtd-pill">${String(it.qtd).padStart(2,'0')}</span>
+        <span class="qtd-pill">${String(it.qtd).padStart(2,'0')} L</span>
       </div>`
     ).join('')}</div>`:'—';
     const expandido=vendasExpandidas.has(v.id);
@@ -206,6 +206,56 @@ function filterVendas(v){state.venda_filter=v.toLowerCase();renderVendas();}
 const filterVendasDebounced=debounce(filterVendas);
 function filterVendaTipo(v){state.venda_tipo_filter=v;const sel=document.getElementById('venda-tipo-filter-select');if(sel)sel.value=v;renderVendas();}
 
+// ============ COMBOBOX BUSCÁVEL DE CLIENTE (venda/orçamento) ============
+// Antes era um <select> nativo — com poucos clientes funciona, mas com uma base grande fica
+// ruim de navegar. Agora é um campo de texto que filtra por nome, telefone ou número (#001) em
+// tempo real, com os resultados aparecendo numa lista pra tocar e selecionar (mesmo padrão
+// visual da busca global do topo do app). Por baixo continua existindo um input oculto
+// #venda-cliente guardando só o id — por isso NADA no resto do código precisou mudar (toda
+// leitura/escrita de "venda-cliente".value continua funcionando igual).
+// Só ativos entram na busca (não faz sentido lançar venda nova pra cliente arquivado), mas o
+// cliente já selecionado numa venda existente aparece mesmo arquivado — senão editar essa
+// venda perderia a referência.
+function clientesParaComboVenda(termo,selectedId){
+  const t=(termo||'').toLowerCase().trim();
+  let lista=state.clientes.filter(c=>estaAtivo(c)||c.id===selectedId);
+  if(t) lista=lista.filter(c=>c.nome.toLowerCase().includes(t)||(c.tel||'').includes(t)||fmtClienteNum(c.id).toLowerCase().includes(t));
+  return lista;
+}
+function selecionarClienteVenda(id){
+  document.getElementById('venda-cliente').value=id||'';
+  const inp=document.getElementById('venda-cliente-busca');
+  if(inp) inp.value=id?getCliente(id).nome:'';
+  fecharClienteResultados();
+}
+function renderClienteComboResultados(termo){
+  const el=document.getElementById('venda-cliente-resultados');
+  if(!el) return;
+  const selectedId=parseInt(document.getElementById('venda-cliente').value)||null;
+  const listaCompleta=clientesParaComboVenda(termo,selectedId);
+  const lista=listaCompleta.slice(0,8);
+  if(lista.length===0){
+    el.innerHTML='<div class="busca-item" style="cursor:default;color:var(--muted)">Nenhum cliente encontrado</div>';
+  } else {
+    el.innerHTML=lista.map(c=>{
+      const rota=getRota(c.rotaId);
+      const arq=!estaAtivo(c)?' <span style="color:var(--muted);font-weight:400">(arquivado)</span>':'';
+      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${c.nome}${arq}</strong><span>${c.tel||'sem telefone'}${rota?' · 🗺️ '+rota.nome:''}</span></div>`;
+    }).join('');
+    if(listaCompleta.length>8) el.innerHTML+=`<div style="padding:8px 14px;font-size:11px;color:var(--muted)">+${listaCompleta.length-8} outro(s) — refine a busca</div>`;
+  }
+  el.style.display='block';
+}
+function fecharClienteResultados(){
+  const el=document.getElementById('venda-cliente-resultados');
+  if(el) el.style.display='none';
+}
+document.addEventListener('click',(e)=>{
+  const wrap=document.getElementById('venda-cliente-combo-wrap');
+  if(wrap && !wrap.contains(e.target)) fecharClienteResultados();
+});
+document.addEventListener('keydown',(e)=>{if(e.key==='Escape')fecharClienteResultados();});
+
 // Produtos arquivados não aparecem pra quem tá adicionando um item novo (não vendemos mais
 // aquilo), mas se o item já existente referencia um produto arquivado, ele continua aparecendo
 // nessa linha específica (marcado) — senão o <select> ficaria sem opção correspondente e a
@@ -219,12 +269,6 @@ function opcoesProdutosSelect(selectedProdutoId,selectedVarianteId){
     }
     return `<option value="${p.id}::" data-preco="${p.preco}" ${p.id==selectedProdutoId&&!selectedVarianteId?'selected':''}>${p.nome}${tagArq} (est: ${p.estoque})</option>`;
   }).join('');
-}
-// Mesma lógica pra clientes: só ativos pra escolher em vendas novas, mas preservando o
-// cliente já selecionado (edição/duplicação de venda existente) mesmo se arquivado.
-function opcoesClientesSelect(selectedId){
-  const lista=state.clientes.filter(c=>estaAtivo(c)||c.id===selectedId);
-  return '<option value="">Selecione...</option>'+lista.map(c=>`<option value="${c.id}">${c.nome}${!estaAtivo(c)?' (arquivado)':''}</option>`).join('');
 }
 function criarLinhaItemVenda(item){
   item=item||{produtoId:'',varianteId:null,qtd:1,preco:0};
@@ -421,8 +465,7 @@ function setVendaTipo(tipo){
   }
 }
 function abrirNovaVenda(){
-  const cs=document.getElementById('venda-cliente');
-  cs.innerHTML=opcoesClientesSelect(null);
+  selecionarClienteVenda(null);
   document.getElementById('venda-edit-id').value='';
   document.getElementById('venda-obs').value='';
   document.getElementById('venda-data').value=today();
@@ -449,12 +492,10 @@ function abrirNovaVenda(){
 function duplicarVenda(id){
   const v=state.vendas.find(v=>v.id===id);
   if(!v){showToast('Venda não encontrada','red');return;}
-  const cs=document.getElementById('venda-cliente');
-  cs.innerHTML=opcoesClientesSelect(v.clienteId);
   document.getElementById('venda-edit-id').value='';
   document.getElementById('venda-data').value=today();
   document.getElementById('modal-venda-title').textContent='Nova Venda (duplicada)';
-  document.getElementById('venda-cliente').value=v.clienteId;
+  selecionarClienteVenda(v.clienteId);
   document.getElementById('venda-forma').value=v.forma==='fiado'?'fiado':v.forma;
   document.getElementById('venda-obs').value=v.obs||'';
   document.getElementById('venda-pag-misto-check').checked=false;
@@ -646,12 +687,10 @@ function salvarVenda(){
 }
 function editarVenda(id){
   const v=state.vendas.find(v=>v.id===id);
-  const cs=document.getElementById('venda-cliente');
-  cs.innerHTML=opcoesClientesSelect(v.clienteId);
   document.getElementById('venda-edit-id').value=id;
   const isOrc=v.tipo==='orcamento';
   document.getElementById('modal-venda-title').textContent=isOrc?'Editar Orçamento':'Editar Venda';
-  document.getElementById('venda-cliente').value=v.clienteId;
+  selecionarClienteVenda(v.clienteId);
   document.getElementById('venda-obs').value=v.obs||'';
   document.getElementById('venda-data').value=v.data||today();
   document.getElementById('venda-vencimento').value=v.vencimento||'';
@@ -772,8 +811,7 @@ function enviarReciboWhatsapp(){
 
 // ============ ORÇAMENTO (absorvido pela Venda) ============
 function abrirNovoOrcamento(){
-  const cs=document.getElementById('venda-cliente');
-  cs.innerHTML=opcoesClientesSelect(null);
+  selecionarClienteVenda(null);
   document.getElementById('venda-edit-id').value='';
   document.getElementById('venda-obs').value='';
   document.getElementById('venda-vencimento').value='';

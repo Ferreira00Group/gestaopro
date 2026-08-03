@@ -194,13 +194,15 @@ function registrarCompraDaNota(){
       mp = {id:nextId('materias'), nome:item.nome, qtd:0, unidade:'un', custo:item.custoUn, minimo:0, fornecedorId};
       state.materias.push(mp);
     }
-    mp.qtd = parseFloat((mp.qtd + item.qtd).toFixed(4));
-    mp.custo = item.custoUn;
+    // CMP: se a MP é nova (qtd:0 acima), a entrada define o custo inicial; se já existia,
+    // pondera com o que já estava em estoque (ver registrarEntradaMateria em 00-core.js)
+    registrarEntradaMateria(mp, item.qtd, item.custoUn);
 
     const novaCompra = {
       id:nextId('compras'), fornecedorId, materiaId:mp.id,
       qtd:item.qtd, custoUn:item.custoUn, total:item.total,
-      pedido:parsed.pedido, pagamento, frete:0, taxa:0, data:parsed.data
+      pedido:parsed.pedido, pagamento, frete:0, taxa:0, data:parsed.data,
+      formaPagamento:'avista' // colar nota não suporta prazo por enquanto — use o modo Manual
     };
     state.compras.push(novaCompra);
     state.financeiro.push({
@@ -300,6 +302,13 @@ function abrirRegistrarCompra(fornecedorIdPresel){
   document.getElementById('compra-taxa').value='';
   setTaxaModo('valor');
   document.getElementById('compra-atualiza-custo').value='sim';
+  document.getElementById('compra-pagamento').value='Pix';
+  document.getElementById('compra-vencimento').value='';
+  document.getElementById('compra-prazo-wrap').style.display='none';
+  document.getElementById('compra-parcelar-check').checked=false;
+  document.getElementById('compra-parcelas-wrap').style.display='none';
+  document.getElementById('compra-num-parcelas').value=2;
+  document.getElementById('compra-parcelas-lista').innerHTML='';
   compraItensTemp=[];
   compraNotaParsed=null;
   renderCompraItensLista();
@@ -319,6 +328,38 @@ function abrirRegistrarCompra(fornecedorIdPresel){
   showCompraTab('manual');
   document.getElementById('modal-compra').classList.add('open');
 }
+// ============ COMPRA A PRAZO / PARCELADA ============
+function toggleCompraPrazo(){
+  const isPrazo=document.getElementById('compra-pagamento').value==='A Prazo';
+  document.getElementById('compra-prazo-wrap').style.display=isPrazo?'block':'none';
+  if(!isPrazo){
+    document.getElementById('compra-parcelar-check').checked=false;
+    document.getElementById('compra-parcelas-wrap').style.display='none';
+  }
+}
+function toggleParcelasCompra(){
+  const checked=document.getElementById('compra-parcelar-check').checked;
+  document.getElementById('compra-parcelas-wrap').style.display=checked?'block':'none';
+  if(checked) gerarParcelasCompra();
+}
+function gerarParcelasCompra(){
+  const n=parseInt(document.getElementById('compra-num-parcelas').value)||2;
+  const baseDate=document.getElementById('compra-vencimento').value||today();
+  const el=document.getElementById('compra-parcelas-lista');
+  if(n<2||n>24){el.innerHTML='<p style="color:var(--red);font-size:12px">Entre 2 e 24 parcelas</p>';return;}
+  const linhas=[];
+  for(let i=0;i<n;i++){
+    const d=new Date(baseDate+'T00:00:00');
+    d.setMonth(d.getMonth()+i);
+    const ds=d.toISOString().slice(0,10);
+    linhas.push(`<div class="parcela-linha">
+      <span class="parcela-num">${i+1}×</span>
+      <input class="form-control" type="date" id="compra-parcela-data-${i}" value="${ds}" style="max-width:160px;padding:7px 10px;font-size:13px">
+      <span style="font-size:12px;color:var(--muted)">vencimento</span>
+    </div>`);
+  }
+  el.innerHTML=linhas.join('');
+}
 function registrarCompra(){
   const fornecedorId = parseInt(document.getElementById('compra-fornecedor').value)||null;
   const pedido = document.getElementById('compra-pedido').value.trim();
@@ -326,6 +367,15 @@ function registrarCompra(){
   const pagamento = document.getElementById('compra-pagamento').value;
   const frete = parseFloat(document.getElementById('compra-frete').value)||0;
   const atualizaCusto = document.getElementById('compra-atualiza-custo').value==='sim';
+
+  // "A Prazo" é uma forma de pagamento como as outras no mesmo dropdown — a diferença é que,
+  // em vez de lançar a saída no Financeiro na hora, ela vira uma dívida com o fornecedor
+  // (Contas a Pagar), do mesmo jeito que "Fiado" funciona em Vendas.
+  const formaPagamento = pagamento==='A Prazo' ? 'prazo' : 'avista';
+  const vencimento = formaPagamento==='prazo' ? (document.getElementById('compra-vencimento').value||null) : null;
+  if(formaPagamento==='prazo' && !vencimento){showToast('Informe a data de vencimento da compra a prazo','red');return;}
+  const parcelar = formaPagamento==='prazo' && document.getElementById('compra-parcelar-check').checked;
+  const numParcelas = parcelar ? (parseInt(document.getElementById('compra-num-parcelas').value)||2) : 1;
 
   if(!fornecedorId){showToast('Selecione o fornecedor','red');return;}
   const itensValidos = compraItensTemp.filter(i=>i.mpId&&i.qtd>0&&i.custoUn>0);
@@ -336,33 +386,61 @@ function registrarCompra(){
   const total = subtotal + frete + taxa;
   const fornNome = getFornecedor(fornecedorId)?.nome||'Fornecedor';
 
-  // Registrar uma compra por item (mantém compatibilidade) + atualiza estoque
+  // Registrar uma compra por item (mantém compatibilidade) + atualiza estoque.
+  // Cada item carrega seu próprio vencimento/parcelas — mesma granularidade que "Histórico de
+  // Compras" já usa hoje (1 registro por item), sem precisar criar uma entidade "pedido" nova.
   itensValidos.forEach(item => {
     const mp = state.materias.find(m=>m.id===item.mpId);
     if(!mp) return;
+    const itemTotal = item.qtd*item.custoUn;
+    let parcelasItem = null;
+    if(parcelar && numParcelas>=2){
+      const valorParcela = parseFloat((itemTotal/numParcelas).toFixed(2));
+      parcelasItem = [];
+      for(let i=0;i<numParcelas;i++){
+        const dataParc = document.getElementById(`compra-parcela-data-${i}`)?.value || vencimento;
+        const valParc = i===numParcelas-1 ? parseFloat((itemTotal-(valorParcela*(numParcelas-1))).toFixed(2)) : valorParcela;
+        parcelasItem.push({vencimento:dataParc,valor:valParc});
+      }
+    }
     const novaCompra = {
       id: nextId('compras'),
       fornecedorId, materiaId: item.mpId,
       qtd: item.qtd, custoUn: item.custoUn,
-      total: item.qtd*item.custoUn,
+      total: itemTotal,
       pedido, pagamento, frete: frete/itensValidos.length,
       taxa: taxa/itensValidos.length,
-      data
+      data,
+      formaPagamento,
+      vencimento: formaPagamento==='prazo' ? (parcelasItem?parcelasItem[0].vencimento:vencimento) : null,
+      parcelado: !!parcelasItem,
+      parcelas: parcelasItem
     };
     state.compras.push(novaCompra);
-    mp.qtd = parseFloat((mp.qtd + item.qtd).toFixed(4));
-    if(atualizaCusto) mp.custo = item.custoUn;
-    state.financeiro.push({
-      id: nextId('financeiro'), tipo:'saida',
-      desc:`Compra ${mp.nome} — ${fornNome}${pedido?' Ped.'+pedido:''}`,
-      valor: item.qtd*item.custoUn, data, compraId: novaCompra.id
-    });
+    // custo médio ponderado (CMP): a compra sempre soma quantidade real; se "atualizar custo"
+    // estiver desmarcado, ela entra ao custo médio ATUAL (não muda o CMP) em vez de ser
+    // ignorada por completo — senão a quantidade cresceria sem o valor correspondente,
+    // distorcendo o custo médio pra baixo.
+    registrarEntradaMateria(mp, item.qtd, atualizaCusto?item.custoUn:mp.custo);
+    // só lança saída no Financeiro na hora se for À VISTA — "a prazo" só lança quando o
+    // pagamento ao fornecedor for de fato registrado (ver registrarPagamentoFornecedor)
+    if(formaPagamento!=='prazo'){
+      state.financeiro.push({
+        id: nextId('financeiro'), tipo:'saida',
+        desc:`Compra ${mp.nome} — ${fornNome}${pedido?' Ped.'+pedido:''}`,
+        valor: itemTotal, data, compraId: novaCompra.id
+      });
+    }
   });
-  // Lançar frete e taxa separado se existirem
+  // Frete e taxa continuam sendo lançados na hora, mesmo numa compra a prazo — na prática são
+  // valores tipicamente pagos na entrega/no cartão, separados do prazo negociado com o
+  // fornecedor pela mercadoria em si.
   if(frete>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Frete — ${fornNome}${pedido?' Ped.'+pedido:''}`,valor:frete,data,categoria:'Frete'});
   if(taxa>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Taxa maquineta — ${fornNome}`,valor:taxa,data,categoria:'Taxa Maquineta'});
 
-  showToast(`Compra registrada! ${itensValidos.length} item(s) — ${fmt(total)}`,'green');
+  showToast(formaPagamento==='prazo'
+    ? `Compra a prazo registrada! ${itensValidos.length} item(s) — ${fmt(total)} (vence ${fmtDate(vencimento)})`
+    : `Compra registrada! ${itensValidos.length} item(s) — ${fmt(total)}`,'green');
   marcarAlterado();
   closeModal('modal-compra');
   renderHistoricoCompras();
@@ -370,6 +448,7 @@ function registrarCompra(){
   renderEstoque();
   renderAlertaEstoquePage();
   renderHistoricoPreco();
+  renderDashboard();
   if(typeof atualizarAlertBells==='function') atualizarAlertBells();
 }
 function editarCompra(id){
@@ -387,20 +466,106 @@ function excluirCompra(id){
   const c=state.compras.find(c=>c.id===id);
   if(!c) return;
   const mp=state.materias.find(m=>m.id===c.materiaId);
-  confirmarAcao(`Excluir esta compra? O estoque de "${mp?mp.nome:'MP'}" será revertido.`,()=>{
-    // Reverter estoque da MP
-    if(mp) mp.qtd=parseFloat(Math.max(0,mp.qtd-c.qtd).toFixed(4));
-    // Remover do financeiro
+  const avisoImprecisao = (mp && materiaTeveConsumoApos(c.materiaId,c.data))
+    ? ' ⚠️ Já houve produção usando esta matéria-prima depois desta compra — o custo médio recalculado é uma aproximação; revise manualmente se o valor parecer estranho.'
+    : '';
+  confirmarAcao(`Excluir esta compra? O estoque de "${mp?mp.nome:'MP'}" será revertido.${avisoImprecisao}`,()=>{
+    // Reverter estoque da MP (quantidade e custo médio — ver reverterEntradaMateria em 00-core.js)
+    if(mp) reverterEntradaMateria(mp, c.qtd, c.custoUn);
+    // Remover do financeiro (só existe se a compra era à vista — "a prazo" nunca lançou nada aqui)
     state.financeiro=state.financeiro.filter(f=>f.compraId!==id);
-    // Remover a compra
+    // Remover a compra (se era "a prazo", isso também reduz o saldo devedor do fornecedor —
+    // getSaldoFornecedor recalcula na hora, não precisa de nenhuma limpeza extra, mesmo padrão
+    // de excluirVenda com o saldo do cliente)
     state.compras=state.compras.filter(c=>c.id!==id);
     marcarAlterado();
     showToast('Compra excluída e estoque revertido','green');
     renderHistoricoCompras();
     renderEstoque();
     renderAlertaEstoquePage();
+    renderDashboard();
+    if(typeof renderPagar==='function') renderPagar();
   });
 }
+
+// ============ CONTAS A PAGAR (FORNECEDOR) ============
+// Espelha 1:1 Contas a Receber (04-vendas.js: renderReceber/abrirPagamento/registrarPagamento).
+function renderPagar(){
+  const el=document.getElementById('pagar-lista');
+  if(!el) return;
+  const fComDivida=state.fornecedores.map(f=>({...f,saldo:getSaldoFornecedor(f.id)})).filter(f=>f.saldo>0).sort((a,b)=>b.saldo-a.saldo);
+  if(fComDivida.length===0){
+    el.innerHTML=`<div style="text-align:center;padding:60px 20px"><div style="font-size:50px;margin-bottom:16px">🎉</div><h3 style="color:var(--green)">Tudo em dia!</h3><p style="color:var(--muted);margin-top:8px">Nenhum fornecedor com saldo em aberto.</p></div>`;return;
+  }
+  const hoje=today();
+  const mapaPagar=getMapaSituacaoPagar();
+  el.innerHTML=fComDivida.map(f=>{
+    const comprasPrazo=state.compras.filter(c=>c.fornecedorId===f.id&&c.formaPagamento==='prazo').sort((a,b)=>b.data.localeCompare(a.data));
+    const pags=state.pagamentosFornecedor.filter(p=>p.fornecedorId===f.id).sort((a,b)=>b.data.localeCompare(a.data));
+    const hist=[
+      ...comprasPrazo.map(c=>({tipo:'compra',data:c.data,desc:`${getMateria(c.materiaId).nome} ×${c.qtd}`,val:c.total})),
+      ...pags.map(p=>({tipo:'pag',data:p.data,desc:'Pago ('+p.forma+')',val:p.valor})),
+    ].sort((a,b)=>b.data.localeCompare(a.data));
+    // próximo vencimento em aberto, pra dar destaque visual (mesma ideia do vencBadge em Vendas)
+    const proximaPendente=comprasPrazo.map(c=>situacaoCompra(c,mapaPagar)).filter(s=>s.vencimentoPendente).sort((a,b)=>(a.vencimentoPendente||'').localeCompare(b.vencimentoPendente||''))[0];
+    return`<div class="client-debt-hero" style="background:linear-gradient(135deg,#8E44AD,#6C3483)">
+      <div><div class="name">🚚 ${f.nome}</div><div class="phone">📞 ${f.tel||'—'}</div></div>
+      <div style="text-align:right">
+        <div class="amount">${fmt(f.saldo)}</div>
+        <div class="amount-label">saldo em aberto${proximaPendente?' · '+vencBadge(proximaPendente.vencimentoPendente,hoje):''}</div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button class="btn btn-sm" style="background:#fff;color:#8E44AD;font-weight:700" onclick="abrirPagamentoFornecedor(${f.id})">💰 Pagar</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-card" style="margin-bottom:24px">
+      <div style="padding:16px 20px 8px"><strong style="font-size:13px;color:var(--muted)">HISTÓRICO</strong></div>
+      <div class="table-scroll"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead>
+      <tbody>${hist.map(h=>`<tr>
+        <td>${fmtDate(h.data)}</td><td>${h.desc}</td>
+        <td><span class="badge ${h.tipo==='compra'?'badge-blue':'badge-green'}">${h.tipo==='compra'?'Compra':'Pagamento'}</span></td>
+        <td class="${h.tipo==='compra'?'debt-amount':'debt-zero'}">${h.tipo==='compra'?'-':'+'} ${fmt(h.val)}</td>
+      </tr>`).join('')}</tbody></table></div>
+    </div>`;
+  }).join('');
+}
+function abrirPagamentoFornecedor(fornecedorId){
+  const f=getFornecedor(fornecedorId);
+  const saldo=getSaldoFornecedor(fornecedorId);
+  document.getElementById('pagf-fornecedor-id').value=fornecedorId;
+  document.getElementById('pagf-saldo-atual').textContent=fmt(saldo);
+  document.getElementById('pagf-fornecedor-nome-label').textContent=f?f.nome:'';
+  document.getElementById('pagf-valor').value='';
+  document.getElementById('pagf-restante').value='';
+  document.getElementById('pagf-data').value=today();
+  document.getElementById('modal-pagamento-fornecedor').classList.add('open');
+}
+function calcRestanteFornecedor(){
+  const saldo=getSaldoFornecedor(parseInt(document.getElementById('pagf-fornecedor-id').value));
+  const pago=parseFloat(document.getElementById('pagf-valor').value)||0;
+  document.getElementById('pagf-restante').value=fmt(Math.max(0,saldo-pago));
+}
+function registrarPagamentoFornecedor(){
+  const fornecedorId=parseInt(document.getElementById('pagf-fornecedor-id').value);
+  const valor=parseFloat(document.getElementById('pagf-valor').value);
+  const forma=document.getElementById('pagf-forma').value;
+  const obs=document.getElementById('pagf-obs').value;
+  const data=document.getElementById('pagf-data').value||today();
+  const saldo=getSaldoFornecedor(fornecedorId);
+  if(!valor||valor<=0){showToast('Informe o valor pago','red');return;}
+  if(valor>saldo){showToast('Valor maior que o saldo em aberto','red');return;}
+  const pagId=nextId('pagamentosFornecedor');
+  state.pagamentosFornecedor.push({id:pagId,fornecedorId,valor,forma,obs,data});
+  // pagamentoFornecedorId liga este lançamento ao pagamento acima — mesmo padrão do
+  // pagamentoId de cliente (ver excluirLancamento em 09-financeiro-relatorios.js)
+  state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Pagamento a fornecedor — ${getFornecedor(fornecedorId)?.nome||'?'}`,valor,data,pagamentoFornecedorId:pagId});
+  marcarAlterado();
+  showToast(`Pagamento de ${fmt(valor)} registrado!`,'green');
+  closeModal('modal-pagamento-fornecedor');
+  const pg=document.querySelector('.page.active');
+  if(pg) render(pg.id.replace('page-',''));
+}
+
 function renderHistoricoCompras(){
   // populate filters
   const selF=document.getElementById('hist-compras-fornecedor-filter');

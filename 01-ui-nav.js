@@ -602,6 +602,7 @@ const OPCOES_IMPRESSAO=[
   {page:'clientes',label:'Clientes',icon:'👥'},
   {page:'vendas',label:'Vendas / Pedidos',icon:'🛍️'},
   {page:'receber',label:'Contas a Receber',icon:'📥'},
+  {page:'pagar',label:'Contas a Pagar',icon:'📤'},
   {page:'producao',label:'Produção',icon:'🧪'},
   {page:'estoque',label:'Estoque',icon:'📦'},
   {page:'planejamento',label:'Planejamento',icon:'🧮'},
@@ -675,6 +676,7 @@ function render(page){
   if(page==='clientes')renderClientes();
   if(page==='vendas')renderVendas();
   if(page==='receber')renderReceber();
+  if(page==='pagar')renderPagar();
   if(page==='producao')renderProducao();
   if(page==='estoque'){
     renderAlertaEstoquePage();

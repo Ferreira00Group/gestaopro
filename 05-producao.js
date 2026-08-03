@@ -113,7 +113,7 @@ function registrarProducao(){
     if(tipo==='semi'){
       getSemiacabado(f.mpId).estoque-=qtdNec;
     } else {
-      state.materias.find(m=>m.id===f.mpId).qtd-=qtdNec;
+      registrarSaidaMateria(state.materias.find(m=>m.id===f.mpId), qtdNec);
     }
     consumo.push({tipo,mpId:f.mpId,qtdConsumida:qtdNec});
   }
