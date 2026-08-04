@@ -205,11 +205,21 @@ function gerarRelatorio(){
     ctx.parentElement.style.height=Math.max(180,labels.length*44)+'px';
   } else if(ctx){ctx.parentElement.innerHTML='<div class="empty-state"><div class="icon">📊</div><p>Sem vendas no período</p></div>';}
   const rankMap={};
-  vendasPeriodo.forEach(v=>v.itens.forEach(it=>{const n=getNomeCompletoItem(it.produtoId,it.varianteId);if(!rankMap[n])rankMap[n]={qtd:0,valor:0,produtoId:it.produtoId,varianteId:it.varianteId};rankMap[n].qtd+=it.qtd;rankMap[n].valor+=it.total;}));
+  // custo somado item a item usando o snapshot gravado na hora da venda (custoFichaUn) — vendas
+  // antigas sem esse campo caem no fallback de recalcular pela ficha técnica atual, única opção
+  // quando não sabemos o custo real da época (ver comentário em salvarVenda, 04-vendas.js)
+  vendasPeriodo.forEach(v=>v.itens.forEach(it=>{
+    const n=getNomeCompletoItem(it.produtoId,it.varianteId);
+    if(!rankMap[n])rankMap[n]={qtd:0,valor:0,custoTotal:0,produtoId:it.produtoId,varianteId:it.varianteId};
+    rankMap[n].qtd+=it.qtd;
+    rankMap[n].valor+=it.total;
+    const custoUn=it.custoFichaUn!=null?it.custoFichaUn:calcularCustoFicha(it.produtoId,it.varianteId,1);
+    rankMap[n].custoTotal+=custoUn*it.qtd;
+  }));
   const ranking=Object.entries(rankMap).sort((a,b)=>b[1].valor-a[1].valor);
   const elRank=document.getElementById('rel-ranking-produtos');
   if(elRank){if(ranking.length===0)elRank.innerHTML='<p style="color:var(--muted);font-size:13px;padding:10px 0">Sem dados no período</p>';
-  else elRank.innerHTML=ranking.map(([nome,d],i)=>{const custo=calcularCustoFicha(d.produtoId,d.varianteId,d.qtd);const lucro=d.valor-custo;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${nome}</strong><div style="font-size:11.5px;color:var(--muted)">${d.qtd} un. vendidas · custo ficha ${fmt(custo)}</div></div><div style="text-align:right"><div style="font-weight:700;color:var(--navy)">${fmt(d.valor)}</div><div style="font-size:11px;color:${lucro>=0?'var(--green)':'var(--red)'}">lucro ${fmt(lucro)}</div></div></div>`;}).join('');}
+  else elRank.innerHTML=ranking.map(([nome,d],i)=>{const custo=d.custoTotal;const lucro=d.valor-custo;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${nome}</strong><div style="font-size:11.5px;color:var(--muted)">${d.qtd} un. vendidas · custo ficha ${fmt(custo)}</div></div><div style="text-align:right"><div style="font-weight:700;color:var(--navy)">${fmt(d.valor)}</div><div style="font-size:11px;color:${lucro>=0?'var(--green)':'var(--red)'}">lucro ${fmt(lucro)}</div></div></div>`;}).join('');}
   const volMap={};vendasPeriodo.forEach(v=>{volMap[v.clienteId]=(volMap[v.clienteId]||0)+v.total;});
   const volRanking=Object.entries(volMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const elVol=document.getElementById('rel-clientes-volume');

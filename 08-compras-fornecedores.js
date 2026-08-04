@@ -386,6 +386,28 @@ function registrarCompra(){
   const total = subtotal + frete + taxa;
   const fornNome = getFornecedor(fornecedorId)?.nome||'Fornecedor';
 
+  // EDIÇÃO: reverte por completo o registro original (estoque, custo médio, lançamento
+  // financeiro) antes de criar a versão atualizada abaixo — sem isso, salvar uma edição
+  // apenas ACRESCENTAVA um registro novo, deixando o antigo intacto (compra duplicada:
+  // estoque/CMP contava a mercadoria duas vezes, e se fosse à vista, despesa em dobro no
+  // Financeiro — se a prazo, dívida em dobro em Contas a Pagar).
+  const editId = parseInt(document.getElementById('compra-edit-id').value)||null;
+  let avisoImprecisaoEdicao = '';
+  if(editId){
+    const original = state.compras.find(c=>c.id===editId);
+    if(original){
+      const mpOriginal = state.materias.find(m=>m.id===original.materiaId);
+      if(mpOriginal){
+        if(materiaTeveConsumoApos(original.materiaId, original.data)){
+          avisoImprecisaoEdicao = ' ⚠️ Custo médio recalculado de forma aproximada — já houve produção com esta matéria-prima depois da compra original.';
+        }
+        reverterEntradaMateria(mpOriginal, original.qtd, original.custoUn);
+      }
+      state.financeiro = state.financeiro.filter(f=>f.compraId!==editId);
+      state.compras = state.compras.filter(c=>c.id!==editId);
+    }
+  }
+
   // Registrar uma compra por item (mantém compatibilidade) + atualiza estoque.
   // Cada item carrega seu próprio vencimento/parcelas — mesma granularidade que "Histórico de
   // Compras" já usa hoje (1 registro por item), sem precisar criar uma entidade "pedido" nova.
@@ -438,9 +460,9 @@ function registrarCompra(){
   if(frete>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Frete — ${fornNome}${pedido?' Ped.'+pedido:''}`,valor:frete,data,categoria:'Frete'});
   if(taxa>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Taxa maquineta — ${fornNome}`,valor:taxa,data,categoria:'Taxa Maquineta'});
 
-  showToast(formaPagamento==='prazo'
-    ? `Compra a prazo registrada! ${itensValidos.length} item(s) — ${fmt(total)} (vence ${fmtDate(vencimento)})`
-    : `Compra registrada! ${itensValidos.length} item(s) — ${fmt(total)}`,'green');
+  showToast((formaPagamento==='prazo'
+    ? `Compra a prazo ${editId?'atualizada':'registrada'}! ${itensValidos.length} item(s) — ${fmt(total)} (vence ${fmtDate(vencimento)})`
+    : `Compra ${editId?'atualizada':'registrada'}! ${itensValidos.length} item(s) — ${fmt(total)}`)+avisoImprecisaoEdicao,'green');
   marcarAlterado();
   closeModal('modal-compra');
   renderHistoricoCompras();
@@ -449,10 +471,10 @@ function registrarCompra(){
   renderAlertaEstoquePage();
   renderHistoricoPreco();
   renderDashboard();
+  if(typeof renderPagar==='function') renderPagar();
   if(typeof atualizarAlertBells==='function') atualizarAlertBells();
 }
 function editarCompra(id){
-  // edição simples: abre modal com 1 item preenchido
   const c = state.compras.find(c=>c.id===id);
   if(!c) return;
   abrirRegistrarCompra(c.fornecedorId);
@@ -461,6 +483,25 @@ function editarCompra(id){
   document.getElementById('compra-edit-id').value = id;
   compraItensTemp = [{mpId:c.materiaId, qtd:c.qtd, custoUn:c.custoUn}];
   renderCompraItensLista();
+  // Restaura forma de pagamento e, se era a prazo, vencimento/parcelas — sem isso, salvar a
+  // edição resetaria a compra pra "à vista" (o padrão do formulário em branco) e apagaria a
+  // dívida com o fornecedor sem avisar.
+  document.getElementById('compra-pagamento').value = c.formaPagamento==='prazo' ? 'A Prazo' : (c.pagamento||'Pix');
+  toggleCompraPrazo();
+  if(c.formaPagamento==='prazo'){
+    document.getElementById('compra-vencimento').value = c.vencimento||'';
+    if(c.parcelado && Array.isArray(c.parcelas) && c.parcelas.length>0){
+      document.getElementById('compra-parcelar-check').checked=true;
+      document.getElementById('compra-num-parcelas').value=c.parcelas.length;
+      toggleParcelasCompra(); // gera o cronograma padrão primeiro (datas mensais)...
+      // ...depois sobrescreve com as datas que já estavam combinadas, pra não perder o
+      // vencimento real só porque reabriu a edição
+      c.parcelas.forEach((p,i)=>{
+        const inp=document.getElementById(`compra-parcela-data-${i}`);
+        if(inp) inp.value=p.vencimento;
+      });
+    }
+  }
 }
 function excluirCompra(id){
   const c=state.compras.find(c=>c.id===id);

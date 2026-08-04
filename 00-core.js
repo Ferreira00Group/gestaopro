@@ -155,7 +155,7 @@ const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 //   11 → matérias-primas passam a usar custo médio ponderado (CMP) em vez de
 //        "custo da última compra". Ver migração 10→11 e as funções registrarEntradaMateria/
 //        registrarSaidaMateria/reverterEntradaMateria em 00-core.js.
-//   12 → (versão atual) Contas a Pagar: state.compras ganha "formaPagamento" ('avista'|'prazo'),
+//   12 → Contas a Pagar: state.compras ganha "formaPagamento" ('avista'|'prazo'),
 //        "vencimento" e, se parcelada, "parcelado"+"parcelas[]" — mesmo modelo que state.vendas
 //        já usa pro fiado do cliente. Compra "à vista" continua lançando a saída no Financeiro
 //        na hora, como sempre foi; "a prazo" só lança quando o pagamento ao fornecedor é
@@ -163,7 +163,14 @@ const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 //        Sem migração de dados: toda compra já existente não tem "formaPagamento", e o código
 //        trata ausência/qualquer valor ≠ 'prazo' como 'avista' — o que é historicamente correto
 //        (elas já geraram a saída imediata de verdade), não uma aproximação.
-const SCHEMA_VERSION = 12;
+//   13 → (versão atual) cada item de venda (state.vendas[].itens[]) ganha "custoFichaUn": um
+//        retrato do custo da ficha técnica por unidade NO MOMENTO da venda. Sem isso, o
+//        ranking de produtos em Relatório recalculava a margem de vendas antigas usando a
+//        ficha técnica de HOJE — se o preço de uma matéria-prima mudasse, a margem de uma
+//        venda de meses atrás mudava sozinha. Sem migração de dados: vendas antigas não têm
+//        esse campo, e o relatório cai de volta pro cálculo pela ficha atual nesse caso (única
+//        opção quando não sabemos o custo real da época — ver 09-financeiro-relatorios.js).
+const SCHEMA_VERSION = 13;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -255,6 +262,8 @@ const MIGRATIONS = {
     d.pagamentosFornecedor = d.pagamentosFornecedor || [];
     return d;
   },
+  // v12 → v13: nenhuma transformação de dados — ver comentário no histórico acima (item 13).
+  12: (d) => d,
 };
 
 function migrarDados(parsed) {

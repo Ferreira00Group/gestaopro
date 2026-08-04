@@ -627,7 +627,13 @@ function salvarVenda(){
       if(disp<necessidade[k]){showToast(`Estoque insuficiente: ${getNomeCompletoItem(parseInt(pid),vid?parseInt(vid):null)} (disp: ${disp})`,'red');return;}
     }
   }
-  const itensFinal=itensValidos.map(it=>({produtoId:it.produtoId,varianteId:it.varianteId||null,qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco}));
+  // Grava um "retrato" do custo da ficha técnica no momento da venda (custoFichaUn = custo por
+  // unidade agora). Sem isso, o Relatório recalculava a margem de vendas antigas usando a
+  // ficha técnica de HOJE — se o preço de uma matéria-prima subisse, a margem de uma venda de
+  // meses atrás mudava sozinha toda vez que o relatório fosse reaberto. Vendas antigas (antes
+  // desta versão) não têm esse campo; nesse caso o relatório volta a recalcular pela ficha
+  // atual como fallback (ver getCustoVendaItem em 09-financeiro-relatorios.js).
+  const itensFinal=itensValidos.map(it=>({produtoId:it.produtoId,varianteId:it.varianteId||null,qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco,custoFichaUn:calcularCustoFicha(it.produtoId,it.varianteId,1)}));
   const totalBruto=itensFinal.reduce((s,it)=>s+it.total,0);
   const total=Math.max(0,totalBruto-descontoExtra);
   // se tem qualquer parcela fiado (puro ou dentro do misto), considera em_aberto a parte fiada
