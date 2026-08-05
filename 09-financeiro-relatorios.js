@@ -122,7 +122,7 @@ function excluirLancamento(id){
 
 // ============ RELATÓRIO POR PERÍODO ============
 function showRelTab(tab,btn){
-  ['periodo','dre','fluxo','inadimplencia'].forEach(t=>{
+  ['periodo','dre','fluxo','inadimplencia','balanco'].forEach(t=>{
     const el=document.getElementById('rel-tab-'+t);
     if(el) el.style.display=t===tab?'block':'none';
   });
@@ -578,5 +578,85 @@ function renderHistoricoPreco(){
       <td data-label="Var. anterior">${varHtml}</td>
     </tr>`;
   }).reverse().join('');// mostra mais recentes primeiro
+}
+
+// ============ BALANÇO PATRIMONIAL ============
+// Sempre posição de HOJE — o sistema não guarda snapshot histórico de quantidade de
+// estoque por data (diferente de state.fechamentos, que só congela o resultado financeiro
+// do mês), então não há como apurar um balanço retroativo com os dados disponíveis.
+function calcularBalancoPatrimonial(){
+  const caixa = state.financeiro.reduce((s,f)=>s+(f.tipo==='entrada'?f.valor:-f.valor),0);
+  const contasReceber = state.clientes.reduce((s,c)=>s+getSaldoCliente(c.id),0);
+  const estoqueMP = state.materias.reduce((s,m)=>s+valorEstoqueMateria(m),0);
+  const estoqueSemi = (state.semiacabados||[]).reduce((s,sa)=>s+(sa.estoque||0)*custoItemFicha('semi',sa.id),0);
+
+  // Custo só de MP (calcularCustoFicha), sem rateio de custo fixo — cfPorUn depende do volume
+  // produzido no MÊS ATUAL, o que faria o valor do estoque oscilar por motivo alheio ao
+  // estoque em si (produziu pouco esse mês → estoque "valeria mais"). Produto arquivado ENTRA
+  // no cálculo: estoque físico continua valendo dinheiro mesmo depois de arquivado (diferente
+  // de getLinhasPrecificacao, que exclui arquivados de propósito por não fazer mais sentido
+  // em "margem"/"simulador" de algo que não se vende mais).
+  let estoqueProdutosSemFicha = 0;
+  const estoqueProdutos = state.produtos.reduce((s,p)=>{
+    if(p.variantes && p.variantes.length>0){
+      return s + p.variantes.reduce((s2,v)=>{
+        const custo = calcularCustoFicha(p.id, v.id, 1);
+        if(custo===0 && v.estoque>0) estoqueProdutosSemFicha++;
+        return s2 + v.estoque*custo;
+      },0);
+    }
+    const custo = calcularCustoFicha(p.id, null, 1);
+    if(custo===0 && p.estoque>0) estoqueProdutosSemFicha++;
+    return s + p.estoque*custo;
+  },0);
+
+  const estoqueTotal = estoqueMP + estoqueSemi + estoqueProdutos;
+  const ativoTotal = caixa + contasReceber + estoqueTotal;
+  const contasPagar = state.fornecedores.reduce((s,f)=>s+getSaldoFornecedor(f.id),0);
+  const passivoTotal = contasPagar;
+  const patrimonioLiquido = ativoTotal - passivoTotal; // sempre apurado (Ativo − Passivo);
+  // o sistema não rastreia capital social investido separadamente
+
+  return {data:today(),caixa,contasReceber,estoqueMP,estoqueSemi,estoqueProdutos,estoqueTotal,
+    ativoTotal,contasPagar,passivoTotal,patrimonioLiquido,estoqueProdutosSemFicha};
+}
+
+function gerarBalanco(){
+  const b = calcularBalancoPatrimonial();
+  const el = document.getElementById('balanco-resultado');
+  el.style.display = 'block';
+  const linha = (label,valor,opts={}) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:${opts.grande?'12px':'9px'} 20px;${opts.sep?'border-top:2px solid var(--border);':''}background:${opts.grande?'#EBF5FB':'transparent'}">
+      <span style="font-size:${opts.grande?'14px':'13px'};font-weight:${opts.bold?'700':'400'};color:${opts.bold?'var(--text)':'var(--muted)'};padding-left:${(opts.indent||0)*16}px">${label}</span>
+      <span style="font-size:${opts.grande?'16px':'13px'};font-weight:${opts.bold?'800':'500'};color:${opts.cor||'var(--text)'}">${fmt(Math.abs(valor))}</span>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="cards-grid cards-grid-3" style="margin-bottom:16px">
+      <div class="stat-card blue"><div class="label">Ativo Total</div><div class="value">${fmt(b.ativoTotal)}</div><div class="sub">caixa + receber + estoque</div></div>
+      <div class="stat-card red"><div class="label">Passivo Total</div><div class="value">${fmt(b.passivoTotal)}</div><div class="sub">contas a pagar</div></div>
+      <div class="stat-card ${b.patrimonioLiquido>=0?'green':'red'}"><div class="label">Patrimônio Líquido</div><div class="value">${fmt(Math.abs(b.patrimonioLiquido))}</div><div class="sub">${b.patrimonioLiquido>=0?'ativo − passivo':'⚠️ passivo > ativo'}</div></div>
+    </div>
+    ${b.estoqueProdutosSemFicha>0?`<div class="alert-banner" style="margin-bottom:16px">⚠️ ${b.estoqueProdutosSemFicha} produto(s)/variante(s) com estoque mas sem ficha técnica — entraram no Ativo com custo R$ 0,00.</div>`:''}
+    <div class="table-card" style="margin-bottom:16px">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong style="font-size:15px">🏛️ Balanço Patrimonial — posição em ${fmtDate(b.data)}</strong></div>
+      <div style="padding:8px 0">
+        <div style="padding:9px 20px"><strong style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy)">ATIVO</strong></div>
+        ${linha('Caixa', b.caixa, {indent:1})}
+        ${linha('Contas a Receber (fiado)', b.contasReceber, {indent:1})}
+        ${linha('Estoque — Matéria-Prima', b.estoqueMP, {indent:1})}
+        ${linha('Estoque — Semiacabados', b.estoqueSemi, {indent:1})}
+        ${linha('Estoque — Produtos Acabados', b.estoqueProdutos, {indent:1})}
+        ${linha('= Ativo Total', b.ativoTotal, {bold:true,sep:true,grande:true,cor:'var(--blue)'})}
+        <div style="padding:9px 20px;padding-top:18px"><strong style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy)">PASSIVO</strong></div>
+        ${linha('Contas a Pagar (fornecedores)', b.contasPagar, {indent:1})}
+        ${linha('= Passivo Total', b.passivoTotal, {bold:true,sep:true,grande:true,cor:'var(--red)'})}
+        ${linha('= Patrimônio Líquido (apurado)', b.patrimonioLiquido, {bold:true,sep:true,grande:true,cor:b.patrimonioLiquido>=0?'var(--green)':'var(--red)'})}
+      </div>
+    </div>
+    <div class="detail-panel" style="font-size:12px;color:var(--muted)">
+      <strong style="color:var(--text)">ℹ️ Metodologia</strong><br>
+      Estoque valorizado pelo <strong>custo de matéria-prima da ficha técnica</strong>, sem rateio de custo fixo. Patrimônio Líquido é sempre <strong>apurado</strong> (Ativo − Passivo), já que o sistema não rastreia capital social investido separadamente. Reflete a posição de <strong>hoje</strong>; não há dados para reconstruir datas passadas.
+    </div>`;
 }
 

@@ -30,6 +30,7 @@
   .alert-bell.has-alert .badge-dot{display:block}
   .alert-bell.bell-estoque .badge-dot{background:var(--yellow)}
   .alert-bell.bell-cobranca .badge-dot{background:var(--red)}
+  .alert-bell.bell-pagar .badge-dot{background:#8E44AD}
   @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
   .alert-bell.has-alert .badge-dot{animation:pulse-dot 1.8s infinite}
   .alert-dropdown{position:fixed;top:62px;right:12px;width:320px;max-width:calc(100vw - 24px);background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:300;display:none;overflow:hidden}
@@ -72,6 +73,15 @@
   .nav-dot.has-alert{display:inline-block;animation:pulse-dot 1.8s infinite}
   #bell-estoque.has-alert{background:var(--yellow)}
   #bell-cobranca.has-alert{background:var(--red)}
+  #bell-pagar.has-alert{background:#8E44AD}
+
+  /* Topbar com 3 sinos + imprimir + salvar: em telas muito estreitas (iPhone SE e
+     similares) reduz o subtítulo e os botões pra evitar aperto/scroll horizontal. */
+  @media(max-width:380px){
+    #topbar-title span{display:none}
+    .topbar-alerts{gap:4px}
+    .alert-bell,#topbar-print,#topbar-save{width:32px;height:32px;font-size:15px}
+  }
 
   /* MAIN */
   #main{margin-top:108px;flex:1;padding:20px 16px 100px;min-height:calc(100vh - 108px);width:100%}

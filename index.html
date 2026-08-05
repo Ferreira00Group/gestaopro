@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.18.0">
+<link rel="stylesheet" href="styles.css?v=5.19.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#1B2838;display:none;align-items:center;justify-content:center;padding:24px">
@@ -53,6 +53,9 @@
   <button id="hamburger" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div id="topbar-title">GestãoPRO <span>Powered by Ferreira Group</span></div>
   <div class="topbar-alerts">
+    <button class="alert-bell bell-estoque" id="topbar-bell-estoque" onclick="toggleAlertDrop('drop-estoque')" title="Estoque baixo">📦<span class="badge-dot"></span></button>
+    <button class="alert-bell bell-cobranca" id="topbar-bell-cobranca" onclick="toggleAlertDrop('drop-cobranca')" title="A receber">💰<span class="badge-dot"></span></button>
+    <button class="alert-bell bell-pagar" id="topbar-bell-pagar" onclick="toggleAlertDrop('drop-pagar')" title="A pagar">📤<span class="badge-dot"></span></button>
     <button id="topbar-print" onclick="abrirEscolhaImpressao()" title="Imprimir">🖨️</button>
     <button id="topbar-save" onclick="salvarDados()" title="Salvar">💾</button>
   </div>
@@ -88,6 +91,16 @@
   <div class="alert-drop-footer"><a onclick="closeAlertDrop('drop-cobranca');goto('receber')">Ver contas a receber →</a></div>
 </div>
 
+<!-- DROPDOWN: Contas a Pagar -->
+<div class="alert-dropdown" id="drop-pagar">
+  <div class="alert-drop-header">
+    <h4>📤 Fornecedores a Pagar</h4>
+    <button class="alert-drop-close" onclick="closeAlertDrop('drop-pagar')">✕</button>
+  </div>
+  <div class="alert-drop-body" id="drop-pagar-body"></div>
+  <div class="alert-drop-footer"><a onclick="closeAlertDrop('drop-pagar');goto('pagar')">Ver contas a pagar →</a></div>
+</div>
+
 <div id="sidebar-backdrop" onclick="closeSidebar()"></div>
 
 <div id="sidebar">
@@ -97,7 +110,7 @@
     <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
     <a onclick="goto('vendas')" data-page="vendas"><i data-lucide="shopping-cart" class="icon"></i> Vendas / Pedidos</a>
     <a onclick="goto('receber')" data-page="receber"><i data-lucide="wallet" class="icon"></i> Contas a Receber<span class="nav-dot" id="bell-cobranca"></span></a>
-    <a onclick="goto('pagar')" data-page="pagar"><i data-lucide="credit-card" class="icon"></i> Contas a Pagar</a>
+    <a onclick="goto('pagar')" data-page="pagar"><i data-lucide="credit-card" class="icon"></i> Contas a Pagar<span class="nav-dot" id="bell-pagar"></span></a>
     <a onclick="goto('producao')" data-page="producao"><i data-lucide="factory" class="icon"></i> Produção</a>
     <a onclick="goto('estoque')" data-page="estoque"><i data-lucide="package" class="icon"></i> Estoque<span class="nav-dot" id="bell-estoque"></span></a>
     <a onclick="goto('planejamento')" data-page="planejamento"><i data-lucide="calculator" class="icon"></i> Planejamento</a>
@@ -658,6 +671,7 @@
     <button class="tab" onclick="showRelTab('dre',this)">📈 DRE</button>
     <button class="tab" onclick="showRelTab('fluxo',this)">💸 Fluxo de Caixa</button>
     <button class="tab" onclick="showRelTab('inadimplencia',this)">⚠️ Inadimplência</button>
+    <button class="tab" onclick="showRelTab('balanco',this)">🏛️ Balanço</button>
   </div>
 
   <!-- POR PERÍODO -->
@@ -748,6 +762,15 @@
       <button class="btn btn-outline" onclick="imprimirPagina()">🖨️ Imprimir / Exportar</button>
     </div>
     <div id="inadimp-resultado" style="display:none"></div>
+  </div>
+
+  <!-- BALANÇO PATRIMONIAL -->
+  <div id="rel-tab-balanco" style="display:none">
+    <div class="relatorio-filtros" style="align-items:center">
+      <p style="font-size:12.5px;color:var(--muted);margin:0;flex:1;min-width:220px">📌 Posição <strong>atual</strong> (hoje) — sem histórico de estoque por data, não há como apurar balanço retroativo.</p>
+      <button class="btn btn-primary" onclick="gerarBalanco()">🏛️ Gerar Balanço</button>
+    </div>
+    <div id="balanco-resultado" style="display:none"></div>
   </div>
 </div>
 
@@ -1286,13 +1309,36 @@
         </div>
         <div class="form-group">
           <label>Forma de Pagamento</label>
-          <select class="form-control" id="compra-pagamento-colar">
+          <select class="form-control" id="compra-pagamento-colar" onchange="toggleCompraPrazoColar()">
             <option value="Pix">Pix</option>
             <option value="Cartão de Crédito">Cartão de Crédito</option>
             <option value="Cartão de Débito">Cartão de Débito</option>
             <option value="Boleto">Boleto</option>
             <option value="Dinheiro">Dinheiro</option>
+            <option value="A Prazo">📝 A Prazo</option>
           </select>
+        </div>
+        <div id="compra-colar-prazo-wrap" style="display:none">
+          <div class="form-group">
+            <label style="display:flex;justify-content:space-between;align-items:center">
+              <span>Data de Vencimento</span>
+              <span style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;cursor:pointer" onclick="toggleParcelasCompraColar()">
+                <input type="checkbox" id="compra-colar-parcelar-check" onclick="toggleParcelasCompraColar()" style="width:auto;margin:0"> Parcelar
+              </span>
+            </label>
+            <input class="form-control" type="date" id="compra-colar-vencimento" placeholder="Quando vence o pagamento ao fornecedor">
+          </div>
+          <div id="compra-colar-parcelas-wrap" style="display:none">
+            <div class="form-group" style="margin-bottom:6px">
+              <label>Número de parcelas</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input class="form-control" type="number" id="compra-colar-num-parcelas" min="2" max="24" value="2" style="max-width:80px" oninput="gerarParcelasCompraColar()">
+                <span style="font-size:12px;color:var(--muted)">parcelas mensais a partir do vencimento</span>
+              </div>
+            </div>
+            <div class="parcelas-wrap" id="compra-colar-parcelas-lista"></div>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin:-4px 0 14px">Vira dívida em Contas a Pagar. Frete e taxa continuam lançados à vista.</p>
         </div>
         <button class="btn btn-primary" style="width:100%;margin-bottom:12px" onclick="processarNotaColada()">🔍 Extrair dados da nota</button>
         <div id="compra-nota-preview" style="display:none"></div>
@@ -1665,21 +1711,21 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.18.0"></script>
-<script src="00-core.js?v=5.18.0"></script>
-<script src="01-ui-nav.js?v=5.18.0"></script>
-<script src="02-dashboard.js?v=5.18.0"></script>
-<script src="03-clientes.js?v=5.18.0"></script>
-<script src="04-vendas.js?v=5.18.0"></script>
-<script src="05-producao.js?v=5.18.0"></script>
-<script src="06-estoque.js?v=5.18.0"></script>
-<script src="07-precificacao.js?v=5.18.0"></script>
-<script src="08-compras-fornecedores.js?v=5.18.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.18.0"></script>
-<script src="10-fab-inline.js?v=5.18.0"></script>
-<script src="10b-planejamento.js?v=5.18.0"></script>
-<script src="12-drive-backup.js?v=5.18.0"></script>
-<script src="11-app-init.js?v=5.18.0"></script>
+<script src="00a-config.js?v=5.19.0"></script>
+<script src="00-core.js?v=5.19.0"></script>
+<script src="01-ui-nav.js?v=5.19.0"></script>
+<script src="02-dashboard.js?v=5.19.0"></script>
+<script src="03-clientes.js?v=5.19.0"></script>
+<script src="04-vendas.js?v=5.19.0"></script>
+<script src="05-producao.js?v=5.19.0"></script>
+<script src="06-estoque.js?v=5.19.0"></script>
+<script src="07-precificacao.js?v=5.19.0"></script>
+<script src="08-compras-fornecedores.js?v=5.19.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.19.0"></script>
+<script src="10-fab-inline.js?v=5.19.0"></script>
+<script src="10b-planejamento.js?v=5.19.0"></script>
+<script src="12-drive-backup.js?v=5.19.0"></script>
+<script src="11-app-init.js?v=5.19.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

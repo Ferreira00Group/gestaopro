@@ -140,6 +140,7 @@ function toggleAlertDrop(id){
   if(!isOpen){
     if(id==='drop-estoque') renderDropEstoque();
     if(id==='drop-cobranca') renderDropCobranca();
+    if(id==='drop-pagar') renderDropPagar();
     document.getElementById(id).classList.add('open');
   }
 }
@@ -224,6 +225,54 @@ function renderDropCobranca(){
   body.innerHTML=html;
 }
 
+// Espelha renderDropCobranca do lado do fornecedor (Contas a Pagar).
+function renderDropPagar(){
+  const hj=today();
+  const body=document.getElementById('drop-pagar-body');
+  let html='';
+
+  const proximosVenc=getUnidadesPagarFlat().filter(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)>=0&&diasParaVencimento(u.vencimento,hj)<=3);
+  if(proximosVenc.length>0){
+    html+=`<div class="busca-grupo-titulo">⏰ Vencendo em breve</div>`;
+    html+=proximosVenc.map(u=>{
+      const f=getFornecedor(u.fornecedorId);
+      const dias=diasParaVencimento(u.vencimento,hj);
+      const label=dias===0?'Hoje':dias===1?'Amanhã':`Em ${dias}d`;
+      return `<div class="alert-item">
+        <div class="alert-item-info">
+          <strong>${f?f.nome:'?'}</strong>
+          <span><b style="color:#d35400">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
+        </div>
+        <div class="alert-item-action">
+          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:#8E44AD;color:#fff" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${u.fornecedorId})">💰</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const devedores=state.fornecedores
+    .map(f=>({...f,saldo:getSaldoFornecedor(f.id)}))
+    .filter(f=>f.saldo>0.01)
+    .sort((a,b)=>b.saldo-a.saldo);
+
+  if(devedores.length>0){
+    html+=`<div class="busca-grupo-titulo">💸 Saldo em aberto</div>`;
+    html+=devedores.map(f=>`
+      <div class="alert-item">
+        <div class="alert-item-info">
+          <strong>${f.nome}</strong>
+          <span>Deve: <b style="color:#8E44AD">${fmt(f.saldo)}</b></span>
+        </div>
+        <div class="alert-item-action">
+          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:#8E44AD;color:#fff" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${f.id})">💰</button>
+        </div>
+      </div>`).join('');
+  }
+
+  if(!html) html='<div class="alert-empty">🎉 Nenhum fornecedor com saldo em aberto!</div>';
+  body.innerHTML=html;
+}
+
 function atualizarAlertBells(){
   // estoque
   let temEstoqueBaixo=false;
@@ -233,11 +282,19 @@ function atualizarAlertBells(){
   });
   state.materias.forEach(m=>{if(m.qtd<=m.minimo)temEstoqueBaixo=true;});
   const be=document.getElementById('bell-estoque');if(be)be.classList.toggle('has-alert',temEstoqueBaixo);
+  const beTop=document.getElementById('topbar-bell-estoque');if(beTop)beTop.classList.toggle('has-alert',temEstoqueBaixo);
 
-  // cobrança: devedor OU vencimento em até 3 dias
+  // cobrança (a receber): devedor OU vencimento em até 3 dias
   const hj=today();
   const temDevedor=state.clientes.some(c=>getSaldoCliente(c.id)>0.01);
   const temVencProx=getUnidadesFiadoFlat().some(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)<=3&&diasParaVencimento(u.vencimento,hj)>=0);
   const bc=document.getElementById('bell-cobranca');if(bc)bc.classList.toggle('has-alert',temDevedor||temVencProx);
+  const bcTop=document.getElementById('topbar-bell-cobranca');if(bcTop)bcTop.classList.toggle('has-alert',temDevedor||temVencProx);
+
+  // a pagar (fornecedor): mesmo critério, espelhado
+  const temAPagar=state.fornecedores.some(f=>getSaldoFornecedor(f.id)>0.01);
+  const temVencProxPagar=getUnidadesPagarFlat().some(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)<=3&&diasParaVencimento(u.vencimento,hj)>=0);
+  const bp=document.getElementById('bell-pagar');if(bp)bp.classList.toggle('has-alert',temAPagar||temVencProxPagar);
+  const bpTop=document.getElementById('topbar-bell-pagar');if(bpTop)bpTop.classList.toggle('has-alert',temAPagar||temVencProxPagar);
 }
 

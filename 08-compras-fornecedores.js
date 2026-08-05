@@ -180,6 +180,14 @@ function registrarCompraDaNota(){
   const pagamento = document.getElementById('compra-pagamento-colar').value;
   const fornNome = getFornecedor(fornecedorId)?.nome||'Fornecedor';
 
+  // "A Prazo" funciona igual ao modo Manual (ver registrarCompra): a compra vira dívida em
+  // Contas a Pagar em vez de lançar saída imediata no Financeiro.
+  const formaPagamento = pagamento==='A Prazo' ? 'prazo' : 'avista';
+  const vencimento = formaPagamento==='prazo' ? (document.getElementById('compra-colar-vencimento').value||null) : null;
+  if(formaPagamento==='prazo' && !vencimento){showToast('Informe a data de vencimento da compra a prazo','red');return;}
+  const parcelar = formaPagamento==='prazo' && document.getElementById('compra-colar-parcelar-check').checked;
+  const numParcelas = parcelar ? (parseInt(document.getElementById('compra-colar-num-parcelas').value)||2) : 1;
+
   parsed.itens.forEach((item,idx)=>{
     // Criar MP se não existir (ou usar a que o usuário indicou como "mesma")
     let mp = state.materias.find(m=>normalizarNomeMp(m.nome)===normalizarNomeMp(item.nome));
@@ -198,31 +206,86 @@ function registrarCompraDaNota(){
     // pondera com o que já estava em estoque (ver registrarEntradaMateria em 00-core.js)
     registrarEntradaMateria(mp, item.qtd, item.custoUn);
 
+    let parcelasItem = null;
+    if(parcelar && numParcelas>=2){
+      const valorParcela = parseFloat((item.total/numParcelas).toFixed(2));
+      parcelasItem = [];
+      for(let i=0;i<numParcelas;i++){
+        const dataParc = document.getElementById(`compra-colar-parcela-data-${i}`)?.value || vencimento;
+        const valParc = i===numParcelas-1 ? parseFloat((item.total-(valorParcela*(numParcelas-1))).toFixed(2)) : valorParcela;
+        parcelasItem.push({vencimento:dataParc,valor:valParc});
+      }
+    }
+
     const novaCompra = {
       id:nextId('compras'), fornecedorId, materiaId:mp.id,
       qtd:item.qtd, custoUn:item.custoUn, total:item.total,
       pedido:parsed.pedido, pagamento, frete:0, taxa:0, data:parsed.data,
-      formaPagamento:'avista' // colar nota não suporta prazo por enquanto — use o modo Manual
+      formaPagamento,
+      vencimento: formaPagamento==='prazo' ? (parcelasItem?parcelasItem[0].vencimento:vencimento) : null,
+      parcelado: !!parcelasItem,
+      parcelas: parcelasItem
     };
     state.compras.push(novaCompra);
-    state.financeiro.push({
-      id:nextId('financeiro'), tipo:'saida',
-      desc:`Compra ${mp.nome} — ${fornNome}${parsed.pedido?' Ped.'+parsed.pedido:''}`,
-      valor:item.total, data:parsed.data, compraId:novaCompra.id
-    });
+    // só lança saída imediata no Financeiro se for À VISTA — "a prazo" só lança quando o
+    // pagamento ao fornecedor for de fato registrado (mesma regra do modo Manual)
+    if(formaPagamento!=='prazo'){
+      state.financeiro.push({
+        id:nextId('financeiro'), tipo:'saida',
+        desc:`Compra ${mp.nome} — ${fornNome}${parsed.pedido?' Ped.'+parsed.pedido:''}`,
+        valor:item.total, data:parsed.data, compraId:novaCompra.id
+      });
+    }
   });
 
   if(parsed.frete>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Frete — ${fornNome}${parsed.pedido?' Ped.'+parsed.pedido:''}`,valor:parsed.frete,data:parsed.data,categoria:'Frete'});
   if(parsed.taxa>0) state.financeiro.push({id:nextId('financeiro'),tipo:'saida',desc:`Taxa maquineta — ${fornNome}`,valor:parsed.taxa,data:parsed.data,categoria:'Taxa Maquineta'});
 
-  showToast(`${parsed.itens.length} item(s) registrados com sucesso!`,'green');
+  showToast(`${parsed.itens.length} item(s) registrados com sucesso!${formaPagamento==='prazo'?' (a prazo, vence '+fmtDate(vencimento)+')':''}`,'green');
   marcarAlterado();
   closeModal('modal-compra');
   renderHistoricoCompras();
   renderFornecedores();
   renderEstoque();
   renderAlertaEstoquePage();
+  renderDashboard();
+  if(typeof renderPagar==='function') renderPagar();
   if(typeof atualizarAlertBells==='function') atualizarAlertBells();
+}
+
+// ============ COMPRA A PRAZO / PARCELADA — aba Colar Nota ============
+// Espelha toggleCompraPrazo/toggleParcelasCompra/gerarParcelasCompra (aba Manual, abaixo)
+// com IDs próprios, já que as duas abas do modal de Compra coexistem no mesmo DOM.
+function toggleCompraPrazoColar(){
+  const isPrazo=document.getElementById('compra-pagamento-colar').value==='A Prazo';
+  document.getElementById('compra-colar-prazo-wrap').style.display=isPrazo?'block':'none';
+  if(!isPrazo){
+    document.getElementById('compra-colar-parcelar-check').checked=false;
+    document.getElementById('compra-colar-parcelas-wrap').style.display='none';
+  }
+}
+function toggleParcelasCompraColar(){
+  const checked=document.getElementById('compra-colar-parcelar-check').checked;
+  document.getElementById('compra-colar-parcelas-wrap').style.display=checked?'block':'none';
+  if(checked) gerarParcelasCompraColar();
+}
+function gerarParcelasCompraColar(){
+  const n=parseInt(document.getElementById('compra-colar-num-parcelas').value)||2;
+  const baseDate=document.getElementById('compra-colar-vencimento').value||today();
+  const el=document.getElementById('compra-colar-parcelas-lista');
+  if(n<2||n>24){el.innerHTML='<p style="color:var(--red);font-size:12px">Entre 2 e 24 parcelas</p>';return;}
+  const linhas=[];
+  for(let i=0;i<n;i++){
+    const d=new Date(baseDate+'T00:00:00');
+    d.setMonth(d.getMonth()+i);
+    const ds=d.toISOString().slice(0,10);
+    linhas.push(`<div class="parcela-linha">
+      <span class="parcela-num">${i+1}×</span>
+      <input class="form-control" type="date" id="compra-colar-parcela-data-${i}" value="${ds}" style="max-width:160px;padding:7px 10px;font-size:13px">
+      <span style="font-size:12px;color:var(--muted)">vencimento</span>
+    </div>`);
+  }
+  el.innerHTML=linhas.join('');
 }
 
 
@@ -324,6 +387,13 @@ function abrirRegistrarCompra(fornecedorIdPresel){
   document.getElementById('compra-texto-nota').value='';
   document.getElementById('compra-nota-preview').style.display='none';
   document.getElementById('compra-nota-footer').style.display='none';
+  document.getElementById('compra-pagamento-colar').value='Pix';
+  document.getElementById('compra-colar-prazo-wrap').style.display='none';
+  document.getElementById('compra-colar-vencimento').value='';
+  document.getElementById('compra-colar-parcelar-check').checked=false;
+  document.getElementById('compra-colar-parcelas-wrap').style.display='none';
+  document.getElementById('compra-colar-num-parcelas').value=2;
+  document.getElementById('compra-colar-parcelas-lista').innerHTML='';
   // mostrar aba manual por padrão
   showCompraTab('manual');
   document.getElementById('modal-compra').classList.add('open');
@@ -718,7 +788,20 @@ function editarFornecedor(id){
   document.getElementById('modal-fornecedor-title').textContent='Editar Fornecedor';
   document.getElementById('modal-fornecedor').classList.add('open');
 }
+// Bloqueia exclusão com saldo em aberto: excluir o fornecedor não apaga a dívida em
+// state.compras (formaPagamento==='prazo'), só deixa ela órfã — some do Dashboard, de
+// Contas a Pagar e do sino de alertas, mas o registro (e o valor devido de verdade)
+// continua existindo, agora sem como ser pago ou consultado. Mesma classe de problema que
+// excluirCliente/excluirProduto já tratam com arquivamento; aqui optei por bloqueio simples
+// (sem novo campo de schema) já que "fornecedor arquivado com dívida ativa" é caso raro.
 function excluirFornecedor(id){
+  const f=state.fornecedores.find(f=>f.id===id);
+  if(!f) return;
+  const saldoAberto=getSaldoFornecedor(id);
+  if(saldoAberto>0.009){
+    showToast(`Não é possível excluir: há ${fmt(saldoAberto)} em aberto (Contas a Pagar). Quite o saldo antes.`,'red');
+    return;
+  }
   const vinculadas=state.materias.filter(m=>m.fornecedorId===id).length;
   const aviso=vinculadas>0?` ${vinculadas} matéria(s)-prima(s) vinculada(s) ficarão sem fornecedor.`:'';
   confirmarAcao('Excluir este fornecedor?'+aviso,()=>{
