@@ -396,7 +396,7 @@ function gerarFluxo(){
   const diasArr=[];
   for(let i=0;i<dias;i++){
     const d=new Date();d.setDate(d.getDate()+i);
-    const ds=d.toISOString().slice(0,10);
+    const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     diasArr.push(ds);
   }
 

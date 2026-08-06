@@ -431,7 +431,16 @@ window.addEventListener('beforeunload',()=>{
 
 // ============ HELPERS ============
 const fmt=(v)=>'R$ '+parseFloat(v||0).toFixed(2).replace('.',',');
-const today=()=>new Date().toISOString().split('T')[0];
+// CORREÇÃO CRÍTICA (v5.21.0): a versão anterior usava new Date().toISOString(), que é sempre em
+// UTC. Brasil = UTC-3 sem DST — entre 21h00 e 23h59 no horário local, o UTC já virou o dia
+// seguinte, então today() gravava a data de AMANHÃ em toda venda/pagamento/compra/produção/
+// lançamento feito nesse intervalo, contaminando DRE, Fechamento Mensal, vencimentos e o
+// "Vendas Hoje" do dashboard silenciosamente. Monta a data a partir dos componentes locais
+// (getFullYear/getMonth/getDate), que já respeitam o fuso do dispositivo.
+const today=()=>{
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 const fmtDate=(d)=>{if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`};
 function diasParaVencimento(venc,hoje){
   // retorna número de dias: negativo = já venceu, 0 = vence hoje, positivo = vence em X dias

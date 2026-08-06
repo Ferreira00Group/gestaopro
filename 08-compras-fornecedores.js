@@ -187,6 +187,10 @@ function registrarCompraDaNota(){
   if(formaPagamento==='prazo' && !vencimento){showToast('Informe a data de vencimento da compra a prazo','red');return;}
   const parcelar = formaPagamento==='prazo' && document.getElementById('compra-colar-parcelar-check').checked;
   const numParcelas = parcelar ? (parseInt(document.getElementById('compra-colar-num-parcelas').value)||2) : 1;
+  // Paridade com o modo Manual (que já tem esse toggle): sem isso, Colar Nota sempre
+  // sobrescrevia o custo médio da MP, mesmo quando o usuário queria manter o custo atual
+  // (ex: nota com preço promocional pontual que não deve virar a nova referência de custo).
+  const atualizaCusto = document.getElementById('compra-colar-atualiza-custo').value==='sim';
 
   parsed.itens.forEach((item,idx)=>{
     // Criar MP se não existir (ou usar a que o usuário indicou como "mesma")
@@ -202,9 +206,11 @@ function registrarCompraDaNota(){
       mp = {id:nextId('materias'), nome:item.nome, qtd:0, unidade:'un', custo:item.custoUn, minimo:0, fornecedorId};
       state.materias.push(mp);
     }
-    // CMP: se a MP é nova (qtd:0 acima), a entrada define o custo inicial; se já existia,
-    // pondera com o que já estava em estoque (ver registrarEntradaMateria em 00-core.js)
-    registrarEntradaMateria(mp, item.qtd, item.custoUn);
+    // CMP: se a MP é nova (qtd:0 acima), a entrada define o custo inicial (atualizaCusto=false
+    // não tem efeito nesse caso — mp.custo já é item.custoUn no momento da criação, acima); se
+    // já existia, pondera com o que já estava em estoque (ver registrarEntradaMateria em
+    // 00-core.js), a menos que o usuário tenha pedido pra manter o custo atual.
+    registrarEntradaMateria(mp, item.qtd, atualizaCusto?item.custoUn:mp.custo);
 
     let parcelasItem = null;
     if(parcelar && numParcelas>=2){
@@ -375,6 +381,12 @@ function abrirRegistrarCompra(fornecedorIdPresel){
   compraItensTemp=[];
   compraNotaParsed=null;
   renderCompraItensLista();
+  // compra nova (não edição): botão de adicionar item disponível, nota de edição escondida
+  // (ver editarCompra, que trava isso pro caso de edição de item único)
+  const btnAdd=document.getElementById('btn-compra-add-item');
+  const noteAdd=document.getElementById('compra-add-item-edit-note');
+  if(btnAdd) btnAdd.style.display='';
+  if(noteAdd) noteAdd.style.display='none';
   // popular fornecedor em ambas as abas
   const opts='<option value="">Selecione...</option>'+state.fornecedores.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('');
   document.getElementById('compra-fornecedor').innerHTML=opts;
@@ -394,6 +406,7 @@ function abrirRegistrarCompra(fornecedorIdPresel){
   document.getElementById('compra-colar-parcelas-wrap').style.display='none';
   document.getElementById('compra-colar-num-parcelas').value=2;
   document.getElementById('compra-colar-parcelas-lista').innerHTML='';
+  document.getElementById('compra-colar-atualiza-custo').value='sim';
   // mostrar aba manual por padrão
   showCompraTab('manual');
   document.getElementById('modal-compra').classList.add('open');
@@ -553,6 +566,14 @@ function editarCompra(id){
   document.getElementById('compra-edit-id').value = id;
   compraItensTemp = [{mpId:c.materiaId, qtd:c.qtd, custoUn:c.custoUn}];
   renderCompraItensLista();
+  // Cada state.compras[] é 1 item por design (ver comentário em registrarCompra: "Registrar
+  // uma compra por item"). Deixar adicionar item durante a edição fazia registrarCompra()
+  // reverter esse 1 registro original e criar N novos com IDs novos — um "split" silencioso
+  // que ninguém pedia. Trava o botão aqui; pra registrar mais itens, é uma compra nova.
+  const btnAdd=document.getElementById('btn-compra-add-item');
+  const noteAdd=document.getElementById('compra-add-item-edit-note');
+  if(btnAdd) btnAdd.style.display='none';
+  if(noteAdd) noteAdd.style.display='block';
   // Restaura forma de pagamento e, se era a prazo, vencimento/parcelas — sem isso, salvar a
   // edição resetaria a compra pra "à vista" (o padrão do formulário em branco) e apagaria a
   // dívida com o fornecedor sem avisar.

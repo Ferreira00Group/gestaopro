@@ -332,12 +332,30 @@ function salvarMateria(){
     // ficaria dessincronizado e a próxima compra calcularia a média errada
     m.valorEstoque=parseFloat((m.qtd*custo).toFixed(4));
     showToast('Matéria-prima atualizada','green');
-  } else {
+    closeModal('modal-materia');marcarAlterado();renderEstoque();renderAlertaEstoquePage();
+    return;
+  }
+  // Reaproveita normalizarNomeMp/encontrarMpParecida (Levenshtein), já usados em Colar Nota,
+  // pra avisar de duplicidade também no cadastro manual — antes só quem colava nota via Colar
+  // Nota tinha esse aviso; cadastrar "Soda Cáustica" já tendo "Soda Caustica" (sem acento)
+  // passava direto e criava duas linhas de estoque pro mesmo insumo.
+  const criarMateria=()=>{
     const estoqueInicial=parseFloat(document.getElementById('mp-estoque').value)||0;
     state.materias.push({id:nextId('materias'),nome,qtd:estoqueInicial,unidade,custo,minimo,fornecedorId,valorEstoque:parseFloat((estoqueInicial*custo).toFixed(4))});
     showToast('Matéria-prima cadastrada','green');
+    closeModal('modal-materia');marcarAlterado();renderEstoque();renderAlertaEstoquePage();
+  };
+  const exata=state.materias.find(m=>normalizarNomeMp(m.nome)===normalizarNomeMp(nome));
+  if(exata){
+    confirmarAcao(`Já existe uma matéria-prima com esse nome: "${exata.nome}". Criar mesmo assim uma segunda entrada?`,criarMateria);
+    return;
   }
-  closeModal('modal-materia');marcarAlterado();renderEstoque();renderAlertaEstoquePage();
+  const parecida=encontrarMpParecida(nome);
+  if(parecida){
+    confirmarAcao(`Já existe uma matéria-prima parecida: "${parecida.mp.nome}". Continuar e criar "${nome}" como nova mesmo assim?`,criarMateria);
+    return;
+  }
+  criarMateria();
 }
 function editarMateria(id){
   const m=state.materias.find(m=>m.id===id);
