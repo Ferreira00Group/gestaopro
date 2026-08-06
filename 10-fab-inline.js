@@ -56,7 +56,7 @@ function salvarNovoClienteInline(){
   // de colisão futura com o contador) e salvava o endereço em "endereco", campo que nenhuma
   // outra tela lê (todo o resto do sistema usa "end") — o endereço digitado aqui nunca aparecia.
   var id=nextId('clientes');
-  state.clientes.push({id:id,nome:nome,tel:tel,end:end,ativo:true});
+  state.clientes.push({id:id,nome:nome,tel:tel,end:end,ativo:true,dataCadastro:today()});
   marcarAlterado();
   salvarDados();
   renderClientes();

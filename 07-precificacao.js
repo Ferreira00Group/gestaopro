@@ -248,7 +248,7 @@ function renderCustosFixosLista(){
   const el=document.getElementById('custos-fixos-lista');
   if(!el) return;
   el.innerHTML=cfTemp.map((c,i)=>`
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;${c.isProLabore?'background:#FEF9E7;border-radius:8px;padding:8px':''}">
       <input class="form-control" style="flex:1 1 100%" value="${c.nome}" placeholder="Nome do custo (ex: Aluguel)" oninput="cfTemp[${i}].nome=this.value">
       <div style="display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0">
         <span style="font-size:14px;color:var(--muted);flex-shrink:0">R$</span>
@@ -257,6 +257,10 @@ function renderCustosFixosLista(){
         <span style="font-size:12px;color:var(--muted);flex-shrink:0">/mês</span>
       </div>
       <button class="icon-btn del" onclick="cfTemp.splice(${i},1);renderCustosFixosLista()">🗑️</button>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;flex:1 1 100%;margin-top:-2px">
+        <input type="checkbox" ${c.isProLabore?'checked':''} onchange="cfTemp[${i}].isProLabore=this.checked;renderCustosFixosLista()" style="width:auto;margin:0">
+        💰 É retirada do dono (pró-labore)? <span style="font-weight:400">— aparece separado na DRE</span>
+      </label>
     </div>`).join('');
   atualizarTotalCF();
 }

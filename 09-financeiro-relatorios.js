@@ -1,7 +1,7 @@
 // ============ FINANCEIRO ============
 // Categoria é livre (texto), só usada pra separar "Outras Saídas" no relatório de Despesas.
 // Sugestões: algumas prontas + o que já foi usado antes (evita "Gasolina" x "gasolina" x "combustível").
-const CATEGORIAS_DESPESA_SUGERIDAS=['Gasolina','Manutenção Veículo','Aluguel','Internet/Telefone','Embalagens','Outros'];
+const CATEGORIAS_DESPESA_SUGERIDAS=['Gasolina','Manutenção Veículo','Aluguel','Internet/Telefone','Embalagens','Marketing/Aquisição','Outros'];
 function getCategoriasDespesaExistentes(){
   const usadas=state.financeiro.filter(f=>f.tipo==='saida'&&f.categoria).map(f=>f.categoria.trim());
   const vistas=new Set();
@@ -160,6 +160,25 @@ function gerarRelatorio(){
   document.getElementById('rel-lucro').textContent=fmt(Math.abs(lucro));
   document.getElementById('rel-lucro').style.color=lucro>=0?'var(--green)':'var(--red)';
   document.getElementById('rel-lucro-sub').textContent=lucro>=0?'Lucro ✓':'Prejuízo ⚠️';
+
+  // Clientes Novos + CAC — dataCadastro só existe em clientes criados a partir da v5.20.0
+  // (ver salvarCliente/confirmarImportarClientes/salvarNovoClienteInline); clientes legados
+  // sem o campo simplesmente não entram na contagem, mesma honestidade de custoFichaUn.
+  const clientesNovos=state.clientes.filter(c=>c.dataCadastro&&c.dataCadastro>=inicio&&c.dataCadastro<=fim).length;
+  const temHistoricoMarketing=state.financeiro.some(f=>f.tipo==='saida'&&(f.categoria||'').trim().toLowerCase()==='marketing/aquisição');
+  const gastoAquisicao=finPeriodo.filter(f=>f.tipo==='saida'&&(f.categoria||'').trim().toLowerCase()==='marketing/aquisição').reduce((s,f)=>s+f.valor,0);
+  const cac=clientesNovos>0?(gastoAquisicao/clientesNovos):null;
+  const oldExtra=document.getElementById('rel-extra-indicadores');
+  if(oldExtra) oldExtra.remove();
+  const cardsGrid=document.querySelector('#relatorio-resultado .cards-grid-4');
+  if(cardsGrid){
+    cardsGrid.insertAdjacentHTML('afterend',`
+    <div class="cards-grid cards-grid-2" id="rel-extra-indicadores" style="margin-bottom:20px">
+      <div class="stat-card blue"><div class="label">Clientes Novos</div><div class="value">${clientesNovos}</div><div class="sub">cadastrados no período</div></div>
+      <div class="stat-card blue"><div class="label">CAC</div><div class="value">${cac!=null?fmt(cac):'—'}</div><div class="sub">${!temHistoricoMarketing?'sem lançamento em "Marketing/Aquisição" ainda':clientesNovos===0?'sem cliente novo no período':'gasto aquisição ÷ clientes novos'}</div></div>
+    </div>`);
+  }
+
   const tvs=document.getElementById('rel-vendas-table');
   if(vendasPeriodo.length===0) tvs.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Nenhuma venda no período</td></tr>';
   else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>`<tr>
@@ -263,17 +282,45 @@ function gerarDRE(){
   const margemBruta=receitaBruta>0?(lucroBruto/receitaBruta*100):0;
   const margemLiq=receitaBruta>0?(lucroLiquido/receitaBruta*100):0;
 
+  // PRÓ-LABORE = soma dos itens de Custos Fixos marcados como retirada do dono (isProLabore,
+  // ver renderCustosFixosLista em 07-precificacao.js). É um SUBCONJUNTO de totalCF, não um
+  // valor à parte — por isso EBITDA/Lucro Líquido continuam calculados exatamente como antes;
+  // só a linha "Custos Fixos" da DRE é exibida em 2 partes quando há algo flagado.
+  const totalProLabore=(state.custosFixos||[]).filter(c=>c.isProLabore).reduce((s,c)=>s+(c.valor||0),0);
+  const totalCFOperacional=totalCF-totalProLabore;
+
+  // ROI OPERACIONAL = lucro líquido do mês ÷ tudo que saiu pra gerar esse lucro (MP + fixos +
+  // outras despesas). Não é ROI de capital investido/CAPEX — o sistema não rastreia isso — é
+  // "quanto voltou de lucro pra cada R$1 gasto rodando o negócio este mês".
+  const custoTotalMes=custoMP+totalCF+outrasDespesas;
+  const roiOperacional=custoTotalMes>0?(lucroLiquido/custoTotalMes*100):null;
+
   // mês anterior para comparação
   const mesAnterior=new Date(parseInt(y),parseInt(m)-2,1);
   const maStr=`${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth()+1).padStart(2,'0')}`;
   const vendasMA=state.vendas.filter(v=>v.data.startsWith(maStr)).reduce((s,v)=>s+v.total,0);
   const varReceita=vendasMA>0?((receitaBruta-vendasMA)/vendasMA*100):null;
 
+  // ALAVANCAGEM OPERACIONAL = %Δ Receita − %Δ Custo Total (mês vs anterior). >0 = crescendo
+  // sem inflar custo na mesma proporção (escalando). Ressalva: totalCF não é historizado por
+  // mês (é sempre o valor cadastrado "hoje"), então entra igual dos dois lados da comparação —
+  // mesma limitação que getCustoFixoPorUnidade já carrega em Precificação.
+  const comprasMA=state.compras.filter(c=>c.data.startsWith(maStr)).reduce((s,c)=>s+c.total,0);
+  const outrasDespesasMA=state.financeiro.filter(f=>f.tipo==='saida'&&!f.compraId&&f.data.startsWith(maStr)).reduce((s,f)=>s+f.valor,0);
+  const custoTotalMA=comprasMA+totalCF+outrasDespesasMA;
+  const varCustoTotal=custoTotalMA>0?((custoTotalMes-custoTotalMA)/custoTotalMA*100):null;
+  const alavancagem=(varReceita!=null&&varCustoTotal!=null)?(varReceita-varCustoTotal):null;
+
   const linhasDRE=[
     {label:'(+) Receita Bruta',valor:receitaBruta,bold:true,cor:'var(--green)',indent:0},
     {label:'(−) Custo de Matéria-Prima',valor:-custoMP,bold:false,cor:custoMP>0?'var(--red)':'var(--muted)',indent:1},
     {label:'= Lucro Bruto',valor:lucroBruto,bold:true,cor:lucroBruto>=0?'var(--navy)':'var(--red)',indent:0,sep:true},
-    {label:'(−) Custos Fixos (cadastrados)',valor:-totalCF,bold:false,cor:totalCF>0?'var(--red)':'var(--muted)',indent:1},
+    ...(totalProLabore>0.009 ? [
+      {label:'(−) Custos Fixos Operacionais',valor:-totalCFOperacional,bold:false,cor:totalCFOperacional>0?'var(--red)':'var(--muted)',indent:1},
+      {label:'(−) Pró-labore (retirada do dono)',valor:-totalProLabore,bold:false,cor:'var(--red)',indent:1},
+    ] : [
+      {label:'(−) Custos Fixos (cadastrados)',valor:-totalCF,bold:false,cor:totalCF>0?'var(--red)':'var(--muted)',indent:1},
+    ]),
     {label:'= EBITDA',valor:ebitda,bold:true,cor:ebitda>=0?'var(--navy)':'var(--red)',indent:0,sep:true},
     {label:'(−) Outras Despesas',valor:-outrasDespesas,bold:false,cor:outrasDespesas>0?'var(--red)':'var(--muted)',indent:1},
     {label:'(+) Entradas Extras',valor:entradasExtras,bold:false,cor:entradasExtras>0?'var(--green)':'var(--muted)',indent:1},
@@ -302,9 +349,14 @@ function gerarDRE(){
           </div>`).join('')}
       </div>
     </div>
+    <div class="cards-grid cards-grid-3" style="margin-bottom:20px">
+      <div class="stat-card ${roiOperacional==null?'':roiOperacional>=0?'green':'red'}"><div class="label">ROI Operacional</div><div class="value">${roiOperacional!=null?roiOperacional.toFixed(1)+'%':'—'}</div><div class="sub">lucro ÷ custo total do mês</div></div>
+      <div class="stat-card ${alavancagem==null?'':alavancagem>=0?'green':'red'}"><div class="label">Alavancagem Operacional</div><div class="value">${alavancagem!=null?(alavancagem>=0?'+':'')+alavancagem.toFixed(1)+'pp':'—'}</div><div class="sub">receita vs custo, mês a mês</div></div>
+      <div class="stat-card"><div class="label">Pró-labore do Mês</div><div class="value">${fmt(totalProLabore)}</div><div class="sub">${totalProLabore>0?'retirada do dono':'nenhum item marcado em Custos Fixos'}</div></div>
+    </div>
     <div class="detail-panel" style="font-size:12px;color:var(--muted)">
       <strong style="color:var(--text)">ℹ️ Como interpretar</strong><br>
-      <strong>Receita Bruta</strong> = total de vendas registradas no mês. <strong>Custo de MP</strong> = compras de matéria-prima registradas. <strong>Custos Fixos</strong> = valores cadastrados em Precificação → Custos Fixos. <strong>Outras Despesas</strong> = lançamentos de saída no Financeiro. <strong>Entradas Extras</strong> = lançamentos de entrada no Financeiro (exceto vendas).
+      <strong>Receita Bruta</strong> = total de vendas registradas no mês. <strong>Custo de MP</strong> = compras de matéria-prima registradas. <strong>Custos Fixos</strong> = valores cadastrados em Precificação → Custos Fixos. <strong>Outras Despesas</strong> = lançamentos de saída no Financeiro. <strong>Entradas Extras</strong> = lançamentos de entrada no Financeiro (exceto vendas). <strong>Pró-labore</strong> = itens de Custos Fixos marcados como retirada do dono (já incluso no total de Custos Fixos, só exibido separado). <strong>ROI Operacional</strong> = retorno sobre tudo que saiu pra rodar o negócio no mês — não é ROI de capital investido. <strong>Alavancagem Operacional</strong> = a receita está crescendo mais rápido que o custo total? Custos Fixos não variam por mês nesta conta, então o número é aproximado.
     </div>`;
 }
 
@@ -617,8 +669,14 @@ function calcularBalancoPatrimonial(){
   const patrimonioLiquido = ativoTotal - passivoTotal; // sempre apurado (Ativo − Passivo);
   // o sistema não rastreia capital social investido separadamente
 
+  // CAPITAL DE GIRO IMEDIATO = caixa − contas a pagar. Mais conservador que Patrimônio
+  // Líquido/CG Líquido (que já é ativoTotal-passivoTotal): ignora estoque parado e contas a
+  // receber ainda não convertidas em dinheiro — responde "tenho fôlego pra pagar as contas
+  // HOJE?", não "quanto vale a empresa?".
+  const capitalGiroImediato = caixa - contasPagar;
+
   return {data:today(),caixa,contasReceber,estoqueMP,estoqueSemi,estoqueProdutos,estoqueTotal,
-    ativoTotal,contasPagar,passivoTotal,patrimonioLiquido,estoqueProdutosSemFicha};
+    ativoTotal,contasPagar,passivoTotal,patrimonioLiquido,estoqueProdutosSemFicha,capitalGiroImediato};
 }
 
 function gerarBalanco(){
@@ -632,10 +690,11 @@ function gerarBalanco(){
     </div>`;
 
   el.innerHTML = `
-    <div class="cards-grid cards-grid-3" style="margin-bottom:16px">
+    <div class="cards-grid cards-grid-4" style="margin-bottom:16px">
       <div class="stat-card blue"><div class="label">Ativo Total</div><div class="value">${fmt(b.ativoTotal)}</div><div class="sub">caixa + receber + estoque</div></div>
       <div class="stat-card red"><div class="label">Passivo Total</div><div class="value">${fmt(b.passivoTotal)}</div><div class="sub">contas a pagar</div></div>
-      <div class="stat-card ${b.patrimonioLiquido>=0?'green':'red'}"><div class="label">Patrimônio Líquido</div><div class="value">${fmt(Math.abs(b.patrimonioLiquido))}</div><div class="sub">${b.patrimonioLiquido>=0?'ativo − passivo':'⚠️ passivo > ativo'}</div></div>
+      <div class="stat-card ${b.patrimonioLiquido>=0?'green':'red'}"><div class="label">Patrimônio Líquido</div><div class="value">${fmt(Math.abs(b.patrimonioLiquido))}</div><div class="sub">${b.patrimonioLiquido>=0?'= Capital de Giro Líquido':'⚠️ passivo > ativo'}</div></div>
+      <div class="stat-card ${b.capitalGiroImediato>=0?'green':'red'}"><div class="label">Capital de Giro Imediato</div><div class="value">${fmt(Math.abs(b.capitalGiroImediato))}</div><div class="sub">${b.capitalGiroImediato>=0?'caixa − contas a pagar':'⚠️ caixa não cobre contas a pagar'}</div></div>
     </div>
     ${b.estoqueProdutosSemFicha>0?`<div class="alert-banner" style="margin-bottom:16px">⚠️ ${b.estoqueProdutosSemFicha} produto(s)/variante(s) com estoque mas sem ficha técnica — entraram no Ativo com custo R$ 0,00.</div>`:''}
     <div class="table-card" style="margin-bottom:16px">
@@ -656,7 +715,7 @@ function gerarBalanco(){
     </div>
     <div class="detail-panel" style="font-size:12px;color:var(--muted)">
       <strong style="color:var(--text)">ℹ️ Metodologia</strong><br>
-      Estoque valorizado pelo <strong>custo de matéria-prima da ficha técnica</strong>, sem rateio de custo fixo. Patrimônio Líquido é sempre <strong>apurado</strong> (Ativo − Passivo), já que o sistema não rastreia capital social investido separadamente. Reflete a posição de <strong>hoje</strong>; não há dados para reconstruir datas passadas.
+      Estoque valorizado pelo <strong>custo de matéria-prima da ficha técnica</strong>, sem rateio de custo fixo. Patrimônio Líquido é sempre <strong>apurado</strong> (Ativo − Passivo), já que o sistema não rastreia capital social investido separadamente — esse mesmo número é o <strong>Capital de Giro Líquido</strong>. Já o <strong>Capital de Giro Imediato</strong> (caixa − contas a pagar) é mais conservador: ignora estoque parado e contas a receber ainda não convertidas em dinheiro. Reflete a posição de <strong>hoje</strong>; não há dados para reconstruir datas passadas.
     </div>`;
 }
 

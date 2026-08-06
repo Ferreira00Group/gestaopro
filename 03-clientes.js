@@ -137,7 +137,7 @@ function salvarCliente(){
     c.nome=nome;c.tel=tel;c.end=end;c.rotaId=rotaId;
     showToast('Cliente atualizado','green');
   } else {
-    state.clientes.push({id:nextId('clientes'),nome,tel,end,rotaId,ativo:true});
+    state.clientes.push({id:nextId('clientes'),nome,tel,end,rotaId,ativo:true,dataCadastro:today()});
     showToast('Cliente cadastrado','green');
   }
   marcarAlterado();
@@ -195,7 +195,7 @@ function confirmarImportarClientes(){
       if(!r){r={id:nextId('rotas'),nome:it.rota};state.rotas.push(r);}
       rotaId=r.id;
     }
-    state.clientes.push({id:nextId('clientes'),nome:it.nome,tel:it.tel,end:it.end,rotaId});
+    state.clientes.push({id:nextId('clientes'),nome:it.nome,tel:it.tel,end:it.end,rotaId,dataCadastro:today()});
   });
   marcarAlterado();
   showToast(`${itens.length} cliente${itens.length>1?'s':''} importado${itens.length>1?'s':''} ✓`,'green');
