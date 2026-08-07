@@ -358,6 +358,7 @@ function calcTotalVendaGeral(){
   const elFinal=document.getElementById('venda-total-final');
   if(elFinal)elFinal.textContent=fmt(totalFinal);
   atualizarRestantePagamentoMisto();
+  atualizarInfoEntrada();
   return totalFinal;
 }
 function popularCanalVenda(){
@@ -398,6 +399,46 @@ function toggleVendaPagamentoMisto(){
     selectUnico.style.display='block';
     wrapMisto.style.display='none';
   }
+  // "Dividir em mais de uma forma" e o atalho de Entrada não convivem (são dois jeitos
+  // diferentes de fazer a mesma coisa) — zera a entrada ao trocar pra não deixar valor
+  // esquecido influenciando silenciosamente se o usuário voltar atrás.
+  document.getElementById('venda-entrada-valor').value='';
+  toggleVendaEntradaShortcut();
+}
+// ============ ATALHO "ENTRADA" NA VENDA FIADO ============
+// Só aparece com forma=fiado e fora do modo misto. É puramente um atalho de UI: em
+// salvarVenda(), a venda é criada 100% fiado exatamente como sempre foi, e a entrada vira um
+// pagamento registrado logo em seguida (mesmo mecanismo de registrarPagamento em Contas a
+// Receber — ver comentário lá dentro). Optei por isso (em vez de meter a entrada dentro de um
+// pagamentos[] misto na própria venda) porque todo o motor de fiado deste app é indexado por
+// v.forma==='fiado' (getUnidadesFiadoFlat, marcarLotePago, etc.); uma venda com forma:'misto'
+// escaparia inteira desse motor mesmo tendo uma perna fiado dentro do pagamentos[] — ficaria
+// invisível em Contas a Receber, no sino de cobrança e no "marcar como pago" em lote.
+function toggleVendaEntradaShortcut(){
+  const forma=document.getElementById('venda-forma').value;
+  const misto=document.getElementById('venda-pag-misto-check').checked;
+  const wrap=document.getElementById('venda-entrada-wrap');
+  if(wrap) wrap.style.display=(forma==='fiado'&&!misto)?'block':'none';
+}
+// Esconde "Parcelar" quando há entrada: as duas coisas juntas (entrada + parcelamento do
+// restante) não são suportadas nesta versão.
+function atualizarInfoEntrada(){
+  const entrada=parseFloat(document.getElementById('venda-entrada-valor').value)||0;
+  const parcelarRow=document.getElementById('venda-parcelar-check').closest('span');
+  if(parcelarRow) parcelarRow.style.display=entrada>0.009?'none':'flex';
+  if(entrada>0.009 && document.getElementById('venda-parcelar-check').checked){
+    document.getElementById('venda-parcelar-check').checked=false;
+    toggleParcelasVenda();
+  }
+  const el=document.getElementById('venda-entrada-restante-info');
+  if(!el) return;
+  if(entrada<=0){el.style.display='none';return;}
+  const total=calcTotalVendaGeralSemRecursao();
+  const restante=parseFloat((total-entrada).toFixed(2));
+  el.style.display='block';
+  if(restante>0.009){el.textContent=`Fica ${fmt(restante)} fiado`;el.style.color='var(--muted)';}
+  else if(restante>=-0.009){el.textContent='Entrada cobre o total — nada fica fiado';el.style.color='var(--green)';}
+  else{el.textContent=`⚠️ Entrada maior que o total (${fmt(total)})`;el.style.color='var(--red)';}
 }
 function renderPagamentosMistoLista(){
   const el=document.getElementById('venda-pag-misto-lista');
@@ -479,6 +520,9 @@ function abrirNovaVenda(){
   document.getElementById('venda-fiado-wrap').style.display='block';
   document.getElementById('venda-parcelado-edit-note').style.display='none';
   { const parcelarRow=document.getElementById('venda-parcelar-check').closest('span'); if(parcelarRow) parcelarRow.style.display='flex'; }
+  document.getElementById('venda-entrada-valor').value='';
+  document.getElementById('venda-entrada-forma').value='dinheiro';
+  toggleVendaEntradaShortcut();
   vendaPagamentosTemp=[];
   document.getElementById('modal-venda-title').textContent='Nova Venda';
   vendaItensTemp=[criarLinhaItemVenda()];
@@ -501,6 +545,9 @@ function duplicarVenda(id){
   document.getElementById('venda-pag-misto-check').checked=false;
   document.getElementById('venda-pag-misto-wrap').style.display='none';
   document.getElementById('venda-forma').style.display='block';
+  document.getElementById('venda-entrada-valor').value='';
+  document.getElementById('venda-entrada-forma').value='dinheiro';
+  toggleVendaEntradaShortcut();
   vendaPagamentosTemp=[];
   vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco}));
   renderVendaItensLista();
@@ -524,6 +571,8 @@ function clearVendaForm(){
   popularCanalVenda();
   document.getElementById('venda-canal').value='';
   document.getElementById('venda-desconto-extra').value='';
+  document.getElementById('venda-entrada-valor').value='';
+  document.getElementById('venda-entrada-forma').value='dinheiro';
 }
 function toggleParcelasVenda(){
   const checked = document.getElementById('venda-parcelar-check').checked;
@@ -602,6 +651,11 @@ function salvarVenda(){
 
   let forma, pagamentos=null;
   const total0=Math.max(0,itensValidos.reduce((s,it)=>s+(it.qtd*it.preco),0)-descontoExtra);
+  const entradaValor=parseFloat(document.getElementById('venda-entrada-valor').value)||0;
+  if(!pagMisto && document.getElementById('venda-forma').value==='fiado' && entradaValor>total0+0.01){
+    showToast(`Entrada (${fmt(entradaValor)}) maior que o total da venda (${fmt(total0)})`,'red');
+    return;
+  }
   if(pagMisto){
     const pagsValidos=vendaPagamentosTemp.filter(pg=>pg.valor>0);
     const alocado=pagsValidos.reduce((s,pg)=>s+pg.valor,0);
@@ -686,6 +740,17 @@ function salvarVenda(){
     const valorNaoFiado=total-valorFiado;
     const desc=itensFinal.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', ');
     sincronizarFinanceiroVenda(novoVendaId,valorNaoFiado,dataVenda,`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
+    // Atalho "Entrada": registra um pagamento normal (mesmo mecanismo de registrarPagamento em
+    // Contas a Receber), na data da venda. Segue a mesma regra FIFO de todo pagamento deste
+    // sistema — se o cliente já tinha outra dívida em aberto mais antiga, é ela que abate
+    // primeiro (ver getUnidadesFiadoFlat em 00-core.js); não é um abatimento amarrado só a
+    // esta venda específica, porque nenhum pagamento neste app funciona assim.
+    if(forma==='fiado' && entradaValor>0.009 && entradaValor<=total+0.01){
+      const pagId=nextId('pagamentos');
+      const entradaForma=document.getElementById('venda-entrada-forma').value;
+      state.pagamentos.push({id:pagId,clienteId,valor:entradaValor,forma:entradaForma,obs:'Entrada na venda',data:dataVenda});
+      state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Entrada recebida — ${getCliente(clienteId).nome}`,valor:entradaValor,data:dataVenda,pagamentoId:pagId});
+    }
     showToast('Venda registrada! ✓','green');
   }
   marcarAlterado();
@@ -714,6 +779,9 @@ function editarVenda(id){
     document.getElementById('venda-forma').value=v.forma||'fiado';
     vendaPagamentosTemp=[];
   }
+  document.getElementById('venda-entrada-valor').value='';
+  document.getElementById('venda-entrada-forma').value='dinheiro';
+  toggleVendaEntradaShortcut();
   vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco}));
   renderVendaItensLista();
   popularCanalVenda();
@@ -933,7 +1001,7 @@ function renderReceber(){
       ...pags.map(p=>({tipo:'pag',data:p.data,desc:'Pagou ('+p.forma+')',val:p.valor})),
     ].sort((a,b)=>b.data.localeCompare(a.data));
     return`<div class="client-debt-hero">
-      <div><div class="name">👤 ${c.nome} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div><div class="phone">📞 ${c.tel}</div></div>
+      <div><div class="name">👤 ${c.nome} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div><div class="phone">📞 ${c.tel}</div>${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px">📍 ${c.end||''}${c.end&&c.referencia?' · ':''}${c.referencia||''}</div>`:''}</div>
       <div style="text-align:right">
         <div class="amount">${fmt(c.saldo)}</div>
         <div class="amount-label">saldo devedor</div>
@@ -1001,7 +1069,8 @@ function cobrarWhatsapp(clienteId){
   const mapaFiado=getMapaSituacaoFiado();
   const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&situacaoVenda(v,mapaFiado).status!=='pago');
   const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n');
-  const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*\n\nQualquer dúvida estou à disposição! 😊`;
+  const enderecoLinha=(c.end||c.referencia)?`\n📍 ${c.end||''}${c.end&&c.referencia?' — ':''}${c.referencia||''}`:'';
+  const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:${enderecoLinha}\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*\n\nQualquer dúvida estou à disposição! 😊`;
   const tel=c.tel.replace(/\D/g,'');
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
 }

@@ -30,7 +30,7 @@ function renderClientes(){
     const arquivado=!estaAtivo(c);
     return`<tr id="cliente-row-${c.id}" style="${arquivado?'opacity:.6':''}">
       <td data-label="Nº"><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtClienteNum(c.id)}</span></td>
-      <td data-label="Nome"><strong>${c.nome}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}<br><span style="font-size:11px;color:var(--muted)">${c.end||''}</span></td>
+      <td data-label="Nome"><strong>${c.nome}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}<br><span style="font-size:11px;color:var(--muted)">${rota?'🗺️ '+rota.nome:''}</span></td>
       <td data-label="Telefone">${c.tel}</td>
       <td data-label="Rota">${rota?`<span class="badge badge-blue">🗺️ ${rota.nome}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td data-label="Saldo" class="${saldo>0?'debt-amount debt-pulse':'debt-zero'}">${saldo>0?fmt(saldo):'Em dia ✓'}</td>
@@ -62,8 +62,8 @@ const filterClientesDebounced=debounce(filterClientes);
 function filterClienteStatus(v){state.cliente_status_filter=v;renderClientes();}
 function filterClienteRota(v){state.cliente_rota_filter=v;renderClientes();}
 // ============ ROTAS ============
-function populateRotaSelect(selectedId){
-  const sel=document.getElementById('cliente-rota');
+function populateRotaSelect(selectedId,targetId='cliente-rota'){
+  const sel=document.getElementById(targetId);
   if(!sel)return;
   sel.innerHTML='<option value="">Sem rota</option>'+state.rotas.map(r=>`<option value="${r.id}">${r.nome}</option>`).join('');
   sel.value=selectedId||'';
@@ -121,7 +121,7 @@ function excluirRota(id){
   });
 }
 function clearClienteForm(){
-  ['cliente-edit-id','cliente-nome','cliente-tel','cliente-end'].forEach(id=>document.getElementById(id).value='');
+  ['cliente-edit-id','cliente-nome','cliente-tel','cliente-end','cliente-referencia'].forEach(id=>document.getElementById(id).value='');
   populateRotaSelect('');
   document.getElementById('modal-cliente-title').textContent='Novo Cliente';
 }
@@ -130,14 +130,15 @@ function salvarCliente(){
   const nome=document.getElementById('cliente-nome').value.trim();
   const tel=document.getElementById('cliente-tel').value.trim();
   const end=document.getElementById('cliente-end').value.trim();
+  const referencia=document.getElementById('cliente-referencia').value.trim();
   const rotaId=parseInt(document.getElementById('cliente-rota').value)||null;
   if(!nome){showToast('Informe o nome do cliente','red');return;}
   if(eid){
     const c=state.clientes.find(c=>c.id==eid);
-    c.nome=nome;c.tel=tel;c.end=end;c.rotaId=rotaId;
+    c.nome=nome;c.tel=tel;c.end=end;c.referencia=referencia;c.rotaId=rotaId;
     showToast('Cliente atualizado','green');
   } else {
-    state.clientes.push({id:nextId('clientes'),nome,tel,end,rotaId,ativo:true,dataCadastro:today()});
+    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,rotaId,ativo:true,dataCadastro:today()});
     showToast('Cliente cadastrado','green');
   }
   marcarAlterado();
@@ -208,6 +209,7 @@ function editarCliente(id){
   document.getElementById('cliente-nome').value=c.nome;
   document.getElementById('cliente-tel').value=c.tel;
   document.getElementById('cliente-end').value=c.end||'';
+  document.getElementById('cliente-referencia').value=c.referencia||'';
   populateRotaSelect(c.rotaId||'');
   document.getElementById('modal-cliente-title').textContent=`Editar Cliente ${fmtClienteNum(c.id)}`;
   document.getElementById('modal-cliente').classList.add('open');

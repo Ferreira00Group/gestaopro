@@ -41,6 +41,8 @@ function toggleNovoClienteInline(){
     document.getElementById('nci-nome').value='';
     document.getElementById('nci-tel').value='';
     document.getElementById('nci-end').value='';
+    document.getElementById('nci-referencia').value='';
+    populateRotaSelect('','nci-rota');
     setTimeout(function(){document.getElementById('nci-nome').focus();},50);
   }
 }
@@ -52,11 +54,13 @@ function salvarNovoClienteInline(){
   if(!nome){showToast('Informe o nome do cliente','red');document.getElementById('nci-nome').focus();return;}
   var tel=document.getElementById('nci-tel').value.trim();
   var end=document.getElementById('nci-end').value.trim();
+  var referencia=document.getElementById('nci-referencia').value.trim();
+  var rotaId=parseInt(document.getElementById('nci-rota').value)||null;
   // Correção: usava Date.now() como id (inconsistente com o resto do app, que usa nextId — risco
   // de colisão futura com o contador) e salvava o endereço em "endereco", campo que nenhuma
   // outra tela lê (todo o resto do sistema usa "end") — o endereço digitado aqui nunca aparecia.
   var id=nextId('clientes');
-  state.clientes.push({id:id,nome:nome,tel:tel,end:end,ativo:true,dataCadastro:today()});
+  state.clientes.push({id:id,nome:nome,tel:tel,end:end,referencia:referencia,rotaId:rotaId,ativo:true,dataCadastro:today()});
   marcarAlterado();
   salvarDados();
   renderClientes();
