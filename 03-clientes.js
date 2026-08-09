@@ -30,9 +30,9 @@ function renderClientes(){
     const arquivado=!estaAtivo(c);
     return`<tr id="cliente-row-${c.id}" style="${arquivado?'opacity:.6':''}">
       <td data-label="Nº"><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtClienteNum(c.id)}</span></td>
-      <td data-label="Nome"><strong>${c.nome}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}<br><span style="font-size:11px;color:var(--muted)">${rota?'🗺️ '+rota.nome:''}</span></td>
-      <td data-label="Telefone">${c.tel}</td>
-      <td data-label="Rota">${rota?`<span class="badge badge-blue">🗺️ ${rota.nome}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td data-label="Nome"><strong>${escapeHtml(c.nome)}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}<br><span style="font-size:11px;color:var(--muted)">${rota?'🗺️ '+escapeHtml(rota.nome):''}</span></td>
+      <td data-label="Telefone">${escapeHtml(c.tel)}</td>
+      <td data-label="Rota">${rota?`<span class="badge badge-blue">🗺️ ${escapeHtml(rota.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td data-label="Saldo" class="${saldo>0?'debt-amount debt-pulse':'debt-zero'}">${saldo>0?fmt(saldo):'Em dia ✓'}</td>
       <td data-label="Última Compra">${ultimaCompra?fmtDate(ultimaCompra.data):'-'}</td>
       <td data-label="Ticket Médio" style="font-size:13px"><strong>${ticketMedio>0?fmt(ticketMedio):'—'}</strong>${vendasCliente.length>0?`<div style="font-size:11px;color:var(--muted)">${vendasCliente.length} compra(s)</div>`:''}</td>
@@ -80,7 +80,7 @@ function renderListaRotas(){
   el.innerHTML=state.rotas.map(r=>{
     const qtd=state.clientes.filter(c=>c.rotaId===r.id).length;
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <input class="form-control" style="flex:1" value="${r.nome}" onchange="renomearRota(${r.id},this.value)">
+      <input class="form-control" style="flex:1" value="${escapeHtml(r.nome)}" onchange="renomearRota(${r.id},this.value)">
       <span style="font-size:11px;color:var(--muted);white-space:nowrap">${qtd} cliente${qtd!==1?'s':''}</span>
       <button class="icon-btn del" onclick="excluirRota(${r.id})" title="Excluir rota">🗑️</button>
     </div>`;

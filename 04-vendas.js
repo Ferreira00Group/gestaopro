@@ -89,7 +89,7 @@ function renderVendas(){
     <td><input type="checkbox" class="venda-check" data-id="${v.id}" ${sel?'checked':''} onchange="toggleSelecaoVenda(${v.id},this.checked)" style="cursor:pointer;width:15px;height:15px"></td>
     <td data-label="Código" style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">${isOrc?'OR':'VD'}${String(v.id).padStart(4,'0')}</td>
     <td data-label="Data">${fmtDate(v.data)}</td>
-    <td data-label="Cliente"><strong style="cursor:pointer;color:var(--blue)" onclick="gotoCliente(${v.clienteId})">${getCliente(v.clienteId).nome}</strong></td>
+    <td data-label="Cliente"><strong style="cursor:pointer;color:var(--blue)" onclick="gotoCliente(${v.clienteId})">${escapeHtml(getCliente(v.clienteId).nome)}</strong></td>
     <td data-label="Itens" class="td-block" style="max-width:200px;white-space:normal">${itensTxt}</td>
     <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
     <td data-label="Forma" style="font-size:12px">${formaTxt}</td>
@@ -240,7 +240,7 @@ function renderClienteComboResultados(termo){
     el.innerHTML=lista.map(c=>{
       const rota=getRota(c.rotaId);
       const arq=!estaAtivo(c)?' <span style="color:var(--muted);font-weight:400">(arquivado)</span>':'';
-      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${c.nome}${arq}</strong><span>${c.tel||'sem telefone'}${rota?' · 🗺️ '+rota.nome:''}</span></div>`;
+      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${escapeHtml(c.nome)}${arq}</strong><span>${escapeHtml(c.tel||'sem telefone')}${rota?' · 🗺️ '+escapeHtml(rota.nome):''}</span></div>`;
     }).join('');
     if(listaCompleta.length>8) el.innerHTML+=`<div style="padding:8px 14px;font-size:11px;color:var(--muted)">+${listaCompleta.length-8} outro(s) — refine a busca</div>`;
   }
@@ -843,7 +843,7 @@ function abrirRecibo(id){
     </div>
     <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
     <div><strong>Nº:</strong> VD${String(v.id).padStart(4,'0')}</div>
-    <div><strong>Cliente:</strong> ${c.nome}</div>
+    <div><strong>Cliente:</strong> ${escapeHtml(c.nome)}</div>
     <div><strong>Data:</strong> ${fmtDate(v.data)}</div>
     <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
     ${linhas.map(l=>`<div>${l}</div>`).join('')}
@@ -854,7 +854,7 @@ function abrirRecibo(id){
     <div style="margin-top:6px;font-size:12px;color:${sit.status==='pago'?'var(--green)':'var(--red)'}"><strong>Status:</strong> ${statusLabel(sit.status).txt}</div>
     ${parcelasTxt?`<div style="margin-top:6px;font-size:12px">${parcelasTxt}</div>`:''}
     <div style="margin-top:6px;font-size:12px"><strong>Pedido:</strong> ${statusPedidoLabel(v.statusPedido).txt}</div>
-    ${v.obs?`<div style="margin-top:8px;font-size:12px;color:var(--muted)"><strong>Obs:</strong> ${v.obs}</div>`:''}
+    ${v.obs?`<div style="margin-top:8px;font-size:12px;color:var(--muted)"><strong>Obs:</strong> ${escapeHtml(v.obs)}</div>`:''}
   `;
   document.getElementById('modal-recibo').classList.add('open');
 }
@@ -1001,7 +1001,7 @@ function renderReceber(){
       ...pags.map(p=>({tipo:'pag',data:p.data,desc:'Pagou ('+p.forma+')',val:p.valor})),
     ].sort((a,b)=>b.data.localeCompare(a.data));
     return`<div class="client-debt-hero">
-      <div><div class="name">👤 ${c.nome} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div><div class="phone">📞 ${c.tel}</div>${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px">📍 ${c.end||''}${c.end&&c.referencia?' · ':''}${c.referencia||''}</div>`:''}</div>
+      <div><div class="name">👤 ${escapeHtml(c.nome)} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div><div class="phone">📞 ${escapeHtml(c.tel)}</div>${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px">📍 ${escapeHtml(c.end||'')}${c.end&&c.referencia?' · ':''}${escapeHtml(c.referencia||'')}</div>`:''}</div>
       <div style="text-align:right">
         <div class="amount">${fmt(c.saldo)}</div>
         <div class="amount-label">saldo devedor</div>
@@ -1015,7 +1015,7 @@ function renderReceber(){
       <div style="padding:16px 20px 8px"><strong style="font-size:13px;color:var(--muted)">HISTÓRICO</strong></div>
       <div class="table-scroll"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead>
       <tbody>${hist.map(h=>`<tr>
-        <td>${fmtDate(h.data)}</td><td>${h.desc}</td>
+        <td>${fmtDate(h.data)}</td><td>${escapeHtml(h.desc)}</td>
         <td><span class="badge ${h.tipo==='venda'?'badge-blue':'badge-green'}">${h.tipo==='venda'?'Compra':'Pagamento'}</span></td>
         <td class="${h.tipo==='venda'?'debt-amount':'debt-zero'}">${h.tipo==='venda'?'-':'+'} ${fmt(h.val)}</td>
       </tr>`).join('')}</tbody></table></div>
