@@ -174,7 +174,7 @@ function renderDropEstoque(){
   body.innerHTML=baixos.map(b=>`
     <div class="alert-item">
       <div class="alert-item-info">
-        <strong>${b.nome}</strong>
+        <strong>${escapeHtml(b.nome)}</strong>
         <span>Estoque: <b style="color:var(--red)">${b.estoque}${b.unidade?' '+b.unidade:''}</b> · Mínimo: ${b.minimo}${b.unidade?' '+b.unidade:''}</span>
       </div>
       <div class="alert-item-action"><span style="font-size:18px">⚠️</span></div>
@@ -196,7 +196,7 @@ function renderDropCobranca(){
       const label=dias===0?'Hoje':dias===1?'Amanhã':`Em ${dias}d`;
       return `<div class="alert-item">
         <div class="alert-item-info">
-          <strong>${c.nome}</strong>
+          <strong>${escapeHtml(c.nome)}</strong>
           <span><b style="color:#d35400">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
         </div>
         <div class="alert-item-action">
@@ -216,7 +216,7 @@ function renderDropCobranca(){
     html+=devedores.map(c=>`
       <div class="alert-item">
         <div class="alert-item-info">
-          <strong>${c.nome}</strong>
+          <strong>${escapeHtml(c.nome)}</strong>
           <span>Deve: <b style="color:var(--red)">${fmt(c.saldo)}</b></span>
         </div>
         <div class="alert-item-action">
@@ -244,7 +244,7 @@ function renderDropPagar(){
       const label=dias===0?'Hoje':dias===1?'Amanhã':`Em ${dias}d`;
       return `<div class="alert-item">
         <div class="alert-item-info">
-          <strong>${f?f.nome:'?'}</strong>
+          <strong>${f?escapeHtml(f.nome):'?'}</strong>
           <span><b style="color:#d35400">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
         </div>
         <div class="alert-item-action">
@@ -264,7 +264,7 @@ function renderDropPagar(){
     html+=devedores.map(f=>`
       <div class="alert-item">
         <div class="alert-item-info">
-          <strong>${f.nome}</strong>
+          <strong>${escapeHtml(f.nome)}</strong>
           <span>Deve: <b style="color:#8E44AD">${fmt(f.saldo)}</b></span>
         </div>
         <div class="alert-item-action">

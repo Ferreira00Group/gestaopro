@@ -90,7 +90,7 @@ function renderDashboard(){
     tbTopDev.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Nenhum cliente devendo 🎉</td></tr>';
   } else {
     tbTopDev.innerHTML=devedores.slice(0,5).map(c=>`<tr>
-      <td><strong>${c.nome}</strong></td>
+      <td><strong>${escapeHtml(c.nome)}</strong></td>
       <td class="debt-amount">${fmt(c.saldo)}</td>
       <td>${c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})">📲</button>`:'—'}</td>
     </tr>`).join('');
@@ -112,7 +112,7 @@ function renderDashboard(){
     tbTopProd.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Sem vendas este mês</td></tr>';
   } else {
     tbTopProd.innerHTML=topProdutos.map(p=>`<tr>
-      <td><strong>${p.nome}</strong></td>
+      <td><strong>${escapeHtml(p.nome)}</strong></td>
       <td>${p.qtd}</td>
       <td>${fmt(p.valor)}</td>
     </tr>`).join('');
@@ -138,7 +138,7 @@ function renderDashboard(){
       const statusVenc=dias<0?`${Math.abs(dias)}d atraso`:dias===0?'Hoje':dias===1?'Amanhã':`Em ${dias}d`;
       const cor=dias<0?'var(--red)':dias<=1?'#d35400':'var(--yellow)';
       return `<tr>
-        <td><strong>${c.nome}</strong></td>
+        <td><strong>${escapeHtml(c.nome)}</strong></td>
         <td><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(u.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${statusVenc}</span></td>
         <td class="debt-amount">${fmt(saldo>0?saldo:u.valor)}</td>
         <td><button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})">📲</button></td>

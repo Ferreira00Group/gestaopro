@@ -442,6 +442,18 @@ const today=()=>{
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 const fmtDate=(d)=>{if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`};
+// Escapa no PONTO DE INTERPOLAÇÃO em HTML (não na origem/getters compartilhados como
+// getCliente/getProduto/getNomeCompletoItem, que também alimentam texto puro de WhatsApp —
+// escapar ali corromperia a mensagem, ex: "&" virando "&amp;" visível pro cliente).
+function escapeHtml(str){
+  if(str==null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
 function diasParaVencimento(venc,hoje){
   // retorna número de dias: negativo = já venceu, 0 = vence hoje, positivo = vence em X dias
   const v=new Date(venc+'T00:00:00'), h=new Date(hoje+'T00:00:00');
@@ -905,9 +917,9 @@ function buscaGlobal(termo){
     el.style.display='block';return;
   }
   let html='';
-  if(resClientes.length){html+=`<div class="busca-grupo-titulo">👥 Clientes</div>`+resClientes.map(c=>`<div class="busca-item" onclick="irParaCliente(${c.id})"><strong>${c.nome}</strong><span>${c.tel||''}</span></div>`).join('');}
-  if(resProdutos.length){html+=`<div class="busca-grupo-titulo">📦 Produtos</div>`+resProdutos.map(p=>`<div class="busca-item" onclick="goto('estoque');fecharBuscaGlobal()"><strong>${p.nome}</strong><span>${p.sku||''} ${p.categoria?'· '+p.categoria:''}</span></div>`).join('');}
-  if(resVendas.length){html+=`<div class="busca-grupo-titulo">🛒 Vendas</div>`+resVendas.map(v=>`<div class="busca-item" onclick="goto('vendas');fecharBuscaGlobal()"><strong>${getCliente(v.clienteId).nome}</strong><span>${fmtDate(v.data)} · ${fmt(v.total)}</span></div>`).join('');}
+  if(resClientes.length){html+=`<div class="busca-grupo-titulo">👥 Clientes</div>`+resClientes.map(c=>`<div class="busca-item" onclick="irParaCliente(${c.id})"><strong>${escapeHtml(c.nome)}</strong><span>${escapeHtml(c.tel||'')}</span></div>`).join('');}
+  if(resProdutos.length){html+=`<div class="busca-grupo-titulo">📦 Produtos</div>`+resProdutos.map(p=>`<div class="busca-item" onclick="goto('estoque');fecharBuscaGlobal()"><strong>${escapeHtml(p.nome)}</strong><span>${escapeHtml(p.sku||'')} ${p.categoria?'· '+escapeHtml(p.categoria):''}</span></div>`).join('');}
+  if(resVendas.length){html+=`<div class="busca-grupo-titulo">🛒 Vendas</div>`+resVendas.map(v=>`<div class="busca-item" onclick="goto('vendas');fecharBuscaGlobal()"><strong>${escapeHtml(getCliente(v.clienteId).nome)}</strong><span>${fmtDate(v.data)} · ${fmt(v.total)}</span></div>`).join('');}
   el.innerHTML=html;
   el.style.display='block';
 }
