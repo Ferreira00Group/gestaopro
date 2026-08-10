@@ -179,8 +179,8 @@ function prevImportarClientes(){
     <div style="font-size:11px;color:var(--muted);letter-spacing:.5px;margin:10px 0 6px">PRÉ-VISUALIZAÇÃO</div>
     <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
       ${itens.map(it=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12.5px">
-        <strong>${it.nome}</strong>
-        <span style="color:var(--muted)">${it.tel||'sem telefone'}${it.end?' · '+it.end:''}${it.rota?' · 🗺️ '+it.rota:''}</span>
+        <strong>${escapeHtml(it.nome)}</strong>
+        <span style="color:var(--muted)">${escapeHtml(it.tel||'sem telefone')}${it.end?' · '+escapeHtml(it.end):''}${it.rota?' · 🗺️ '+escapeHtml(it.rota):''}</span>
       </div>`).join('')}
     </div>`;
 }

@@ -132,10 +132,10 @@ function processarNotaColada(){
     else if(parecida){badge=`<span style="font-size:10px;background:#EBF5FB;color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-left:6px">⚠️ PARECIDO</span>`;}
     else{badge='<span style="font-size:10px;background:var(--yellow);color:#000;border-radius:4px;padding:1px 5px;margin-left:6px">NOVA MP</span>';}
     html += `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:6px 0">${i.nome}${badge}
+      <td style="padding:6px 0">${escapeHtml(i.nome)}${badge}
         ${parecida?`<div style="margin-top:6px">
           <select class="form-control" id="nota-resolucao-${idx}" style="font-size:12px;padding:5px 8px">
-            <option value="usar_${parecida.mp.id}">🔗 É o mesmo que "${parecida.mp.nome}" (usar existente)</option>
+            <option value="usar_${parecida.mp.id}">🔗 É o mesmo que "${escapeHtml(parecida.mp.nome)}" (usar existente)</option>
             <option value="novo">➕ É diferente, criar matéria-prima nova</option>
           </select>
         </div>`:''}
@@ -158,7 +158,7 @@ function processarNotaColada(){
   if(semParecido.length > 0){
     html += `<div style="background:#FEF9E7;border:1.5px solid var(--yellow);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
       ⚠️ <strong>${semParecido.length} matéria(s)-prima nova(s)</strong> serão criadas automaticamente com unidade <strong>un</strong>. Você pode ajustar depois em Estoque.<br>
-      <span style="color:var(--muted)">${semParecido.map(i=>i.nome).join(', ')}</span>
+      <span style="color:var(--muted)">${semParecido.map(i=>escapeHtml(i.nome)).join(', ')}</span>
     </div>`;
   }
   if(parecidos.length > 0){
