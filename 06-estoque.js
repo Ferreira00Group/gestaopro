@@ -51,12 +51,12 @@ function renderEstoque(){
       const temVariantes=p.variantes&&p.variantes.length>0;
       const estoqueTotal=temVariantes?p.variantes.reduce((s,v)=>s+v.estoque,0):p.estoque;
       const baixo=temVariantes?p.variantes.some(v=>v.estoque<=p.minimo):p.estoque<=p.minimo;
-      const variantesTxt=temVariantes?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${p.variantes.map(v=>`<span class="variante-tag">${v.nome}: ${v.estoque}</span>`).join('')}</div>`:'';
+      const variantesTxt=temVariantes?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${p.variantes.map(v=>`<span class="variante-tag">${escapeHtml(v.nome)}: ${v.estoque}</span>`).join('')}</div>`:'';
       const arquivado=!estaAtivo(p);
       return `<tr style="${arquivado?'opacity:.6':''}">
-      <td data-label="Produto"><strong>${p.nome}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}${variantesTxt}</td>
-      <td data-label="SKU" style="font-size:12px;color:var(--muted)">${p.sku||'-'}</td>
-      <td data-label="Categoria">${p.categoria?`<span class="cat-pill" style="cursor:default">${p.categoria}</span>`:'-'}</td>
+      <td data-label="Produto"><strong>${escapeHtml(p.nome)}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}${variantesTxt}</td>
+      <td data-label="SKU" style="font-size:12px;color:var(--muted)">${escapeHtml(p.sku||'-')}</td>
+      <td data-label="Categoria">${p.categoria?`<span class="cat-pill" style="cursor:default">${escapeHtml(p.categoria)}</span>`:'-'}</td>
       <td data-label="Preço Venda">${fmt(p.preco)}</td>
       <td data-label="Estoque"><strong style="color:${baixo?'var(--red)':'var(--text)'}">${estoqueTotal}</strong></td>
       <td data-label="Mínimo">${p.minimo}</td>
@@ -82,12 +82,12 @@ function renderEstoque(){
       }
       const forn=m.fornecedorId?getFornecedor(m.fornecedorId):null;
       return `<tr>
-      <td data-label="Matéria-Prima"><strong>${m.nome}</strong></td>
+      <td data-label="Matéria-Prima"><strong>${escapeHtml(m.nome)}</strong></td>
       <td data-label="Estoque"><strong style="color:${m.qtd<=m.minimo?'var(--red)':'var(--text)'}">${m.qtd}</strong></td>
       <td data-label="Unidade">${m.unidade}</td>
       <td data-label="Custo/un">${fmt(m.custo)}</td>
       <td data-label="Mínimo">${m.minimo} ${m.unidade}</td>
-      <td data-label="Fornecedor">${forn?`<span style="font-size:12px;cursor:pointer;color:var(--blue)" onclick="gotoFornecedores()">${forn.nome}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td data-label="Fornecedor">${forn?`<span style="font-size:12px;cursor:pointer;color:var(--blue)" onclick="gotoFornecedores()">${escapeHtml(forn.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td data-label="Status"><span class="badge ${m.qtd<=m.minimo?'badge-red badge-alert':'badge-green'}">${m.qtd<=m.minimo?'⚠️ Baixo':'OK'}</span></td>
       <td data-label="Previsão">${prevHtml}</td>
       <td><div class="actions-cell">
@@ -111,10 +111,10 @@ function renderSemiacabados(){
     const baixo=s.estoque<=s.minimo;
     const mps=(s.mps||[]).map(mp=>{
       const m=state.materias.find(x=>x.id===mp.mpId);
-      return m?`<span class="variante-tag">${m.nome}: ${mp.qtd}${m.unidade}/un</span>`:'';
+      return m?`<span class="variante-tag">${escapeHtml(m.nome)}: ${mp.qtd}${m.unidade}/un</span>`:'';
     }).join('');
     return `<tr>
-      <td data-label="Nome"><strong>${s.nome}</strong><div style="font-size:11px;color:var(--muted)">${s.unidade}</div></td>
+      <td data-label="Nome"><strong>${escapeHtml(s.nome)}</strong><div style="font-size:11px;color:var(--muted)">${s.unidade}</div></td>
       <td data-label="Estoque"><strong style="color:${baixo?'var(--red)':'var(--text)'}">${s.estoque}</strong> ${s.unidade}</td>
       <td data-label="Mínimo">${s.minimo} ${s.unidade}</td>
       <td data-label="MP Utilizadas" class="td-block" style="font-size:12px">${mps||'<span style="color:var(--muted)">—</span>'}</td>

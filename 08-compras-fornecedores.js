@@ -641,7 +641,7 @@ function renderPagar(){
     // próximo vencimento em aberto, pra dar destaque visual (mesma ideia do vencBadge em Vendas)
     const proximaPendente=comprasPrazo.map(c=>situacaoCompra(c,mapaPagar)).filter(s=>s.vencimentoPendente).sort((a,b)=>(a.vencimentoPendente||'').localeCompare(b.vencimentoPendente||''))[0];
     return`<div class="client-debt-hero" style="background:linear-gradient(135deg,#8E44AD,#6C3483)">
-      <div><div class="name">🚚 ${f.nome}</div><div class="phone">📞 ${f.tel||'—'}</div></div>
+      <div><div class="name">🚚 ${escapeHtml(f.nome)}</div><div class="phone">📞 ${escapeHtml(f.tel||'—')}</div></div>
       <div style="text-align:right">
         <div class="amount">${fmt(f.saldo)}</div>
         <div class="amount-label">saldo em aberto${proximaPendente?' · '+vencBadge(proximaPendente.vencimentoPendente,hoje):''}</div>
@@ -654,7 +654,7 @@ function renderPagar(){
       <div style="padding:16px 20px 8px"><strong style="font-size:13px;color:var(--muted)">HISTÓRICO</strong></div>
       <div class="table-scroll"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead>
       <tbody>${hist.map(h=>`<tr>
-        <td>${fmtDate(h.data)}</td><td>${h.desc}</td>
+        <td>${fmtDate(h.data)}</td><td>${escapeHtml(h.desc)}</td>
         <td><span class="badge ${h.tipo==='compra'?'badge-blue':'badge-green'}">${h.tipo==='compra'?'Compra':'Pagamento'}</span></td>
         <td class="${h.tipo==='compra'?'debt-amount':'debt-zero'}">${h.tipo==='compra'?'-':'+'} ${fmt(h.val)}</td>
       </tr>`).join('')}</tbody></table></div>
@@ -725,12 +725,12 @@ function renderHistoricoCompras(){
     const mp=getMateria(c.materiaId);
     return`<tr>
       <td data-label="Data">${fmtDate(c.data)}</td>
-      <td data-label="Fornecedor"><strong>${forn?forn.nome:'—'}</strong></td>
-      <td data-label="Matéria-Prima">${mp.nome}</td>
+      <td data-label="Fornecedor"><strong>${forn?escapeHtml(forn.nome):'—'}</strong></td>
+      <td data-label="Matéria-Prima">${escapeHtml(mp.nome)}</td>
       <td data-label="Qtd"><strong>${c.qtd} ${mp.unidade}</strong></td>
       <td data-label="Valor Total"><strong style="color:var(--navy)">${fmt(c.total)}</strong></td>
       <td data-label="Custo/un" style="font-size:12px;color:var(--muted)">${fmt(c.custoUn)}/${mp.unidade}</td>
-      <td data-label="Obs" style="font-size:12px;color:var(--muted)">${c.obs||'—'}</td>
+      <td data-label="Obs" style="font-size:12px;color:var(--muted)">${escapeHtml(c.obs||'—')}</td>
       <td><div class="actions-cell">
         <button class="icon-btn edit" onclick="editarCompra(${c.id})" title="Editar">✏️</button>
         <button class="icon-btn del" onclick="excluirCompra(${c.id})" title="Excluir">🗑️</button>
@@ -751,12 +751,12 @@ function renderFornecedores(){
   if(list.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhum fornecedor encontrado</td></tr>';return;}
   tb.innerHTML=list.map(f=>{
     const materiasVinc=state.materias.filter(m=>m.fornecedorId===f.id);
-    const materiasTxt=materiasVinc.length?materiasVinc.map(m=>`<span class="variante-tag">${m.nome}</span>`).join(''):'<span style="color:var(--muted);font-size:12px">—</span>';
+    const materiasTxt=materiasVinc.length?materiasVinc.map(m=>`<span class="variante-tag">${escapeHtml(m.nome)}</span>`).join(''):'<span style="color:var(--muted);font-size:12px">—</span>';
     return `<tr>
-      <td data-label="Nome"><strong>${f.nome}</strong>${f.obs?`<br><span style="font-size:11px;color:var(--muted)">${f.obs}</span>`:''}</td>
-      <td data-label="Contato">${f.contato||'-'}</td>
-      <td data-label="Telefone">${f.tel||'-'}</td>
-      <td data-label="Fornece" style="font-size:12px">${f.categoria||'-'}</td>
+      <td data-label="Nome"><strong>${escapeHtml(f.nome)}</strong>${f.obs?`<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(f.obs)}</span>`:''}</td>
+      <td data-label="Contato">${escapeHtml(f.contato||'-')}</td>
+      <td data-label="Telefone">${escapeHtml(f.tel||'-')}</td>
+      <td data-label="Fornece" style="font-size:12px">${escapeHtml(f.categoria||'-')}</td>
       <td data-label="Matérias Vinculadas" class="td-block" style="max-width:220px">${materiasTxt}</td>
       <td data-label="Compras" style="white-space:nowrap">${(()=>{const comprasForn=state.compras.filter(c=>c.fornecedorId===f.id);const totalGasto=comprasForn.reduce((s,c)=>s+c.total,0);return comprasForn.length?`<span style="font-size:12px"><strong>${comprasForn.length}</strong> compra(s)<br><span style="color:var(--muted)">${fmt(totalGasto)}</span></span>`:`<span style="color:var(--muted);font-size:12px">—</span>`;})()}</td>
       <td data-label="Status"><span class="badge ${f.status==='ativo'?'badge-green':'badge-red'}">${f.status==='ativo'?'Ativo':'Inativo'}</span></td>
@@ -923,7 +923,7 @@ function editarProduto(id){
   if(p.variantes&&p.variantes.length>0){
     wrap.innerHTML=`<div class="form-group"><label>Preço por Variante</label>${p.variantes.map((v,i)=>`
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <span class="form-control" style="flex:2;background:#F8F9FA;color:var(--muted)">${v.nome}</span>
+        <span class="form-control" style="flex:2;background:#F8F9FA;color:var(--muted)">${escapeHtml(v.nome)}</span>
         <input class="form-control" type="number" step="0.01" min="0" style="flex:1" value="${v.preco||p.preco||''}" placeholder="Preço" id="ep-var-preco-${i}">
       </div>`).join('')}</div>`;
   } else {
