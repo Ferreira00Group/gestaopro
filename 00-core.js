@@ -279,11 +279,30 @@ function migrarDados(parsed) {
   return d;
 }
 
+// Smoke-test de shape, não um validador de schema completo — pega "arquivo errado"/JSON de
+// outra coisa/corrupção ANTES de mexer no state. Campo ausente é OK (merge com DEFAULT_STATE
+// já cobre isso, mesma lógica de todas as migrações); campo PRESENTE com tipo errado é o sinal
+// real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
+const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
+  financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',
+  fichas:'object',nextId:'object'};
+function validarShapeBackup(obj){
+  if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
+  for(const campo in CAMPOS_BACKUP_ESPERADOS){
+    if(!(campo in obj)) continue;
+    const tipo=CAMPOS_BACKUP_ESPERADOS[campo], valor=obj[campo];
+    if(tipo==='array' && !Array.isArray(valor)) return false;
+    if(tipo==='object' && (typeof valor!=='object'||Array.isArray(valor)||valor===null)) return false;
+  }
+  return true;
+}
+
 function carregarDados(){
   try{
     const saved = localStorage.getItem(STORAGE_KEY);
     if(saved){
       const raw = JSON.parse(saved);
+      if(!validarShapeBackup(raw)) throw new Error('Formato de dados salvos inválido');
       const parsed = migrarDados(raw);
       // merge com defaults para garantir novas chaves futuras
       state = { ...DEFAULT_STATE, ...parsed };
@@ -843,6 +862,7 @@ function importarBackup(input){
   reader.onload=(e)=>{
     try{
       const raw=JSON.parse(e.target.result);
+      if(!validarShapeBackup(raw)){showToast('Arquivo não parece ser um backup do GestãoPRO (formato inesperado)','red');return;}
       confirmarAcao('Isso vai substituir todos os dados atuais pelos do backup. Continuar?',()=>{
         const parsed=migrarDados(raw);
         state={...DEFAULT_STATE,...parsed};
