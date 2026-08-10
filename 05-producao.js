@@ -14,10 +14,10 @@ function renderProducao(){
     }
     return `<tr>
     <td data-label="Data">${fmtDate(p.data)}</td>
-    <td data-label="Produto"><strong>${getNomeCompletoItem(p.produtoId,p.varianteId)}</strong></td>
+    <td data-label="Produto"><strong>${escapeHtml(getNomeCompletoItem(p.produtoId,p.varianteId))}</strong></td>
     <td data-label="Qtd">${p.qtd} un.</td>
     <td data-label="Custo"><strong style="color:var(--yellow)">${fmt(p.custo)}</strong></td>
-    <td data-label="MP Consumida" class="td-block" style="font-size:12px;color:var(--muted)">${(p.consumo||[]).map(c=>{const info=nomeUnidadeItemFicha(c.tipo||'mp',c.mpId);return `${info.nome}: ${c.qtdConsumida}${info.unidade}`;}).join(' · ')}</td>
+    <td data-label="MP Consumida" class="td-block" style="font-size:12px;color:var(--muted)">${(p.consumo||[]).map(c=>{const info=nomeUnidadeItemFicha(c.tipo||'mp',c.mpId);return `${escapeHtml(info.nome)}: ${c.qtdConsumida}${info.unidade}`;}).join(' · ')}</td>
     <td data-label="Validade">${validadeHtml}</td>
     <td><button class="icon-btn del" onclick="excluirProducao(${p.id})" title="Excluir">🗑️</button></td>
   </tr>`;}).join('');}
@@ -76,7 +76,7 @@ function mostrarFicha(){
     custo+=qtdNec*custoItemFicha(tipo,f.mpId);
     const ok=disponivel>=qtdNec;
     return`<div class="recipe-item">
-      <span class="mat">${tipo==='semi'?'🧪 ':''}${nome}</span>
+      <span class="mat">${tipo==='semi'?'🧪 ':''}${escapeHtml(nome)}</span>
       <span style="font-weight:600;color:${ok?'var(--green)':'var(--red)'}">${qtdNec.toFixed(2)} ${unidade}</span>
       <span class="unit">${ok?'✓':'⚠️ insuficiente'}</span>
     </div>`;

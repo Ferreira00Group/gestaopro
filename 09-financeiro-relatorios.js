@@ -15,7 +15,7 @@ function getCategoriasDespesaExistentes(){
 function popularCategoriasDespesaLista(){
   const dl=document.getElementById('lanc-categoria-lista');
   if(!dl) return;
-  dl.innerHTML=getCategoriasDespesaExistentes().map(c=>`<option value="${c}">`).join('');
+  dl.innerHTML=getCategoriasDespesaExistentes().map(c=>`<option value="${escapeHtml(c)}">`).join('');
 }
 function toggleCategoriaLanc(){
   const tipo=document.getElementById('lanc-tipo').value;
@@ -47,7 +47,7 @@ function renderFinanceiro(){
     const origemTxt=f.compraId?'🔗 gerado por compra':f.vendaId?'🔗 gerado por venda':f.pagamentoId?'🔗 gerado por pagamento':f.pagamentoFornecedorId?'🔗 gerado por pagamento a fornecedor':null;
     return `<tr>
     <td data-label="Data">${fmtDate(f.data)}</td>
-    <td data-label="Descrição">${f.desc}${(f.tipo==='saida'&&f.categoria)?`<div style="margin-top:2px"><span class="cat-pill" style="cursor:default;font-size:10px">${f.categoria}</span></div>`:''}${origemTxt?`<div style="margin-top:2px;font-size:10.5px;color:var(--muted)">${origemTxt}</div>`:''}</td>
+    <td data-label="Descrição">${escapeHtml(f.desc)}${(f.tipo==='saida'&&f.categoria)?`<div style="margin-top:2px"><span class="cat-pill" style="cursor:default;font-size:10px">${escapeHtml(f.categoria)}</span></div>`:''}${origemTxt?`<div style="margin-top:2px;font-size:10.5px;color:var(--muted)">${origemTxt}</div>`:''}</td>
     <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'📥 Entrada':'📤 Saída'}</span></td>
     <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
     <td><div class="actions-cell">
@@ -183,15 +183,15 @@ function gerarRelatorio(){
   if(vendasPeriodo.length===0) tvs.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Nenhuma venda no período</td></tr>';
   else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>`<tr>
     <td data-label="Data">${fmtDate(v.data)}</td>
-    <td data-label="Cliente">${getCliente(v.clienteId).nome}</td>
-    <td data-label="Itens" class="td-block">${v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ×'+it.qtd).join(', ')}</td>
+    <td data-label="Cliente">${escapeHtml(getCliente(v.clienteId).nome)}</td>
+    <td data-label="Itens" class="td-block">${escapeHtml(v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ×'+it.qtd).join(', '))}</td>
     <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
     <td data-label="Forma">${v.forma==='fiado'?'📝 Fiado':v.forma==='dinheiro'?'💵 Dinheiro':v.forma==='pix'?'⚡ PIX':'💳 Cartão'}</td>
   </tr>`).join('');
   const tff=document.getElementById('rel-fin-table');
   if(finPeriodo.length===0) tff.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">Nenhuma movimentação no período</td></tr>';
   else tff.innerHTML=[...finPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(f=>`<tr>
-    <td data-label="Data">${fmtDate(f.data)}</td><td data-label="Descrição">${f.desc}</td>
+    <td data-label="Data">${fmtDate(f.data)}</td><td data-label="Descrição">${escapeHtml(f.desc)}</td>
     <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'📥 Entrada':'📤 Saída'}</span></td>
     <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
   </tr>`).join('');
@@ -238,12 +238,12 @@ function gerarRelatorio(){
   const ranking=Object.entries(rankMap).sort((a,b)=>b[1].valor-a[1].valor);
   const elRank=document.getElementById('rel-ranking-produtos');
   if(elRank){if(ranking.length===0)elRank.innerHTML='<p style="color:var(--muted);font-size:13px;padding:10px 0">Sem dados no período</p>';
-  else elRank.innerHTML=ranking.map(([nome,d],i)=>{const custo=d.custoTotal;const lucro=d.valor-custo;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${nome}</strong><div style="font-size:11.5px;color:var(--muted)">${d.qtd} un. vendidas · custo ficha ${fmt(custo)}</div></div><div style="text-align:right"><div style="font-weight:700;color:var(--navy)">${fmt(d.valor)}</div><div style="font-size:11px;color:${lucro>=0?'var(--green)':'var(--red)'}">lucro ${fmt(lucro)}</div></div></div>`;}).join('');}
+  else elRank.innerHTML=ranking.map(([nome,d],i)=>{const custo=d.custoTotal;const lucro=d.valor-custo;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${escapeHtml(nome)}</strong><div style="font-size:11.5px;color:var(--muted)">${d.qtd} un. vendidas · custo ficha ${fmt(custo)}</div></div><div style="text-align:right"><div style="font-weight:700;color:var(--navy)">${fmt(d.valor)}</div><div style="font-size:11px;color:${lucro>=0?'var(--green)':'var(--red)'}">lucro ${fmt(lucro)}</div></div></div>`;}).join('');}
   const volMap={};vendasPeriodo.forEach(v=>{volMap[v.clienteId]=(volMap[v.clienteId]||0)+v.total;});
   const volRanking=Object.entries(volMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const elVol=document.getElementById('rel-clientes-volume');
   if(elVol){if(volRanking.length===0)elVol.innerHTML='<p style="color:var(--muted);font-size:13px;padding:10px 0">Sem dados no período</p>';
-  else elVol.innerHTML=volRanking.map(([cid,total],i)=>{const c=getCliente(parseInt(cid));const saldo=getSaldoCliente(parseInt(cid));return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${c.nome}</strong>${saldo>0?`<div style="font-size:11px;color:var(--red)">deve ${fmt(saldo)}</div>`:''}</div><div style="font-weight:700;color:var(--navy)">${fmt(total)}</div></div>`;}).join('');}
+  else elVol.innerHTML=volRanking.map(([cid,total],i)=>{const c=getCliente(parseInt(cid));const saldo=getSaldoCliente(parseInt(cid));return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${escapeHtml(c.nome)}</strong>${saldo>0?`<div style="font-size:11px;color:var(--red)">deve ${fmt(saldo)}</div>`:''}</div><div style="font-weight:700;color:var(--navy)">${fmt(total)}</div></div>`;}).join('');}
 }
 
 // ============ DRE ============
@@ -507,7 +507,7 @@ function gerarInadimplencia(){
     <div class="cards-grid cards-grid-3" style="margin-bottom:20px">
       <div class="stat-card red"><div class="label">Total em Atraso</div><div class="value">${fmt(totalInadimplente)}</div><div class="sub">${lista.length} cliente(s)</div></div>
       <div class="stat-card yellow"><div class="label">Ticket Médio em Aberto</div><div class="value">${fmt(totalInadimplente/lista.length)}</div><div class="sub">por cliente inadimplente</div></div>
-      <div class="stat-card"><div class="label">Maior Atraso</div><div class="value">${Math.max(...lista.map(l=>l.maiorAtraso))} dias</div><div class="sub">${lista.sort((a,b)=>b.maiorAtraso-a.maiorAtraso)[0]?.cliente?.nome||''}</div></div>
+      <div class="stat-card"><div class="label">Maior Atraso</div><div class="value">${Math.max(...lista.map(l=>l.maiorAtraso))} dias</div><div class="sub">${escapeHtml(lista.sort((a,b)=>b.maiorAtraso-a.maiorAtraso)[0]?.cliente?.nome||'')}</div></div>
     </div>
     <div class="table-card">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
@@ -518,8 +518,8 @@ function gerarInadimplencia(){
         <thead><tr><th>Cliente</th><th>Telefone</th><th>Vendas em aberto</th><th>Total Devido</th><th>Maior Atraso</th><th>Último Pagto</th><th>Ação</th></tr></thead>
         <tbody>
           ${lista.map(l=>`<tr>
-            <td><strong>${l.cliente.nome}</strong></td>
-            <td style="font-size:12px">${l.cliente.tel||'—'}</td>
+            <td><strong>${escapeHtml(l.cliente.nome)}</strong></td>
+            <td style="font-size:12px">${escapeHtml(l.cliente.tel||'—')}</td>
             <td style="font-size:12px">${l.vendas.map(v=>`${fmtDate(v.vencimento)} · ${fmt(v.total)} (${v.diasAtraso}d)`).join('<br>')}</td>
             <td><strong style="color:var(--red)">${fmt(l.totalAberto)}</strong></td>
             <td><span class="badge ${l.maiorAtraso>30?'badge-red':'badge-yellow'}">${l.maiorAtraso} dias</span></td>
@@ -623,7 +623,7 @@ function renderHistoricoPreco(){
     }
     return`<tr>
       <td data-label="Data">${fmtDate(c.data)}</td>
-      <td data-label="Fornecedor"><strong>${forn?forn.nome:'—'}</strong></td>
+      <td data-label="Fornecedor"><strong>${forn?escapeHtml(forn.nome):'—'}</strong></td>
       <td data-label="Qtd">${c.qtd} ${mp.unidade}</td>
       <td data-label="Custo/un"><strong style="color:var(--navy)">${fmt(c.custoUn)}/${mp.unidade}</strong></td>
       <td data-label="Total">${fmt(c.total)}</td>

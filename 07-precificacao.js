@@ -131,7 +131,7 @@ function renderPrecificacao(){
   el.innerHTML=`<div class="table-card"><div class="table-scroll"><table>
     <thead><tr>
       <th>Produto</th><th>Custo MP</th><th>Custo Fixo/un</th><th>Custo Total</th>
-      <th>${canal?canal.nome+' (preço)':'Preço Base'}</th>
+      <th>${canal?escapeHtml(canal.nome)+' (preço)':'Preço Base'}</th>
       <th>Margem R$</th><th>Margem %</th><th>Piso Desconto</th>
     </tr></thead>
     <tbody>
@@ -149,7 +149,7 @@ function renderPrecificacao(){
         else if(margemRS<=0) cor='var(--red)';
         else if(margemPct<25) cor='var(--yellow)';
         return `<tr>
-          <td><strong>${l.nome}</strong>${l.sku?`<div style="font-size:11px;color:var(--muted)">${l.sku}</div>`:''}</td>
+          <td><strong>${escapeHtml(l.nome)}</strong>${l.sku?`<div style="font-size:11px;color:var(--muted)">${escapeHtml(l.sku)}</div>`:''}</td>
           <td style="font-size:13px">${semFichaFlag?'<span style="color:var(--muted)">—</span>':fmt(l.custoMP)}</td>
           <td style="font-size:13px;color:var(--blue)">${cfPorUn>0?fmt(cfPorUn):'<span style="color:var(--muted)">—</span>'}</td>
           <td style="font-weight:700">${semFichaFlag?'<span style="color:var(--muted)">—</span>':fmt(l.custoTotal)}</td>
@@ -249,7 +249,7 @@ function renderCustosFixosLista(){
   if(!el) return;
   el.innerHTML=cfTemp.map((c,i)=>`
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;${c.isProLabore?'background:#FEF9E7;border-radius:8px;padding:8px':''}">
-      <input class="form-control" style="flex:1 1 100%" value="${c.nome}" placeholder="Nome do custo (ex: Aluguel)" oninput="cfTemp[${i}].nome=this.value">
+      <input class="form-control" style="flex:1 1 100%" value="${escapeHtml(c.nome)}" placeholder="Nome do custo (ex: Aluguel)" oninput="cfTemp[${i}].nome=this.value">
       <div style="display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0">
         <span style="font-size:14px;color:var(--muted);flex-shrink:0">R$</span>
         <input class="form-control" type="number" step="0.01" min="0" value="${c.valor||''}" placeholder="0,00" style="min-width:90px;font-size:16px"
@@ -300,7 +300,7 @@ function renderCanaisLista(){
   if(!el) return;
   el.innerHTML=canaisTemp.map((c,i)=>`
     <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-      <input class="form-control" style="flex:2" value="${c.nome}" placeholder="Nome do canal (ex: Varejo)" oninput="canaisTemp[${i}].nome=this.value">
+      <input class="form-control" style="flex:2" value="${escapeHtml(c.nome)}" placeholder="Nome do canal (ex: Varejo)" oninput="canaisTemp[${i}].nome=this.value">
       <input class="form-control" type="number" step="0.1" min="-100" max="100" value="${c.desconto||0}" style="flex:1"
         oninput="canaisTemp[${i}].desconto=parseFloat(this.value)||0" placeholder="0">
       <span style="font-size:12px;color:var(--muted);flex-shrink:0;min-width:80px">% desconto</span>

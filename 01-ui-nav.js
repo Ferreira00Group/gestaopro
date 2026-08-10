@@ -280,7 +280,7 @@ function renderDespesasCategoria(){
       porCategoria.forEach(({label,total})=>{
         const pct=totalOutros>0?(total/totalOutros*100).toFixed(1):0;
         detHtml+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-          <span style="font-size:12px;flex:1;color:var(--text)">${label}</span>
+          <span style="font-size:12px;flex:1;color:var(--text)">${escapeHtml(label)}</span>
           <strong style="font-size:12px">${fmt(total)} <span style="color:var(--muted);font-weight:400;font-size:11px">${pct}%</span></strong>
         </div>`;
       });
