@@ -32,8 +32,8 @@ function renderCategoriaPills(){
   const cats=[...new Set(state.produtos.map(p=>p.categoria).filter(Boolean))];
   if(cats.length===0){wrap.style.display='none';return;}
   wrap.style.display='flex';
-  wrap.innerHTML=`<span class="cat-pill ${!state.estoque_categoria_filter?'active':''}" onclick="filterEstoqueCategoria('')">Todas</span>`+
-    cats.map(c=>`<span class="cat-pill ${state.estoque_categoria_filter===c?'active':''}" onclick="filterEstoqueCategoria('${c}')">${c}</span>`).join('');
+  wrap.innerHTML=`<span class="cat-pill ${!state.estoque_categoria_filter?'active':''}" data-cat="">Todas</span>`+
+    cats.map(c=>`<span class="cat-pill ${state.estoque_categoria_filter===c?'active':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</span>`).join('');
 }
 function renderEstoque(){
   const head=document.getElementById('estoque-head');
@@ -394,4 +394,13 @@ function calcularPrevisaoConsumo(materiaId,janelaDias=30){
   const diasRestantes=consumoDiario>0?Math.floor(m.qtd/consumoDiario):null;
   return {consumoDiario,diasRestantes};
 }
+
+// Listener delegado das category pills (ver renderCategoriaPills acima). Usa data-cat em vez
+// de onclick com string interpolada: onclick sofre 2 passadas de parsing (HTML depois JS), e o
+// navegador decodifica entities HTML *antes* de compilar o atributo como JS — escapeHtml()
+// sozinho não fecha esse vetor. data-cat é lido via .dataset, nunca reexecutado como código.
+document.addEventListener('click',(e)=>{
+  const pill=e.target.closest('#estoque-cat-pills .cat-pill');
+  if(pill) filterEstoqueCategoria(pill.dataset.cat);
+});
 
