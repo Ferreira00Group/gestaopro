@@ -265,9 +265,9 @@ function opcoesProdutosSelect(selectedProdutoId,selectedVarianteId){
   return '<option value="">Selecione...</option>'+lista.map(p=>{
     const tagArq=!estaAtivo(p)?' (arquivado)':'';
     if(p.variantes&&p.variantes.length>0){
-      return p.variantes.map(v=>`<option value="${p.id}::${v.id}" data-preco="${p.preco}" ${p.id==selectedProdutoId&&v.id==selectedVarianteId?'selected':''}>${p.nome}${tagArq} — ${v.nome} (est: ${v.estoque})</option>`).join('');
+      return p.variantes.map(v=>`<option value="${p.id}::${v.id}" data-preco="${p.preco}" ${p.id==selectedProdutoId&&v.id==selectedVarianteId?'selected':''}>${escapeHtml(p.nome)}${tagArq} — ${escapeHtml(v.nome)} (est: ${v.estoque})</option>`).join('');
     }
-    return `<option value="${p.id}::" data-preco="${p.preco}" ${p.id==selectedProdutoId&&!selectedVarianteId?'selected':''}>${p.nome}${tagArq} (est: ${p.estoque})</option>`;
+    return `<option value="${p.id}::" data-preco="${p.preco}" ${p.id==selectedProdutoId&&!selectedVarianteId?'selected':''}>${escapeHtml(p.nome)}${tagArq} (est: ${p.estoque})</option>`;
   }).join('');
 }
 function criarLinhaItemVenda(item){
@@ -367,7 +367,7 @@ function popularCanalVenda(){
   const vAtual=sel.value;
   sel.innerHTML='<option value="">Preço cheio (sem canal)</option>'+(state.canais||[]).map(c=>{
     const sinal=c.desconto>0?'−':c.desconto<0?'+':'';
-    return `<option value="${c.id}">${c.nome} (${sinal}${Math.abs(c.desconto||0)}%)</option>`;
+    return `<option value="${c.id}">${escapeHtml(c.nome)} (${sinal}${Math.abs(c.desconto||0)}%)</option>`;
   }).join('');
   sel.value=vAtual;
 }

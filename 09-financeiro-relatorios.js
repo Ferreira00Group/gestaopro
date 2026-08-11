@@ -544,7 +544,7 @@ function renderHistoricoPreco(){
   const mpIds=[...new Set(state.compras.map(c=>c.materiaId))];
   const atualVal=selMP.value;
   selMP.innerHTML='<option value="">Selecione a matéria-prima...</option>'+
-    mpIds.map(mid=>{const m=getMateria(mid);return`<option value="${mid}" ${atualVal==mid?'selected':''}>${m.nome}</option>`;}).join('');
+    mpIds.map(mid=>{const m=getMateria(mid);return`<option value="${mid}" ${atualVal==mid?'selected':''}>${escapeHtml(m.nome)}</option>`;}).join('');
   if(!selMP.value&&atualVal) selMP.value=atualVal;
 
   const mpId=parseInt(selMP.value)||null;

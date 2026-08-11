@@ -111,7 +111,7 @@ function renderPrecificacao(){
   const selCanal=document.getElementById('prec-filtro-canal');
   if(selCanal){
     const vAtual=selCanal.value;
-    selCanal.innerHTML='<option value="">Todos os canais</option>'+(state.canais||[]).map(c=>`<option value="${c.id}" ${vAtual==c.id?'selected':''}>${c.nome}</option>`).join('');
+    selCanal.innerHTML='<option value="">Todos os canais</option>'+(state.canais||[]).map(c=>`<option value="${c.id}" ${vAtual==c.id?'selected':''}>${escapeHtml(c.nome)}</option>`).join('');
   }
   const canalFiltrado=selCanal?parseInt(selCanal.value)||null:null;
   const canal=canalFiltrado?(state.canais||[]).find(c=>c.id===canalFiltrado):null;
@@ -170,10 +170,10 @@ function renderSimulador(){
   if(!sp||!sc) return;
   sp.innerHTML='<option value="">Selecione o produto...</option>'+state.produtos.filter(p=>estaAtivo(p)).flatMap(p=>
     p.variantes&&p.variantes.length>0
-      ?p.variantes.map(v=>`<option value="${p.id}::${v.id}">${getNomeCompletoItem(p.id,v.id)}</option>`)
-      :[`<option value="${p.id}::">${p.nome}</option>`]
+      ?p.variantes.map(v=>`<option value="${p.id}::${v.id}">${escapeHtml(getNomeCompletoItem(p.id,v.id))}</option>`)
+      :[`<option value="${p.id}::">${escapeHtml(p.nome)}</option>`]
   ).join('');
-  sc.innerHTML='<option value="">— Sem canal (preço base) —</option>'+(state.canais||[]).map(c=>`<option value="${c.id}">${c.nome} (${c.desconto>0?'−':''}${Math.abs(c.desconto||0)}%)</option>`).join('');
+  sc.innerHTML='<option value="">— Sem canal (preço base) —</option>'+(state.canais||[]).map(c=>`<option value="${c.id}">${escapeHtml(c.nome)} (${c.desconto>0?'−':''}${Math.abs(c.desconto||0)}%)</option>`).join('');
   simRecalc();
 }
 function simRecalc(){
@@ -387,7 +387,7 @@ function clearMateria(){
 function populaSelectFornecedores(){
   const sel=document.getElementById('mp-fornecedor');
   const atual=sel.value;
-  sel.innerHTML='<option value="">— Nenhum —</option>'+state.fornecedores.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('');
+  sel.innerHTML='<option value="">— Nenhum —</option>'+state.fornecedores.map(f=>`<option value="${f.id}">${escapeHtml(f.nome)}</option>`).join('');
   sel.value=atual;
 }
 

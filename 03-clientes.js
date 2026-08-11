@@ -53,7 +53,7 @@ function populateRotaFiltro(){
   const sel=document.getElementById('clientes-rota-filter');
   if(!sel)return;
   const atual=sel.value;
-  sel.innerHTML='<option value="">Todas as rotas</option>'+state.rotas.map(r=>`<option value="${r.id}">${r.nome}</option>`).join('')+'<option value="none">Sem rota</option>';
+  sel.innerHTML='<option value="">Todas as rotas</option>'+state.rotas.map(r=>`<option value="${r.id}">${escapeHtml(r.nome)}</option>`).join('')+'<option value="none">Sem rota</option>';
   sel.value=atual;
 }
 function filterClienteArquivados(checked){state.cliente_mostrar_arquivados=checked;renderClientes();}
@@ -65,7 +65,7 @@ function filterClienteRota(v){state.cliente_rota_filter=v;renderClientes();}
 function populateRotaSelect(selectedId,targetId='cliente-rota'){
   const sel=document.getElementById(targetId);
   if(!sel)return;
-  sel.innerHTML='<option value="">Sem rota</option>'+state.rotas.map(r=>`<option value="${r.id}">${r.nome}</option>`).join('');
+  sel.innerHTML='<option value="">Sem rota</option>'+state.rotas.map(r=>`<option value="${r.id}">${escapeHtml(r.nome)}</option>`).join('');
   sel.value=selectedId||'';
 }
 function getRota(id){return state.rotas.find(r=>r.id==id)||null}

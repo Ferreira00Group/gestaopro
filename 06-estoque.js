@@ -137,7 +137,7 @@ function renderSemiMPLista(){
   if(!wrap) return;
   if(semiMPsTemp.length===0){wrap.innerHTML='<p style="color:var(--muted);font-size:12px">Nenhuma MP adicionada.</p>';return;}
   wrap.innerHTML=semiMPsTemp.map((mp,i)=>{
-    const opts=materiasOrdenadas().map(m=>`<option value="${m.id}" ${m.id===mp.mpId?'selected':''}>${m.nome} (${m.unidade})</option>`).join('');
+    const opts=materiasOrdenadas().map(m=>`<option value="${m.id}" ${m.id===mp.mpId?'selected':''}>${escapeHtml(m.nome)} (${m.unidade})</option>`).join('');
     return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
       <select class="form-control" style="flex:2" onchange="semiMPsTemp[${i}].mpId=parseInt(this.value)">
         <option value="">Selecione MP...</option>${opts}
@@ -214,13 +214,13 @@ function renderBaixaItens(){
   if(tipo === 'produto'){
     sel.innerHTML = '<option value="">Selecione...</option>' + state.produtos.flatMap(p => {
       if(p.variantes && p.variantes.length > 0){
-        return p.variantes.map(v => `<option value="p:${p.id}:${v.id}">${p.nome} — ${v.nome} (est: ${v.estoque})</option>`);
+        return p.variantes.map(v => `<option value="p:${p.id}:${v.id}">${escapeHtml(p.nome)} — ${escapeHtml(v.nome)} (est: ${v.estoque})</option>`);
       }
-      return [`<option value="p:${p.id}:">${p.nome} (est: ${p.estoque})</option>`];
+      return [`<option value="p:${p.id}:">${escapeHtml(p.nome)} (est: ${p.estoque})</option>`];
     }).join('');
   } else {
     sel.innerHTML = '<option value="">Selecione...</option>' + materiasOrdenadas().map(m =>
-      `<option value="m:${m.id}">${m.nome} — est: ${m.qtd} ${m.unidade}</option>`
+      `<option value="m:${m.id}">${escapeHtml(m.nome)} — est: ${m.qtd} ${m.unidade}</option>`
     ).join('');
   }
   document.getElementById('baixa-estoque-atual').textContent = '';
@@ -320,11 +320,11 @@ function renderEntradaItens(){
   const sel = document.getElementById('entrada-item');
   if(tipo === 'semiacabado'){
     sel.innerHTML = '<option value="">Selecione...</option>' + (state.semiacabados||[]).map(s =>
-      `<option value="s:${s.id}">${s.nome} — est: ${s.estoque} ${s.unidade}</option>`
+      `<option value="s:${s.id}">${escapeHtml(s.nome)} — est: ${s.estoque} ${s.unidade}</option>`
     ).join('');
   } else {
     sel.innerHTML = '<option value="">Selecione...</option>' + materiasOrdenadas().map(m =>
-      `<option value="m:${m.id}">${m.nome} — est: ${m.qtd} ${m.unidade}</option>`
+      `<option value="m:${m.id}">${escapeHtml(m.nome)} — est: ${m.qtd} ${m.unidade}</option>`
     ).join('');
   }
   document.getElementById('entrada-estoque-atual').textContent = '';

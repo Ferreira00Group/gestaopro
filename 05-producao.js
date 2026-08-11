@@ -39,7 +39,7 @@ function excluirProducao(id){
 }
 function populateProducaoModal(){
   const ps=document.getElementById('prod-produto');
-  ps.innerHTML='<option value="">Selecione...</option>'+state.produtos.filter(p=>estaAtivo(p)).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  ps.innerHTML='<option value="">Selecione...</option>'+state.produtos.filter(p=>estaAtivo(p)).map(p=>`<option value="${p.id}">${escapeHtml(p.nome)}</option>`).join('');
   document.getElementById('prod-qtd').value=1;
   document.getElementById('prod-validade').value='';
   document.getElementById('prod-variante-wrap').style.display='none';
@@ -52,7 +52,7 @@ function atualizarVariantesProducao(){
   const sel=document.getElementById('prod-variante');
   const p=getProduto(prodId);
   if(p&&p.variantes&&p.variantes.length>0){
-    sel.innerHTML='<option value="">Padrão (sem variante)</option>'+p.variantes.map(v=>`<option value="${v.id}">${v.nome} (est: ${v.estoque})</option>`).join('');
+    sel.innerHTML='<option value="">Padrão (sem variante)</option>'+p.variantes.map(v=>`<option value="${v.id}">${escapeHtml(v.nome)} (est: ${v.estoque})</option>`).join('');
     wrap.style.display='block';
   } else {
     sel.innerHTML='<option value="">Padrão (sem variante)</option>';
@@ -131,8 +131,8 @@ function registrarProducao(){
 // ============ FICHA TÉCNICA ============
 function populateFichaModal(){
   const ps=document.getElementById('ficha-produto');
-  const optsProdutos=state.produtos.map(p=>`<option value="p_${p.id}">${p.nome}</option>`).join('');
-  const optsSemi=(state.semiacabados||[]).map(s=>`<option value="s_${s.id}">🧪 ${s.nome}</option>`).join('');
+  const optsProdutos=state.produtos.map(p=>`<option value="p_${p.id}">${escapeHtml(p.nome)}</option>`).join('');
+  const optsSemi=(state.semiacabados||[]).map(s=>`<option value="s_${s.id}">🧪 ${escapeHtml(s.nome)}</option>`).join('');
   let html='<option value="">Selecione...</option>';
   html+='<option value="__new_p">➕ Criar novo Produto Acabado</option>';
   html+='<option value="__new_s">➕ Criar novo Semiacabado</option>';
@@ -199,7 +199,7 @@ function atualizarVariantesFicha(){
   const sel=document.getElementById('ficha-variante');
   const p=tipo==='p'?getProduto(id):null;
   if(p&&p.variantes&&p.variantes.length>0){
-    sel.innerHTML='<option value="">Padrão (usa ficha base do produto)</option>'+p.variantes.map(v=>`<option value="${v.id}">${v.nome}</option>`).join('');
+    sel.innerHTML='<option value="">Padrão (usa ficha base do produto)</option>'+p.variantes.map(v=>`<option value="${v.id}">${escapeHtml(v.nome)}</option>`).join('');
     wrap.style.display='block';
   } else {
     sel.innerHTML='<option value="">Padrão (usa ficha base do produto)</option>';
@@ -229,9 +229,9 @@ function carregarFicha(){
 // (exclui o próprio semiacabado que está sendo editado, para evitar auto-referência)
 function opcoesIngredientesFicha(){
   const {tipo,prodId}=fichaKeyAtual();
-  const optsMp=materiasOrdenadas().map(m=>`<option value="mp_${m.id}">${m.nome} (${m.unidade})</option>`).join('');
+  const optsMp=materiasOrdenadas().map(m=>`<option value="mp_${m.id}">${escapeHtml(m.nome)} (${m.unidade})</option>`).join('');
   const semis=(state.semiacabados||[]).filter(s=>!(tipo==='s'&&s.id===prodId));
-  const optsSemi=semis.map(s=>`<option value="semi_${s.id}">🧪 ${s.nome} (${s.unidade})</option>`).join('');
+  const optsSemi=semis.map(s=>`<option value="semi_${s.id}">🧪 ${escapeHtml(s.nome)} (${s.unidade})</option>`).join('');
   let html='';
   html+=optsMp?`<optgroup label="Matérias-Primas">${optsMp}</optgroup>`:'';
   html+=optsSemi?`<optgroup label="Semiacabados">${optsSemi}</optgroup>`:'';
