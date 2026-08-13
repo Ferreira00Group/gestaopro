@@ -442,7 +442,7 @@ function gerarFluxo(){
           ${linhas.filter(l=>l.entradas>0||l.saidas>0).map(l=>`
             <tr>
               <td>${fmtDate(l.dia)}</td>
-              <td style="font-size:12px">${l.eventos.map(e=>`${e.tipo==='entrada'?'📥':'📤'} ${e.descricao}`).join('<br>')}</td>
+              <td style="font-size:12px">${l.eventos.map(e=>`${e.tipo==='entrada'?'📥':'📤'} ${escapeHtml(e.descricao)}`).join('<br>')}</td>
               <td style="color:var(--green);font-weight:600">${l.entradas>0?fmt(l.entradas):'—'}</td>
               <td style="color:var(--red);font-weight:600">${l.saidas>0?fmt(l.saidas):'—'}</td>
               <td style="font-weight:700;color:${l.saldo>=0?'var(--navy)':'var(--red)'}">${fmt(l.saldo)}</td>

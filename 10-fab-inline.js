@@ -95,7 +95,7 @@ function salvarNovoFornecedorInline(){
   salvarDados();
   renderFornecedores();
   // Atualiza os dois selects de fornecedor no modal de compra
-  var opts='<option value="">Selecione...</option>'+state.fornecedores.map(function(f){return'<option value="'+f.id+'">'+f.nome+'</option>';}).join('');
+  var opts='<option value="">Selecione...</option>'+state.fornecedores.map(function(f){return'<option value="'+f.id+'">'+escapeHtml(f.nome)+'</option>';}).join('');
   var s1=document.getElementById('compra-fornecedor');
   var s2=document.getElementById('compra-fornecedor-colar');
   if(s1){s1.innerHTML=opts;s1.value=id;}
@@ -127,7 +127,7 @@ function salvarNovoFornecedorInlineColar(){
   state.fornecedores.push({id:id,nome:nome,tel:tel,contato:contato});
   salvarDados();
   renderFornecedores();
-  var opts='<option value="">Selecione...</option>'+state.fornecedores.map(function(f){return'<option value="'+f.id+'">'+f.nome+'</option>';}).join('');
+  var opts='<option value="">Selecione...</option>'+state.fornecedores.map(function(f){return'<option value="'+f.id+'">'+escapeHtml(f.nome)+'</option>';}).join('');
   var s1=document.getElementById('compra-fornecedor');
   var s2=document.getElementById('compra-fornecedor-colar');
   if(s1){s1.innerHTML=opts;}

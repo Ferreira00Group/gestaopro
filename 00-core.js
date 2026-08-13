@@ -998,8 +998,8 @@ function renderAlertaEstoquePage(){
   const el = document.getElementById('alerta-estoque-banner');
   if(!el) return;
   if(alertas.total===0){el.innerHTML='';return;}
-  const itens = [...alertas.baixoProdutos.map(p=>`📦 ${p.nome}: ${p.estoque} un (mín: ${p.minimo})`),
-    ...alertas.baixoMaterias.map(m=>`🧂 ${m.nome}: ${m.qtd}${m.unidade} (mín: ${m.minimo}${m.unidade})`)];
+  const itens = [...alertas.baixoProdutos.map(p=>`📦 ${escapeHtml(p.nome)}: ${p.estoque} un (mín: ${p.minimo})`),
+    ...alertas.baixoMaterias.map(m=>`🧂 ${escapeHtml(m.nome)}: ${m.qtd}${m.unidade} (mín: ${m.minimo}${m.unidade})`)];
   const aberto = state.alerta_estoque_aberto?true:false;
   el.innerHTML=`<div class="alert-banner danger" style="flex-direction:column;align-items:stretch;gap:0;cursor:pointer;padding:0" onclick="toggleAlertaEstoque()">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px">

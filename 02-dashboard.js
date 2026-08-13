@@ -154,7 +154,7 @@ function renderDashboard(){
   if(items.length===0){hist.innerHTML='<div class="empty-state"><p>Sem movimentações</p></div>';}
   else{hist.innerHTML=items.map(i=>`<div class="history-item">
     <div class="history-dot h-${i.type}"></div>
-    <div class="history-info"><div class="title">${i.title}</div><div class="sub">${fmtDate(i.data)} · ${i.sub}</div></div>
+    <div class="history-info"><div class="title">${escapeHtml(i.title)}</div><div class="sub">${fmtDate(i.data)} · ${escapeHtml(i.sub)}</div></div>
     ${i.val!==null?`<div class="history-amount ${i.val>0?'pos':'neg'}">${i.val>0?'+':''}${fmt(Math.abs(i.val))}</div>`:''}
   </div>`).join('');}
 }

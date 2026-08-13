@@ -335,7 +335,7 @@ function renderDespesasCategoria(){
         <tbody>
           ${[...finSaidas].sort((a,b)=>b.valor-a.valor).map(f=>`<tr>
             <td>${fmtDate(f.data)}</td>
-            <td>${f.desc}</td>
+            <td>${escapeHtml(f.desc)}</td>
             <td style="color:var(--red);font-weight:700">${fmt(f.valor)}</td>
             <td><div style="display:flex;align-items:center;gap:8px">
               <div style="flex:1;height:6px;background:#F0F2F5;border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--red);width:${totalDespesas>0?(f.valor/totalDespesas*100).toFixed(0)+'%':'0%'}"></div></div>

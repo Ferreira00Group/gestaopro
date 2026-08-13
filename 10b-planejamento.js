@@ -149,11 +149,11 @@ function renderPlanejamento(){
     tbM.innerHTML = materiasNecessarias.map(m=>{
       const forn = m.fornecedorId ? getFornecedor(m.fornecedorId) : null;
       return `<tr>
-      <td data-label="Matéria-Prima"><strong>${m.nome}</strong></td>
+      <td data-label="Matéria-Prima"><strong>${escapeHtml(m.nome)}</strong></td>
       <td data-label="Necessário">${m.necessario.toFixed(2)} ${m.unidade}</td>
       <td data-label="Disponível">${m.disponivel.toFixed(2)} ${m.unidade}</td>
       <td data-label="Falta comprar"><strong style="color:${m.faltante>0?'var(--red)':'var(--green)'}">${m.faltante>0?m.faltante.toFixed(2)+' '+m.unidade:'✓ OK'}</strong></td>
-      <td data-label="Fornecedor">${forn?forn.nome:'<span style="color:var(--muted)">—</span>'}</td>
+      <td data-label="Fornecedor">${forn?escapeHtml(forn.nome):'<span style="color:var(--muted)">—</span>'}</td>
       <td data-label="Custo estimado">${m.custoEstimado>0?fmt(m.custoEstimado):'—'}</td>
     </tr>`;
     }).join('');
@@ -171,8 +171,8 @@ function renderPlanejamento(){
       const total = itens.reduce((s,i)=>s+i.custoEstimado,0);
       return `<div class="table-card" style="padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
         <div>
-          <strong>${forn?forn.nome:'Sem fornecedor cadastrado'}</strong>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">${itens.map(i=>i.nome).join(', ')}</div>
+          <strong>${forn?escapeHtml(forn.nome):'Sem fornecedor cadastrado'}</strong>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${itens.map(i=>escapeHtml(i.nome)).join(', ')}</div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
           <span style="font-weight:700;color:var(--green)">${fmt(total)}</span>
