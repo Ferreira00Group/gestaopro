@@ -534,6 +534,23 @@ function toggleFooterMenu(){
   el.style.display=abrindo?'block':'none';
   icon.textContent=abrindo?'▴':'▾';
 }
+// Toque na linha da versão (rodapé do menu) abre a manutenção: verificar atualização / limpar cache.
+// Espera 600ms sem novo toque para não atrapalhar os 5 toques do modo diagnóstico.
+let _toquesVersao=0, _timerVersao=null;
+function tocarVersao(){
+  _toquesVersao++;
+  clearTimeout(_timerVersao);
+  _timerVersao=setTimeout(()=>{
+    const unico=_toquesVersao===1;
+    _toquesVersao=0;
+    if(!unico) return;
+    closeSidebar();
+    abrirAvisoDados('🛠️ Manutenção','Versão '+APP_VERSION+'. Use depois de subir uma versão nova ou se o app parecer desatualizado. Seus dados não são apagados.',
+      [{texto:'🔄 Verificar atualização',classe:'btn-primary',acao:verificarAtualizacao},
+       {texto:'🧹 Limpar cache e recarregar',classe:'btn-outline',acao:forcarLimpezaCache},
+       {texto:'Fechar',classe:'btn-outline'}]);
+  },600);
+}
 function closeSidebar(){
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-backdrop').classList.remove('open');
