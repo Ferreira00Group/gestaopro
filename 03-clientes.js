@@ -1,5 +1,14 @@
 // ============ CLIENTES ============
 function fmtClienteNum(id){return '#'+String(id).padStart(3,'0')}
+// Texto da lista de clientes ATIVOS (#código — nome). Usado também pelo "Copiar códigos p/ IA".
+function listaClientesTexto(){
+  return state.clientes.filter(c=>estaAtivo(c)).map(c=>`${fmtClienteNum(c.id)} — ${c.nome}`).join('\n');
+}
+function copiarListaClientes(){
+  const txt=listaClientesTexto();
+  if(!txt){showToast('Nenhum cliente ativo para copiar','red');return;}
+  copiarTexto('CLIENTES\n'+txt,'📋 '+txt.split('\n').length+' clientes copiados');
+}
 function renderClientes(){
   let list=state.clientes;
   if(!state.cliente_mostrar_arquivados)list=list.filter(c=>estaAtivo(c));

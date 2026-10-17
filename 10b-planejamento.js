@@ -116,6 +116,16 @@ function renderPlanejamento(){
   if(chk) chk.checked = !!state.planejamento_apenas_aprovados;
 
   const orcamentos = getOrcamentosAbertos();
+  const avisoImp = document.getElementById('plan-aviso-importados');
+  if(avisoImp){
+    const nImp = orcamentos.filter(o => o.origem==='importacao' && o.statusOrc!=='aprovado').length;
+    avisoImp.innerHTML = nImp>0
+      ? `<div style="background:#FFF8E1;border:1px solid #F5D77A;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+          <span>📥 <strong>${nImp}</strong> rascunho${nImp!==1?'s':''} importado${nImp!==1?'s':''} (ainda não aprovado${nImp!==1?'s':''}) ${nImp!==1?'estão':'está'} na conta desta tela.</span>
+          <button class="btn btn-outline btn-sm" onclick="togglePlanApenasAprovados(true)">Considerar só aprovados</button>
+        </div>`
+      : '';
+  }
   const produtosFaltantes = calcularNecessidadeProdutos();
   const materiasNecessarias = calcularNecessidadeMaterias(produtosFaltantes);
 

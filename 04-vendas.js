@@ -74,7 +74,8 @@ function renderVendas(){
       : (sit.status==='pago'?'<span style="font-size:12px;color:var(--green)">✓ Pago</span>':'<span style="color:var(--muted);font-size:12px">—</span>'));
     const sel=vendasSelecionadas.has(v.id);
     const orcBadge=v.statusOrc==='aprovado'?{cls:'badge-green',txt:'✅ Aprovado'}:{cls:'badge-yellow',txt:'📝 Rascunho'};
-    const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>`:`<span class="badge ${st.cls}">${st.txt}</span>`;
+    const seloImp=(isOrc&&v.origem==='importacao')?' <span class="badge badge-blue" title="Importado por Importar Pedidos">📥</span>':'';
+    const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>${seloImp}`:`<span class="badge ${st.cls}">${st.txt}</span>`;
     const pedidoCell=isOrc?'<span style="color:var(--muted);font-size:12px">—</span>':`<span class="badge ${sp.cls}">${sp.txt}</span>`;
     const acoes=isOrc
       ? `<button class="icon-btn" onclick="exportarOrcamentoWhatsapp(${v.id})" title="Enviar Proposta">📲</button>
@@ -265,9 +266,9 @@ function opcoesProdutosSelect(selectedProdutoId,selectedVarianteId){
   return '<option value="">Selecione...</option>'+lista.map(p=>{
     const tagArq=!estaAtivo(p)?' (arquivado)':'';
     if(p.variantes&&p.variantes.length>0){
-      return p.variantes.map(v=>`<option value="${p.id}::${v.id}" data-preco="${p.preco}" ${p.id==selectedProdutoId&&v.id==selectedVarianteId?'selected':''}>${escapeHtml(p.nome)}${tagArq} — ${escapeHtml(v.nome)} (est: ${v.estoque})</option>`).join('');
+      return p.variantes.map(v=>`<option value="${p.id}::${v.id}" data-preco="${p.preco}" ${p.id==selectedProdutoId&&v.id==selectedVarianteId?'selected':''}>${fmtProdutoCod(p.id,v.id)} · ${escapeHtml(p.nome)}${tagArq} — ${escapeHtml(v.nome)} (est: ${v.estoque})</option>`).join('');
     }
-    return `<option value="${p.id}::" data-preco="${p.preco}" ${p.id==selectedProdutoId&&!selectedVarianteId?'selected':''}>${escapeHtml(p.nome)}${tagArq} (est: ${p.estoque})</option>`;
+    return `<option value="${p.id}::" data-preco="${p.preco}" ${p.id==selectedProdutoId&&!selectedVarianteId?'selected':''}>${fmtProdutoCod(p.id)} · ${escapeHtml(p.nome)}${tagArq} (est: ${p.estoque})</option>`;
   }).join('');
 }
 function criarLinhaItemVenda(item){
@@ -618,6 +619,35 @@ function sincronizarFinanceiroVenda(vendaId, valorNaoFiado, data, desc){
     state.financeiro=state.financeiro.filter(f=>f.vendaId!==vendaId);
   }
 }
+// ============ ESTOQUE × VENDA/ORÇAMENTO (v5.33.1) ============
+// Regra: ORÇAMENTO nunca baixa estoque; só VENDA baixa. Por isso:
+//  - excluir orçamento NÃO devolve estoque (antes devolvia e inflava o saldo);
+//  - converter orçamento em venda BAIXA o estoque (antes devolvia e baixava de novo = saldo líquido 0);
+//  - editar venda só exige estoque pelo AUMENTO de quantidade (antes nem checava e podia negativar).
+function somarNecessidadeItens(itens){
+  const n={};
+  (itens||[]).forEach(it=>{const k=`${it.produtoId}::${it.varianteId||''}`;n[k]=(n[k]||0)+it.qtd;});
+  return n;
+}
+// Devolve ao estoque o que a venda baixou. Orçamento não baixou nada, então não devolve.
+function devolverEstoqueVenda(v){
+  if(!v||v.tipo==='orcamento') return;
+  (v.itens||[]).forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd));
+}
+// Primeira falta de estoque (ou null). Se está editando uma VENDA, o que ela já baixou não conta de novo.
+function checarEstoqueVenda(itens,vendaAnterior){
+  const nec=somarNecessidadeItens(itens);
+  const ja=(vendaAnterior&&vendaAnterior.tipo!=='orcamento')?somarNecessidadeItens(vendaAnterior.itens):{};
+  for(const k in nec){
+    const extra=nec[k]-(ja[k]||0);
+    if(extra<=0) continue;
+    const [pid,vid]=k.split('::');
+    const produtoId=parseInt(pid), varianteId=vid?parseInt(vid):null;
+    const disp=getEstoqueAtual(produtoId,varianteId);
+    if(disp<extra) return {produtoId,varianteId,disp,extra};
+  }
+  return null;
+}
 function salvarVenda(){
   const eid=document.getElementById('venda-edit-id').value;
   const clienteId=parseInt(document.getElementById('venda-cliente').value);
@@ -671,16 +701,11 @@ function salvarVenda(){
   const temFiado=pagamentos?pagamentos.some(p=>p.forma==='fiado'):(forma==='fiado');
   if(temFiado&&!vencimento){showToast('Informe a data de vencimento para venda fiado','red');document.getElementById('venda-vencimento').focus();return;}
 
-  // valida estoque (somando itens repetidos do mesmo produto/variante)
-  const necessidade={};
-  itensValidos.forEach(it=>{const k=`${it.produtoId}::${it.varianteId||''}`;necessidade[k]=(necessidade[k]||0)+it.qtd;});
-  if(!eid){
-    for(const k in necessidade){
-      const [pid,vid]=k.split('::');
-      const disp=getEstoqueAtual(parseInt(pid),vid?parseInt(vid):null);
-      if(disp<necessidade[k]){showToast(`Estoque insuficiente: ${getNomeCompletoItem(parseInt(pid),vid?parseInt(vid):null)} (disp: ${disp})`,'red');return;}
-    }
-  }
+  // valida estoque (somando itens repetidos do mesmo produto/variante). Na edição de uma venda só
+  // conta o aumento de quantidade; na conversão de orçamento conta tudo (orçamento não baixou nada).
+  const vendaAnterior=eid?state.vendas.find(v=>v.id==eid):null;
+  const falta=checarEstoqueVenda(itensValidos,vendaAnterior);
+  if(falta){showToast(`Estoque insuficiente: ${getNomeCompletoItem(falta.produtoId,falta.varianteId)} (disp: ${falta.disp}, precisa de mais ${falta.extra})`,'red');return;}
   // Grava um "retrato" do custo da ficha técnica no momento da venda (custoFichaUn = custo por
   // unidade agora). Sem isso, o Relatório recalculava a margem de vendas antigas usando a
   // ficha técnica de HOJE — se o preço de uma matéria-prima subisse, a margem de uma venda de
@@ -699,8 +724,9 @@ function salvarVenda(){
   if(eid){
     const v=state.vendas.find(v=>v.id==eid);
     if(v.parcelado && forma!=='fiado'){showToast('Uma venda parcelada precisa continuar como Fiado','red');return;}
-    v.itens.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd));
+    devolverEstoqueVenda(v); // orçamento (conversão) não devolve: nunca baixou
     v.clienteId=clienteId;v.itens=itensFinal;v.total=total;v.forma=forma;v.pagamentos=pagamentos;v.obs=obs;v.data=dataVenda;v.statusPedido=statusPedido;v.canalId=canalId;v.descontoExtra=descontoExtra;v.tipo='venda';delete v.statusOrc;
+    state.pagamentos.forEach(p=>{if(p.entradaVendaId===v.id)p.clienteId=clienteId;}); // entrada acompanha o cliente da venda
     if(v.parcelado && Array.isArray(v.parcelas) && v.parcelas.length>0){
       // mantém as mesmas datas de vencimento já definidas, só redistribui o novo total entre elas
       const n=v.parcelas.length;
@@ -748,7 +774,11 @@ function salvarVenda(){
     if(forma==='fiado' && entradaValor>0.009 && entradaValor<=total+0.01){
       const pagId=nextId('pagamentos');
       const entradaForma=document.getElementById('venda-entrada-forma').value;
-      state.pagamentos.push({id:pagId,clienteId,valor:entradaValor,forma:entradaForma,obs:'Entrada na venda',data:dataVenda});
+      // entradaVendaId liga este pagamento à venda que o gerou: se a venda for excluída, a entrada
+      // sai junto (pagamento + lançamento no Financeiro). Fica no PAGAMENTO — e não como vendaId no
+      // lançamento — porque sincronizarFinanceiroVenda() procura lançamentos por vendaId e confundiria
+      // a entrada com a parte não-fiado da venda.
+      state.pagamentos.push({id:pagId,clienteId,valor:entradaValor,forma:entradaForma,obs:'Entrada na venda',data:dataVenda,entradaVendaId:novoVendaId});
       state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Entrada recebida — ${getCliente(clienteId).nome}`,valor:entradaValor,data:dataVenda,pagamentoId:pagId});
     }
     showToast('Venda registrada! ✓','green');
@@ -805,15 +835,48 @@ function editarVenda(id){
   document.getElementById('modal-venda').classList.add('open');
 }
 function excluirVenda(id){
-  confirmarAcao('Excluir esta venda? O estoque será restaurado.',()=>{
+  const alvo=state.vendas.find(v=>v.id===id);
+  if(!alvo) return;
+  const ehOrc=alvo.tipo==='orcamento';
+  // Entradas registradas junto com esta venda (atalho "Entrada" em venda fiado) fazem parte do
+  // dinheiro dela: saem junto — o pagamento e o lançamento no Financeiro. Antes ficavam órfãs:
+  // o dinheiro continuava no Financeiro e o crédito abatia outra dívida do cliente.
+  const entradas=ehOrc?[]:state.pagamentos.filter(p=>p.entradaVendaId===id);
+  const idsEntradas=entradas.map(p=>p.id);
+  let texto=ehOrc?'Excluir este orçamento? O estoque não é alterado (orçamento não baixa estoque).':'Excluir esta venda? O estoque será restaurado.';
+  if(entradas.length){
+    texto+=` A entrada de ${fmt(entradas.reduce((s,p)=>s+p.valor,0))} registrada junto com esta venda também será removida do Financeiro.`;
+  }
+  if(!ehOrc && alvo.forma==='fiado'){
+    // Pagamentos não ficam presos a uma venda (saldo único por cliente, FIFO). Se, sem esta venda,
+    // o cliente tiver pago mais que o fiado que sobra, o excedente continua valendo e abate a
+    // próxima venda fiado dele — avisa em vez de deixar isso acontecer em silêncio.
+    const fiadoRestante=state.vendas.filter(x=>x.id!==id&&x.clienteId==alvo.clienteId&&x.forma=='fiado').reduce((s,x)=>s+x.total,0);
+    const pago=state.pagamentos.filter(p=>p.clienteId==alvo.clienteId&&!idsEntradas.includes(p.id)).reduce((s,p)=>s+p.valor,0);
+    const excedente=parseFloat((pago-fiadoRestante).toFixed(2));
+    if(excedente>0.009){
+      texto+=` Atenção: sem esta venda, ${getCliente(alvo.clienteId).nome} fica com ${fmt(excedente)} pago a mais do que deve. Esse valor não some: abate a próxima venda fiado dele (ou estorne o pagamento em Financeiro).`;
+    }
+    // Entradas gravadas ANTES do vínculo existir: não dá pra saber com certeza de qual venda são.
+    const antigas=state.pagamentos.filter(p=>p.clienteId==alvo.clienteId&&p.obs==='Entrada na venda'&&!p.entradaVendaId&&p.data===alvo.data);
+    if(antigas.length){
+      texto+=` Há também uma entrada de ${fmt(antigas.reduce((s,p)=>s+p.valor,0))} deste cliente em ${fmtDate(alvo.data)}, registrada antes desta correção, que NÃO sai junto. Se for desta venda, exclua-a depois em Financeiro.`;
+    }
+  }
+  confirmarAcao(texto,()=>{
     const v=state.vendas.find(v=>v.id===id);
-    v.itens.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd));
+    if(!v) return;
+    devolverEstoqueVenda(v);
     state.vendas=state.vendas.filter(v=>v.id!==id);
     // remove também o lançamento de entrada gerado pela parte não-fiado desta venda
     // (sem isso, ficava uma entrada "fantasma" pra sempre no Financeiro/Fluxo de Caixa)
     state.financeiro=state.financeiro.filter(f=>f.vendaId!==id);
+    if(idsEntradas.length){
+      state.pagamentos=state.pagamentos.filter(p=>!idsEntradas.includes(p.id));
+      state.financeiro=state.financeiro.filter(f=>!(f.pagamentoId&&idsEntradas.includes(f.pagamentoId)));
+    }
     marcarAlterado();salvarDados();
-    showToast('Venda excluída','green');renderVendas();renderDashboard();renderEstoque();renderFinanceiro();
+    showToast(ehOrc?'Orçamento excluído':'Venda excluída','green');renderVendas();renderDashboard();renderEstoque();renderFinanceiro();renderClientes();
   });
 }
 
@@ -1075,3 +1138,307 @@ function cobrarWhatsapp(clienteId){
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
+// ============ IMPORTAR PEDIDOS — leitura + preview (v5.33.0, etapa 3) ============
+// Formato de cada linha:  CLIENTE, PRODUTO:QTD; PRODUTO:QTD, OBSERVAÇÃO
+// Nesta etapa NADA é gravado: só interpreta, valida e mostra o preview.
+// A etapa 4 usa impPedSelecionadas() pra criar os orçamentos rascunho.
+let impPed={linhas:[],checks:{},novos:{},novoKeys:[]};
+
+function impPedNormNome(s){return String(s||'').replace(/\s+/g,' ').trim().toLowerCase();}
+
+// Interpreta UMA linha de texto e valida contra o cadastro. Não altera o state.
+function impPedAnalisarLinha(raw,n){
+  const L={n,raw,erros:[],avisos:[],cliente:null,itens:[],obs:'',total:0,sig:'',dupAberto:null,dupLote:false,key:''};
+  let txt=raw.replace(/^\s*(?:[-*•]|\d+[.)])\s+/,'').trim();
+  const campos=txt.includes('\t')?txt.split('\t'):txt.split(',');
+  const campoCli=(campos[0]||'').trim();
+  const campoItens=(campos[1]||'').trim();
+  let obs=campos.slice(2).join(', ').trim();
+  if(obs==='?'){obs='';L.avisos.push('Observação veio como "?" e foi ignorada');}
+  L.obs=obs;
+
+  // ── Cliente ──
+  if(!campoCli||campoCli==='?'){
+    L.erros.push('Faltou o cliente ("?" ou vazio)');
+  } else if(/^#\s*\d+(?:\s*[—–-].*)?$/.test(campoCli)||/^\d+$/.test(campoCli)){
+    const id=parseCodigoCliente(campoCli.replace(/^(#\s*\d+)\s*[—–-].*$/,'$1'));
+    const cli=id?state.clientes.find(c=>c.id===id):null;
+    if(!cli) L.erros.push(`Cliente ${fmtClienteNum(id||0)} não existe`);
+    else if(!estaAtivo(cli)) L.erros.push(`Cliente ${fmtClienteNum(cli.id)} (${cli.nome}) está arquivado`);
+    else L.cliente={tipo:'id',id:cli.id,nome:cli.nome,via:'codigo'};
+  } else {
+    const nk=impPedNormNome(campoCli);
+    const iguais=state.clientes.filter(c=>estaAtivo(c)&&impPedNormNome(c.nome)===nk);
+    if(iguais.length===1){
+      L.cliente={tipo:'id',id:iguais[0].id,nome:iguais[0].nome,via:'nome'};
+    } else if(iguais.length>1){
+      L.erros.push(`Nome ambíguo: "${campoCli}" existe ${iguais.length}x. Use o código: ${iguais.map(c=>fmtClienteNum(c.id)).join(' ou ')}`);
+    } else {
+      const arq=state.clientes.some(c=>!estaAtivo(c)&&impPedNormNome(c.nome)===nk);
+      L.cliente={tipo:'novo',id:null,nome:campoCli.replace(/\s+/g,' ').trim(),key:nk,via:'novo',arquivadoIgual:arq};
+    }
+  }
+
+  // ── Itens ──
+  if(!campoItens||campoItens==='?'){
+    L.erros.push('Faltaram os itens ("?" ou vazio)');
+  } else {
+    const mapa=new Map(); // produto+variante -> item (soma repetidos)
+    campoItens.split(';').map(s=>s.trim()).filter(Boolean).forEach(parte=>{
+      if(parte==='?'||/\?/.test(parte)){L.erros.push(`Item incompleto: "${parte}"`);return;}
+      let cod,qtdTxt;
+      if(parte.includes(':')){const i=parte.indexOf(':');cod=parte.slice(0,i).trim();qtdTxt=parte.slice(i+1).trim();}
+      else{const m=parte.match(/^(\S+)\s*[x×]\s*(\S+)$/i);if(m){cod=m[1];qtdTxt=m[2];}else{cod=parte;qtdTxt='';}}
+      if(!/^\d+$/.test(qtdTxt)||parseInt(qtdTxt,10)<=0||parseInt(qtdTxt,10)>9999){
+        L.erros.push(`Quantidade inválida em "${parte}"`);return;
+      }
+      const qtd=parseInt(qtdTxt,10);
+      const pc=parseCodigoProduto(cod);
+      if(!pc){L.erros.push(`Código de produto inválido: "${cod}"`);return;}
+      const p=state.produtos.find(p=>p.id===pc.produtoId);
+      if(!p){L.erros.push(`Produto ${fmtProdutoCod(pc.produtoId)} não existe`);return;}
+      if(!estaAtivo(p)){L.erros.push(`Produto ${fmtProdutoCod(p.id)} (${p.nome}) está arquivado`);return;}
+      const temVar=p.variantes&&p.variantes.length>0;
+      let vid=null;
+      if(temVar){
+        if(!pc.varianteId){
+          L.erros.push(`${fmtProdutoCod(p.id)} tem variantes: use ${p.variantes.map(v=>`${fmtProdutoCod(p.id,v.id)} (${v.nome})`).join(' ou ')}`);return;
+        }
+        const v=p.variantes.find(v=>v.id===pc.varianteId);
+        if(!v){L.erros.push(`Variante ${fmtProdutoCod(p.id,pc.varianteId)} não existe`);return;}
+        vid=v.id;
+      } else if(pc.varianteId){
+        L.erros.push(`${fmtProdutoCod(p.id)} (${p.nome}) não tem variantes, use ${fmtProdutoCod(p.id)}`);return;
+      }
+      const k=p.id+'::'+(vid||'');
+      if(mapa.has(k)){mapa.get(k).qtd+=qtd;L.avisos.push(`${fmtProdutoCod(p.id,vid)} repetido na linha: quantidades somadas`);}
+      else mapa.set(k,{produtoId:p.id,varianteId:vid,qtd,preco:p.preco});
+    });
+    L.itens=[...mapa.values()].map(it=>{
+      it.total=it.qtd*it.preco;
+      it.cod=fmtProdutoCod(it.produtoId,it.varianteId);
+      it.nome=getNomeCompletoItem(it.produtoId,it.varianteId);
+      it.estoque=getEstoqueAtual(it.produtoId,it.varianteId);
+      if(it.qtd>it.estoque) L.avisos.push(`Estoque menor que a qtd: ${it.nome} (pedido ${it.qtd}, disponível ${it.estoque}). Orçamento não abate estoque`);
+      return it;
+    });
+    L.total=L.itens.reduce((s,it)=>s+it.total,0);
+    if(L.itens.length===0&&L.erros.length===0) L.erros.push('Nenhum item válido na linha');
+  }
+
+  // assinatura (cliente + itens) pra detectar repetição
+  if(L.cliente&&L.itens.length&&L.erros.length===0){
+    const cKey=L.cliente.tipo==='id'?'id:'+L.cliente.id:'novo:'+L.cliente.key;
+    L.sig=cKey+'|'+L.itens.map(it=>`${it.produtoId}-${it.varianteId||0}:${it.qtd}`).sort().join(',');
+    if(L.cliente.tipo==='id'){
+      const igual=state.vendas.find(v=>v.tipo==='orcamento'&&v.clienteId===L.cliente.id&&
+        v.itens.map(it=>`${it.produtoId}-${it.varianteId||0}:${it.qtd}`).sort().join(',')===L.sig.split('|')[1]);
+      if(igual) L.dupAberto=igual;
+    }
+  }
+  return L;
+}
+
+function impPedLerTexto(){
+  const el=document.getElementById('importar-pedidos-texto');
+  const linhas=[];
+  (el?el.value:'').split('\n').forEach((l,i)=>{
+    const t=l.trim();
+    if(!t||t.startsWith('```'))return;
+    linhas.push({raw:t,n:i+1});
+  });
+  return linhas;
+}
+
+// chave estável da linha (texto + nº da ocorrência) pra preservar checkbox ao re-renderizar
+function impPedChaveLinha(raw,contagem){
+  const k=impPedNormNome(raw);
+  contagem[k]=(contagem[k]||0)+1;
+  return k+'#'+contagem[k];
+}
+
+function impPedLinhaImportavel(L){
+  if(L.erros.length) return false;
+  if(L.cliente&&L.cliente.tipo==='novo'){const nv=impPed.novos[L.cliente.key];if(nv&&nv.cadastrar===false)return false;}
+  return true;
+}
+function impPedLinhaMarcada(L){
+  if(!impPedLinhaImportavel(L)) return false;
+  if(Object.prototype.hasOwnProperty.call(impPed.checks,L.key)) return !!impPed.checks[L.key];
+  return !(L.dupAberto||L.dupLote); // repetidas vêm desmarcadas
+}
+// Linhas marcadas e válidas, prontas pra gravar (usado pela etapa 4).
+function impPedSelecionadas(){return impPed.linhas.filter(impPedLinhaMarcada);}
+
+function abrirImportarPedidos(){
+  impPed={linhas:[],checks:{},novos:{},novoKeys:[]};
+  document.getElementById('importar-pedidos-texto').value='';
+  prevImportarPedidos();
+  openModal('modal-importar-pedidos');
+}
+
+function prevImportarPedidos(){
+  const base=impPedLerTexto();
+  const cont={};
+  const sigs={};
+  impPed.linhas=base.map(b=>{
+    const L=impPedAnalisarLinha(b.raw,b.n);
+    L.key=impPedChaveLinha(b.raw,cont);
+    if(L.sig){
+      if(sigs[L.sig]){L.dupLote=true;L.avisos.push(`Repetida no lote (igual à linha ${sigs[L.sig]})`);}
+      else sigs[L.sig]=L.n;
+    }
+    if(L.dupAberto) L.avisos.push(`Já existe orçamento aberto igual (${fmtDate(L.dupAberto.data)}, ${fmt(L.dupAberto.total)})`);
+    return L;
+  });
+  // clientes novos (1 cadastro por nome, mesmo em várias linhas)
+  impPed.novoKeys=[];
+  impPed.linhas.forEach(L=>{
+    if(L.cliente&&L.cliente.tipo==='novo'&&!impPed.novoKeys.includes(L.cliente.key)){
+      impPed.novoKeys.push(L.cliente.key);
+      if(!impPed.novos[L.cliente.key]) impPed.novos[L.cliente.key]={cadastrar:true,tel:'',rotaId:''};
+    }
+  });
+  impPedRenderPreview();
+}
+
+function impPedRenderPreview(){
+  const prev=document.getElementById('importar-pedidos-preview');
+  if(!prev)return;
+  const linhas=impPed.linhas;
+  if(linhas.length===0){prev.innerHTML='';impPedAtualizarResumo();return;}
+  const mostrouNovo={};
+  const rotasOpts=(sel)=>'<option value="">Sem rota</option>'+state.rotas.map(r=>`<option value="${r.id}" ${String(sel)===String(r.id)?'selected':''}>${escapeHtml(r.nome)}</option>`).join('');
+  const cards=linhas.map((L,i)=>{
+    const ok=L.erros.length===0;
+    const nv=(L.cliente&&L.cliente.tipo==='novo')?impPed.novos[L.cliente.key]:null;
+    const naoCadastrar=nv&&nv.cadastrar===false;
+    const importavel=impPedLinhaImportavel(L);
+    const marcada=impPedLinhaMarcada(L);
+    const icone=!ok?'❌':(naoCadastrar?'🚫':((L.dupAberto||L.dupLote)?'⚠️':(L.cliente.tipo==='novo'?'🆕':'✅')));
+    let cliTxt='';
+    if(L.cliente){
+      cliTxt=L.cliente.tipo==='id'
+        ?`<strong>${escapeHtml(L.cliente.nome)}</strong> <span style="color:var(--muted)">${fmtClienteNum(L.cliente.id)}${L.cliente.via==='nome'?' · casado por nome':''}</span>`
+        :`<strong>${escapeHtml(L.cliente.nome)}</strong> <span class="badge badge-blue" style="font-size:10.5px">🆕 novo</span>`;
+    } else cliTxt='<span style="color:var(--muted)">(cliente não identificado)</span>';
+    const itensTxt=L.itens.length?L.itens.map(it=>`${it.qtd}× ${escapeHtml(it.nome)} <span style="color:var(--muted)">(${escapeHtml(it.cod)})</span>`).join('<br>'):'';
+    const erros=L.erros.map(e=>`<div style="color:var(--red);font-size:12px">❌ ${escapeHtml(e)}</div>`).join('');
+    const avisos=L.avisos.map(a=>`<div style="color:#B7791F;font-size:12px">⚠️ ${escapeHtml(a)}</div>`).join('');
+    let novoBox='';
+    if(L.cliente&&L.cliente.tipo==='novo'&&ok){
+      if(!mostrouNovo[L.cliente.key]){
+        mostrouNovo[L.cliente.key]=true;
+        const idx=impPed.novoKeys.indexOf(L.cliente.key);
+        novoBox=`<div style="margin-top:6px;padding:8px;background:#EEF4FF;border-radius:8px;font-size:12px">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer"><input type="checkbox" ${nv.cadastrar?'checked':''} onchange="impPedNovoToggle(${idx},this.checked)" style="width:auto;margin:0"> Cadastrar como novo cliente</label>
+          ${L.cliente.arquivadoIgual?'<div style="color:#B7791F;margin-top:4px">⚠️ Existe um cliente arquivado com esse nome. Reative-o em Clientes se for o mesmo.</div>':''}
+          ${nv.cadastrar?`<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <input class="form-control" placeholder="Telefone (opcional)" value="${escapeHtml(nv.tel)}" oninput="impPedNovoCampo(${idx},'tel',this.value)" style="flex:1;min-width:130px;font-size:12.5px;padding:6px 8px">
+            <select class="form-control" onchange="impPedNovoCampo(${idx},'rotaId',this.value)" style="flex:1;min-width:110px;font-size:12.5px;padding:6px 8px">${rotasOpts(nv.rotaId)}</select>
+          </div>`:''}
+        </div>`;
+      } else {
+        novoBox=`<div style="margin-top:4px;font-size:12px;color:var(--muted)">🆕 Mesmo cliente novo de outra linha: cadastrado uma vez só.</div>`;
+      }
+    }
+    return `<div style="padding:9px 10px;border-bottom:1px solid var(--border);${(!importavel)?'background:#FAFAFA;':''}">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <input type="checkbox" id="impped-chk-${i}" ${marcada?'checked':''} ${importavel?'':'disabled'} onchange="impPedToggle(${i},this.checked)" style="width:auto;margin:4px 0 0 0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:var(--muted)">${icone} Linha ${L.n}</div>
+          <div style="font-size:13px">${cliTxt}</div>
+          ${ok?`<div style="font-size:12.5px;margin-top:3px">${itensTxt}</div>
+          <div style="font-size:12.5px;margin-top:3px"><strong>Total ${fmt(L.total)}</strong>${L.obs?` · 📝 ${escapeHtml(L.obs)}`:''}</div>`
+          :`<div style="font-size:11.5px;color:var(--muted);margin:3px 0;word-break:break-word">${escapeHtml(L.raw)}</div>`}
+          ${erros}${avisos}${novoBox}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  prev.innerHTML=`
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.5px;margin:10px 0 6px">PRÉ-VISUALIZAÇÃO</div>
+    <div id="importar-pedidos-resumo" style="font-size:12.5px;margin-bottom:6px"></div>
+    <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">${cards}</div>
+    <div id="importar-pedidos-aviso-plan" style="font-size:11.5px;color:var(--muted);margin-top:8px"></div>`;
+  impPedAtualizarResumo();
+}
+
+function impPedToggle(i,checked){
+  const L=impPed.linhas[i];if(!L)return;
+  impPed.checks[L.key]=!!checked;
+  impPedAtualizarResumo();
+}
+function impPedNovoToggle(idx,checked){
+  const k=impPed.novoKeys[idx];if(!k||!impPed.novos[k])return;
+  impPed.novos[k].cadastrar=!!checked;
+  impPedRenderPreview();
+}
+function impPedNovoCampo(idx,campo,valor){
+  const k=impPed.novoKeys[idx];if(!k||!impPed.novos[k])return;
+  impPed.novos[k][campo]=valor;
+}
+function impPedAtualizarResumo(){
+  const btn=document.getElementById('importar-pedidos-btn');
+  const linhas=impPed.linhas;
+  const sel=impPedSelecionadas();
+  const erros=linhas.filter(L=>L.erros.length).length;
+  const avisos=linhas.filter(L=>!L.erros.length&&(L.dupAberto||L.dupLote)).length;
+  const total=sel.reduce((s,L)=>s+L.total,0);
+  if(btn){
+    btn.disabled=sel.length===0;
+    btn.textContent=`Importar ${sel.length} pedido${sel.length!==1?'s':''}`;
+  }
+  const r=document.getElementById('importar-pedidos-resumo');
+  if(r) r.innerHTML=`✅ <strong>${sel.length}</strong> selecionado${sel.length!==1?'s':''} (${fmt(total)})${erros?` · ❌ ${erros} com erro`:''}${avisos?` · ⚠️ ${avisos} repetido${avisos!==1?'s':''} (desmarcado${avisos!==1?'s':''})`:''}`;
+  const a=document.getElementById('importar-pedidos-aviso-plan');
+  if(a) a.innerHTML=sel.length?'ℹ️ Rascunhos importados entram na conta do <strong>Planejamento de Materiais</strong> (como qualquer orçamento). Lá, marque <em>"só aprovados"</em> se não quiser contá-los.':'';
+}
+
+// Grava os orçamentos RASCUNHO das linhas marcadas. Não mexe em estoque, financeiro nem fiado:
+// isso só roda quando o orçamento for aprovado e confirmado como venda.
+function confirmarImportarPedidos(){
+  const sel=impPedSelecionadas();
+  if(sel.length===0){showToast('Nenhum pedido selecionado','red');return;}
+  // 1) clientes novos: cadastra UMA vez por nome, mesmo com várias linhas
+  const novosCriados={};   // key -> id
+  let qtdNovos=0;
+  sel.forEach(L=>{
+    if(L.cliente.tipo!=='novo'||novosCriados[L.cliente.key])return;
+    const nv=impPed.novos[L.cliente.key]||{};
+    const id=nextId('clientes');
+    state.clientes.push({id,nome:L.cliente.nome,tel:(nv.tel||'').trim(),end:'',referencia:'',rotaId:nv.rotaId?parseInt(nv.rotaId,10):null,ativo:true,dataCadastro:today()});
+    novosCriados[L.cliente.key]=id;qtdNovos++;
+  });
+  // 2) orçamentos rascunho (preço do cadastro, sem canal; "fiado/pix" fica só na observação)
+  const hoje=today();
+  sel.forEach(L=>{
+    const clienteId=L.cliente.tipo==='id'?L.cliente.id:novosCriados[L.cliente.key];
+    const itens=L.itens.map(it=>({produtoId:it.produtoId,varianteId:it.varianteId||null,qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco}));
+    const total=itens.reduce((s,it)=>s+it.total,0);
+    state.vendas.push({id:nextId('vendas'),clienteId,itens,total,obs:L.obs||'',canalId:null,descontoExtra:0,tipo:'orcamento',statusOrc:'rascunho',status:'em_aberto',data:hoje,origem:'importacao'});
+  });
+  marcarAlterado();
+  showToast(`${sel.length} orçamento${sel.length!==1?'s':''} importado${sel.length!==1?'s':''}${qtdNovos?` · ${qtdNovos} cliente${qtdNovos!==1?'s':''} novo${qtdNovos!==1?'s':''}`:''} ✓`,'green');
+  closeModal('modal-importar-pedidos');
+  impPed={linhas:[],checks:{},novos:{},novoKeys:[]};
+  // abre Vendas já em Orçamentos, sem busca de texto que esconda os importados
+  state.venda_filter='';
+  const bv=document.querySelector('#page-vendas .search-input');if(bv)bv.value='';
+  goto('vendas');
+  filterVendaTipo('orcamento');
+  if(qtdNovos&&typeof renderClientes==='function')renderClientes();
+  renderDashboard();
+}
+// Copia instruções de formato + clientes + produtos de uma vez, pra colar no chat da IA.
+function copiarCodigosParaIA(){
+  const cli=listaClientesTexto(), prod=listaProdutosTexto();
+  const txt='Converta cada pedido em UMA linha, sem explicações:\n'+
+    'CLIENTE, PRODUTO:QTD; PRODUTO:QTD, OBSERVAÇÃO\n'+
+    '- CLIENTE: código com # (ex: #040). Se não estiver na lista, escreva só o nome.\n'+
+    '- PRODUTO: só códigos da lista. Nunca invente.\n'+
+    '- Se faltar informação, escreva "?" em vez de adivinhar.\n\n'+
+    'CLIENTES\n'+(cli||'(nenhum)')+'\n\nPRODUTOS\n'+(prod||'(nenhum)');
+  copiarTexto(txt,'📋 Instruções + códigos copiados. Cole no chat da IA');
+}
+const prevImportarPedidosDebounced=debounce(prevImportarPedidos);

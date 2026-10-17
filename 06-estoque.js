@@ -13,9 +13,31 @@ function showEstoqueTab(tab,btn){
     return;
   }
   showEstoqueSearch(tab!=='semiacabados');
+  const btnCopiar=document.getElementById('btn-copiar-lista-estoque');
+  if(btnCopiar) btnCopiar.style.display=(tab==='produtos')?'':'none';
   const chkArq=document.getElementById('estoque-mostrar-arquivados');
   if(chkArq) chkArq.style.display=(tab==='produtos')?'inline-flex':'none';
   renderEstoque();
+}
+// Texto da lista de produtos ATIVOS, uma linha por item vendável (variante tem linha própria;
+// produto com variantes não ganha linha do pai, pois a venda exige a variante). Usado também
+// pelo "Copiar códigos p/ IA" (Importar Pedidos).
+function listaProdutosTexto(){
+  const linhas=[];
+  state.produtos.filter(p=>estaAtivo(p)).forEach(p=>{
+    const tam=p.tamanho?' '+p.tamanho:'';
+    if(p.variantes&&p.variantes.length>0){
+      p.variantes.forEach(v=>linhas.push(`${fmtProdutoCod(p.id,v.id)} — ${p.nome}${tam} — ${v.nome}`));
+    } else {
+      linhas.push(`${fmtProdutoCod(p.id)} — ${p.nome}${tam}`);
+    }
+  });
+  return linhas.join('\n');
+}
+function copiarListaEstoque(){
+  const txt=listaProdutosTexto();
+  if(!txt){showToast('Nenhum produto ativo para copiar','red');return;}
+  copiarTexto('PRODUTOS\n'+txt,'📋 '+txt.split('\n').length+' itens de estoque copiados');
 }
 function filterEstoque(v){state.estoque_filter=v.toLowerCase();renderEstoque();}
 const filterEstoqueDebounced=debounce(filterEstoque);
@@ -40,10 +62,15 @@ function renderEstoque(){
   const tb=document.getElementById('estoque-table');
   renderCategoriaPills();
   if(state.estoque_tab==='produtos'){
-    head.innerHTML='<tr><th>Produto</th><th>SKU</th><th>Categoria</th><th>Preço Venda</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ações</th></tr>';
+    head.innerHTML='<tr><th>Cód.</th><th>Produto</th><th>SKU</th><th>Categoria</th><th>Preço Venda</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ações</th></tr>';
     let list=state.produtos;
     if(!state.estoque_mostrar_arquivados)list=list.filter(p=>estaAtivo(p));
-    if(state.estoque_filter)list=list.filter(p=>p.nome.toLowerCase().includes(state.estoque_filter)||(p.sku||'').toLowerCase().includes(state.estoque_filter));
+    if(state.estoque_filter){
+      const f=state.estoque_filter, fCod=f.replace(/\s+/g,'');
+      const buscaCod=/^p\d/.test(fCod);
+      list=list.filter(p=>p.nome.toLowerCase().includes(f)||(p.sku||'').toLowerCase().includes(f)||
+        (buscaCod&&(fmtProdutoCod(p.id).toLowerCase().includes(fCod)||(p.variantes||[]).some(v=>fmtProdutoCod(p.id,v.id).toLowerCase().includes(fCod)))));
+    }
     if(state.estoque_categoria_filter)list=list.filter(p=>p.categoria===state.estoque_categoria_filter);
     const chkArq=document.getElementById('estoque-mostrar-arquivados');
     if(chkArq){chkArq.style.display='inline-flex';chkArq.querySelector('input').checked=!!state.estoque_mostrar_arquivados;}
@@ -51,9 +78,10 @@ function renderEstoque(){
       const temVariantes=p.variantes&&p.variantes.length>0;
       const estoqueTotal=temVariantes?p.variantes.reduce((s,v)=>s+v.estoque,0):p.estoque;
       const baixo=temVariantes?p.variantes.some(v=>v.estoque<=p.minimo):p.estoque<=p.minimo;
-      const variantesTxt=temVariantes?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${p.variantes.map(v=>`<span class="variante-tag">${escapeHtml(v.nome)}: ${v.estoque}</span>`).join('')}</div>`:'';
+      const variantesTxt=temVariantes?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${p.variantes.map(v=>`<span class="variante-tag" title="Código ${fmtProdutoCod(p.id,v.id)}">${fmtProdutoCod(p.id,v.id)} · ${escapeHtml(v.nome)}: ${v.estoque}</span>`).join('')}</div>`:'';
       const arquivado=!estaAtivo(p);
       return `<tr style="${arquivado?'opacity:.6':''}">
+      <td data-label="Cód."><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtProdutoCod(p.id)}</span></td>
       <td data-label="Produto"><strong>${escapeHtml(p.nome)}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}${variantesTxt}</td>
       <td data-label="SKU" style="font-size:12px;color:var(--muted)">${escapeHtml(p.sku||'-')}</td>
       <td data-label="Categoria">${p.categoria?`<span class="cat-pill" style="cursor:default">${escapeHtml(p.categoria)}</span>`:'-'}</td>

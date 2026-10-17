@@ -31,10 +31,43 @@ function renderProducao(){
   `;
 }
 function excluirProducao(id){
-  confirmarAcao('Excluir este registro de produção?',()=>{
-    state.producoes=state.producoes.filter(p=>p.id!==id);
+  const pr=state.producoes.find(x=>x.id===id);
+  if(!pr) return;
+  const nome=getNomeCompletoItem(pr.produtoId,pr.varianteId);
+  const atual=getEstoqueAtual(pr.produtoId,pr.varianteId);
+  // Excluir um lote desfaz os dois lados dele: tira do estoque o que ele colocou e devolve ao
+  // estoque o que ele consumiu (antes só apagava a linha, e o estoque ficava inflado). Se parte
+  // do lote já saiu (venda/baixa), tirar tudo deixaria o estoque negativo — então bloqueia.
+  if(atual<pr.qtd){
+    const corpo=`Este lote colocou <strong>${pr.qtd}</strong> un. de <strong>${escapeHtml(nome)}</strong> no estoque, mas hoje só restam <strong>${atual}</strong> — o resto já saiu em venda ou baixa.<br><br>Excluir agora deixaria o estoque negativo. Só dá pra excluir um lote enquanto tudo o que ele produziu ainda está no estoque.`;
+    if(typeof abrirAvisoDados==='function') abrirAvisoDados('Não dá pra excluir este lote',corpo,[{texto:'Entendi',classe:'btn-primary'}]);
+    else showToast(`Não dá pra excluir: este lote colocou ${pr.qtd} un. no estoque, mas só restam ${atual}.`,'red');
+    return;
+  }
+  const consumos=(pr.consumo||[]).map(c=>{
+    const i=nomeUnidadeItemFicha(c.tipo||'mp',c.mpId);
+    return `${i.nome}: ${parseFloat((c.qtdConsumida||0).toFixed(4))}${i.unidade}`;
+  });
+  confirmarAcao(`Excluir este lote? O estoque de "${nome}" diminui em ${pr.qtd} un.`+(consumos.length?` e o que ele consumiu volta ao estoque (${consumos.join(', ')}).`:'.'),()=>{
+    const lote=state.producoes.find(x=>x.id===id);
+    if(!lote) return;
+    ajustarEstoque(lote.produtoId,lote.varianteId,-lote.qtd);
+    (lote.consumo||[]).forEach(c=>{
+      const q=c.qtdConsumida;
+      if(!(q>0)) return;
+      if((c.tipo||'mp')==='semi'){
+        const s=(state.semiacabados||[]).find(x=>x.id===c.mpId);
+        if(s) s.estoque=parseFloat((s.estoque+q).toFixed(4));
+      } else {
+        const mp=state.materias.find(m=>m.id===c.mpId);
+        // volta ao custo médio ATUAL: não altera o CMP (mesma regra da entrada manual de estoque)
+        if(mp) registrarEntradaMateria(mp,q,mp.custo||0);
+      }
+    });
+    state.producoes=state.producoes.filter(x=>x.id!==id);
     marcarAlterado();salvarDados();
-    showToast('Produção excluída','green');renderProducao();
+    showToast('Lote excluído e estoque revertido','green');
+    renderProducao();renderEstoque();renderAlertaEstoquePage();atualizarAlertBells();
   });
 }
 function populateProducaoModal(){

@@ -121,6 +121,20 @@ const DEFAULT_STATE = {
 let state;
 const STORAGE_KEY = 'gestao_pro_v4_limpeza';
 
+// ═══ PROTEÇÃO DE DADOS (v5.33.2) ═══
+// Chaves extras no localStorage, FORA do state (por isso não entram em backup nem no Drive):
+//  - SNAPSHOT_KEY: cópia do estado imediatamente ANTES de uma ação em lote (hoje: importar/
+//    restaurar backup). Uma vaga só, sempre a mais recente. Alimenta "↩️ Restaurar estado anterior".
+//  - RECUPERACAO_KEY_<timestamp>: texto bruto dos dados salvos quando NÃO puderam ser lidos
+//    (JSON quebrado / formato inválido). Antes, o app caía nos dados de exemplo em silêncio e
+//    o autosave de 60s sobrescrevia o original. Guarda as 2 cópias mais recentes.
+const SNAPSHOT_KEY = STORAGE_KEY + '_snapshot_anterior';
+const RECUPERACAO_KEY = STORAGE_KEY + '_recuperacao';
+let _bloquearGravacao = false;   // true só se a cópia de recuperação NÃO coube no aparelho
+let _estadoNaoConfiavel = false; // true quando o state atual são dados de exemplo por falha de leitura
+let _gravacaoTimer = null;
+let _avisouFalhaGravacao = false;
+
 // Versão atual do schema. Incremente sempre que adicionar/remover campos do state.
 // Histórico:
 //   1 → estrutura original sem versionamento
@@ -298,8 +312,9 @@ function validarShapeBackup(obj){
 }
 
 function carregarDados(){
+  let saved = null, carregouOk = false;
   try{
-    const saved = localStorage.getItem(STORAGE_KEY);
+    saved = localStorage.getItem(STORAGE_KEY);
     if(saved){
       const raw = JSON.parse(saved);
       if(!validarShapeBackup(raw)) throw new Error('Formato de dados salvos inválido');
@@ -311,7 +326,7 @@ function carregarDados(){
       if(!state.rotas) state.rotas=[];
       if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
       state._version    = SCHEMA_VERSION;
-      showToast('Dados carregados ✓','green');
+      carregouOk = true;
     } else {
       state = JSON.parse(JSON.stringify(DEFAULT_STATE));
       state._version = SCHEMA_VERSION;
@@ -320,7 +335,13 @@ function carregarDados(){
     console.error('[GestãoPRO] Erro ao carregar dados, usando defaults:', e);
     state = JSON.parse(JSON.stringify(DEFAULT_STATE));
     state._version = SCHEMA_VERSION;
+    // Havia dados salvos e não deu pra ler: guarda uma cópia ANTES de qualquer autosave
+    // sobrescrever o original com os dados de exemplo.
+    if(saved) protegerDadosIlegiveis(saved, e);
   }
+  // fora do try: um erro só do toast não pode mais derrubar dados que foram lidos com sucesso
+  if(carregouOk){ try{ showToast('Dados carregados ✓','green'); }catch(e){} }
+  atualizarLinksProtecao();
 }
 
 // ═══════════════════════════════════════════
@@ -415,6 +436,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ═══════════════════════════════════════════
 
 function salvarDados(){
+  if(_bloquearGravacao){
+    showToast('Gravação pausada: não consegui ler seus dados antigos. Importe um backup ou baixe a cópia.','red');
+    return;
+  }
   try{
     state._version = SCHEMA_VERSION;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -429,23 +454,44 @@ function salvarDados(){
   }
 }
 
-// Auto-save a cada 60s
-setInterval(()=>{
+// ── Gravação silenciosa (sem animação do botão 💾) ──
+// Todo ponto do app que só chama marcarAlterado() (salvar venda, registrar pagamento, produção,
+// baixa/entrada de estoque, excluir compra...) passa a gravar em ~0,4s por aqui. Antes, essas
+// ações só ficavam em memória até o autosave de 60s ou o beforeunload — que no celular é
+// pouco confiável — então fechar o app logo após uma venda podia perdê-la.
+function gravarLocalAgora(){
+  clearTimeout(_gravacaoTimer); _gravacaoTimer = null;
+  if(!state || _bloquearGravacao) return false;
+  const eraAlterado = state.dados_alterados;
   try{
-    if(state){ state._version = SCHEMA_VERSION; }
+    state._version = SCHEMA_VERSION;
+    state.dados_alterados = false;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch(e){}
-},60000);
-
-// Salvar automaticamente ao fechar/sair
-window.addEventListener('beforeunload',()=>{
-  if(state&&state.dados_alterados){
-    try{
-      state._version=SCHEMA_VERSION;
-      localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
-      state.dados_alterados=false;
-    }catch(e){}
+    return true;
+  }catch(e){
+    state.dados_alterados = eraAlterado;
+    console.warn('[GestãoPRO] Falha ao gravar no localStorage:', e);
+    if(!_avisouFalhaGravacao){
+      _avisouFalhaGravacao = true;
+      try{ showToast('⚠️ Não consegui salvar neste aparelho (sem espaço?). Faça um backup agora.','red'); }catch(_){}
+    }
+    return false;
   }
+}
+function agendarGravacao(){
+  if(_gravacaoTimer) return; // já há uma gravação marcada: ela leva tudo que mudar até lá
+  _gravacaoTimer = setTimeout(gravarLocalAgora, 400);
+}
+
+// Auto-save a cada 60s (rede de segurança)
+setInterval(()=>{ if(state) gravarLocalAgora(); },60000);
+
+// Salvar ao sair OU ao ir pra segundo plano (no celular, "pagehide"/"visibilitychange" são
+// os eventos confiáveis; "beforeunload" muitas vezes nem dispara)
+window.addEventListener('beforeunload',()=>{ if(state&&state.dados_alterados) gravarLocalAgora(); });
+window.addEventListener('pagehide',()=>{ if(state&&state.dados_alterados) gravarLocalAgora(); });
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden' && state && state.dados_alterados) gravarLocalAgora();
 });
 
 // ============ HELPERS ============
@@ -810,6 +856,7 @@ function getUltimosMeses(n){
 }
 function marcarAlterado(){
   state.dados_alterados=true;
+  agendarGravacao();
 }
 function nomeArquivoBackup(){
   const now=new Date();
@@ -863,21 +910,183 @@ function importarBackup(input){
     try{
       const raw=JSON.parse(e.target.result);
       if(!validarShapeBackup(raw)){showToast('Arquivo não parece ser um backup do GestãoPRO (formato inesperado)','red');return;}
-      confirmarAcao('Isso vai substituir todos os dados atuais pelos do backup. Continuar?',()=>{
-        const parsed=migrarDados(raw);
-        state={...DEFAULT_STATE,...parsed};
-        state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
-        state._version=SCHEMA_VERSION;
-        salvarDados();
-        showToast('Backup importado ✓','green');
-        const pg=document.querySelector('.page.active');
-        if(pg) render(pg.id.replace('page-',''));
-        renderDashboard();
+      confirmarAcao('Isso vai substituir todos os dados atuais pelos do backup. Antes, o app guarda uma cópia do estado atual — dá pra desfazer em ⚙️ Backup e manutenção → ↩️ Restaurar estado anterior. Continuar?',()=>{
+        const aplicar=(comSnapshot)=>{
+          aplicarDadosNoState(raw);
+          salvarDados();
+          rerenderAposTrocaDeDados();
+          atualizarLinksProtecao();
+          if(comSnapshot){
+            abrirAvisoDados('✅ Backup importado',
+              'Seus dados foram substituídos pelos do backup.<br><br>Se foi engano, abra ⚙️ Backup e manutenção e toque em <strong>↩️ Restaurar estado anterior</strong> para voltar ao que você tinha antes.',
+              [{texto:'Entendi',classe:'btn-primary'}]);
+          } else {
+            showToast('Backup importado ✓','green');
+          }
+        };
+        const r=criarSnapshot('Antes de importar backup');
+        if(r===false){
+          // não coube no aparelho: deixa a pessoa decidir, em vez de seguir sem rede de proteção
+          confirmarAcao('Não consegui guardar uma cópia do estado atual (sem espaço no aparelho). Se continuar, NÃO dá pra desfazer. Se puder, cancele e exporte um backup do estado atual antes. Continuar mesmo assim?',()=>aplicar(false));
+          return;
+        }
+        aplicar(r===true);
       });
     }catch(err){showToast('Arquivo inválido','red');}
   };
   reader.readAsText(file);
   input.value='';
+}
+
+// ============ PROTEÇÃO DE DADOS: snapshot, restauração e recuperação (v5.33.2) ============
+// Troca o state inteiro por dados vindos de fora (backup importado ou snapshot) — mesma
+// lógica que importarBackup já tinha, agora num lugar só.
+function aplicarDadosNoState(raw){
+  const parsed=migrarDados(raw);
+  state={...DEFAULT_STATE,...parsed};
+  state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
+  state._version=SCHEMA_VERSION;
+  _bloquearGravacao=false;
+  _estadoNaoConfiavel=false;
+}
+function rerenderAposTrocaDeDados(){
+  const pg=document.querySelector('.page.active');
+  if(pg) render(pg.id.replace('page-',''));
+  renderDashboard();
+  renderClientes();
+  renderEstoque();
+  atualizarAlertBells();
+}
+
+// Guarda uma cópia do estado ATUAL antes de uma ação em lote. Retorna:
+//  true  → guardou
+//  false → não coube no aparelho (quem chamou decide se segue sem rede)
+//  null  → pulou: o state atual são dados de exemplo por falha de leitura, e gravar isso por
+//          cima de um snapshot bom seria pior do que não gravar
+function criarSnapshot(motivo){
+  if(_estadoNaoConfiavel) return null;
+  try{
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({em:Date.now(), motivo, dados:state}));
+    atualizarLinksProtecao();
+    return true;
+  }catch(e){
+    console.warn('[GestãoPRO] Não foi possível guardar o snapshot:', e);
+    return false;
+  }
+}
+
+function restaurarEstadoAnterior(){
+  let snap=null;
+  try{ snap=JSON.parse(localStorage.getItem(SNAPSHOT_KEY)||'null'); }catch(e){}
+  if(!snap || !snap.dados || !validarShapeBackup(snap.dados)){
+    showToast('Não há um estado anterior guardado','red');
+    return;
+  }
+  const quando=new Date(snap.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  confirmarAcao(`Voltar ao estado de ${quando} (${snap.motivo||'ação em lote'})? Tudo o que você lançou depois disso será desfeito. Antes, o app guarda o estado de agora — dá pra voltar atrás de novo.`,()=>{
+    if(!_estadoNaoConfiavel){
+      // troca: o estado de agora vira o novo "anterior" (assim a restauração também é desfazível)
+      try{
+        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({em:Date.now(), motivo:'Antes de restaurar o estado anterior', dados:state}));
+      }catch(e){
+        showToast('Sem espaço para guardar o estado atual. Exporte um backup antes de restaurar.','red');
+        return;
+      }
+    }
+    aplicarDadosNoState(snap.dados);
+    salvarDados();
+    rerenderAposTrocaDeDados();
+    atualizarLinksProtecao();
+    showToast('Estado anterior restaurado ✓','green');
+  });
+}
+
+// Dados salvos ilegíveis: guarda o texto bruto numa chave à parte (mantém as 2 últimas).
+function protegerDadosIlegiveis(bruto, erro){
+  _estadoNaoConfiavel=true;
+  let guardou=false;
+  try{
+    const agora=Date.now();
+    localStorage.setItem(RECUPERACAO_KEY+'_'+agora, JSON.stringify({em:agora, erro:String((erro&&erro.message)||erro), bruto}));
+    guardou=true;
+    const todas=Object.keys(localStorage).filter(k=>k.startsWith(RECUPERACAO_KEY+'_')).sort();
+    todas.slice(0,Math.max(0,todas.length-2)).forEach(k=>localStorage.removeItem(k));
+  }catch(e){
+    console.warn('[GestãoPRO] Não foi possível guardar a cópia de recuperação:', e);
+  }
+  // Se a cópia não coube, o original ainda é a única cópia: NÃO deixa o autosave sobrescrever.
+  if(!guardou) _bloquearGravacao=true;
+  setTimeout(()=>abrirAvisoDadosIlegiveis(guardou),600);
+}
+function abrirAvisoDadosIlegiveis(guardou){
+  if(guardou){
+    abrirAvisoDados('⚠️ Dados não puderam ser lidos',
+      'Não consegui ler os dados salvos neste aparelho, então o app abriu com <strong>dados de exemplo</strong>. Guardei uma cópia do que estava salvo para nada se perder.<br><br><strong>Não comece a lançar vendas ainda.</strong> Se você tem um backup, use ⚙️ Backup e manutenção → Importar backup. Se não, baixe a cópia abaixo e guarde o arquivo.',
+      [{texto:'⬇ Baixar cópia',classe:'btn-primary',acao:baixarCopiaRecuperacao},{texto:'Fechar',classe:'btn-outline'}]);
+  } else {
+    abrirAvisoDados('⚠️ Dados não puderam ser lidos',
+      'Não consegui ler os dados salvos neste aparelho e <strong>também não consegui guardar uma cópia</strong> (sem espaço). Por segurança, a gravação está <strong>pausada</strong> para não apagar o que ainda está salvo.<br><br>Importe um backup em ⚙️ Backup e manutenção → Importar backup. Ou escolha "Continuar com dados vazios" (isso descarta os dados ilegíveis).',
+      [{texto:'Continuar com dados vazios',classe:'btn-outline',acao:()=>{_bloquearGravacao=false;}},{texto:'Fechar (manter pausado)',classe:'btn-primary'}]);
+  }
+}
+function baixarCopiaRecuperacao(){
+  try{
+    const chaves=Object.keys(localStorage).filter(k=>k.startsWith(RECUPERACAO_KEY+'_')).sort();
+    if(!chaves.length){showToast('Nenhuma cópia de recuperação guardada','red');return;}
+    const rec=JSON.parse(localStorage.getItem(chaves[chaves.length-1]));
+    baixarTextoComoArquivo(rec.bruto,`gestaopro-dados-recuperados-${today()}.json`);
+  }catch(e){
+    showToast('Não consegui baixar a cópia de recuperação','red');
+  }
+}
+function baixarTextoComoArquivo(texto,nome){
+  const blob=new Blob([texto],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=nome;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// Mostra/esconde os links do rodapé conforme existe snapshot / cópia de recuperação.
+function atualizarLinksProtecao(){
+  const a=document.getElementById('link-restaurar-anterior');
+  const b=document.getElementById('link-baixar-recuperacao');
+  let temSnap=false, temRec=false;
+  try{
+    const chaves=Object.keys(localStorage);
+    temSnap=chaves.includes(SNAPSHOT_KEY);
+    temRec=chaves.some(k=>k.startsWith(RECUPERACAO_KEY+'_'));
+  }catch(e){}
+  if(a) a.style.display=temSnap?'':'none';
+  if(b) b.style.display=temRec?'':'none';
+}
+
+// Aviso genérico (diferente do toast, que some em 3s): só fecha quando a pessoa toca num botão.
+function abrirAvisoDados(titulo,corpoHtml,botoes){
+  let modal=document.getElementById('modal-aviso-dados');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='modal-aviso-dados';
+    modal.className='modal-overlay';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div class="modal" style="max-width:380px">
+    <div class="modal-header"><h3>${titulo}</h3></div>
+    <div class="modal-body">
+      <div style="font-size:14px;line-height:1.5;margin-bottom:18px">${corpoHtml}</div>
+      <div class="aviso-dados-botoes" style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"></div>
+    </div>
+  </div>`;
+  const wrap=modal.querySelector('.aviso-dados-botoes');
+  (botoes||[]).forEach(b=>{
+    const el=document.createElement('button');
+    el.className='btn '+(b.classe||'btn-outline');
+    el.textContent=b.texto;
+    el.onclick=()=>{ modal.classList.remove('open'); if(b.acao) b.acao(); };
+    wrap.appendChild(el);
+  });
+  modal.classList.add('open');
 }
 
 // ============ LEMBRETE AUTOMÁTICO DE BACKUP ============
@@ -922,6 +1131,53 @@ function lembreteBackupDepois(){
   closeModal('modal-lembrete-backup');
 }
 
+// ============ CÓDIGOS DE PRODUTO / CLIENTE + COPIAR (v5.33.0) ============
+// O código é CALCULADO a partir do id (nada é gravado), então produto antigo já ganha código.
+//   Produto sem variante: P001   |   Variante: P002-1
+//   Cliente: #040 (fmtClienteNum, em 03-clientes.js)
+function fmtProdutoCod(pid,vid){
+  return 'P'+String(pid).padStart(3,'0')+(vid?'-'+vid:'');
+}
+// "p002-1" -> {produtoId:2, varianteId:1} | "P003" -> {produtoId:3, varianteId:null} | inválido -> null
+function parseCodigoProduto(txt){
+  const m=String(txt==null?'':txt).trim().match(/^p\s*0*(\d+)(?:\s*-\s*(\d+))?$/i);
+  if(!m) return null;
+  const produtoId=parseInt(m[1],10);
+  if(!(produtoId>0)) return null;
+  const varianteId=m[2]!=null?parseInt(m[2],10):null;
+  if(m[2]!=null && !(varianteId>0)) return null;
+  return {produtoId, varianteId};
+}
+// "#040" ou "40" -> 40 | inválido -> null
+function parseCodigoCliente(txt){
+  const m=String(txt==null?'':txt).trim().match(/^#?\s*0*(\d+)$/);
+  if(!m) return null;
+  const n=parseInt(m[1],10);
+  return n>0?n:null;
+}
+// Copia texto pro clipboard, com fallback (execCommand) pra navegador antigo / contexto sem HTTPS.
+function copiarTexto(txt,msgOk){
+  const ok=()=>{if(typeof showToast==='function')showToast(msgOk||'📋 Copiado!','green');};
+  const falha=()=>{if(typeof showToast==='function')showToast('Não foi possível copiar','red');};
+  const fallback=()=>{
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=txt;ta.setAttribute('readonly','');
+      ta.style.cssText='position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+      const r=document.execCommand('copy');
+      document.body.removeChild(ta);
+      r?ok():falha();
+      return r;
+    }catch(e){falha();return false;}
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext){
+    return navigator.clipboard.writeText(txt).then(ok).catch(fallback);
+  }
+  return fallback();
+}
+
 // ============ BUSCA GLOBAL ============
 function buscaGlobal(termo){
   state.global_search=termo;
@@ -929,8 +1185,10 @@ function buscaGlobal(termo){
   if(!el)return;
   if(!termo||termo.trim().length<2){el.style.display='none';el.innerHTML='';return;}
   const t=termo.toLowerCase();
-  const resClientes=state.clientes.filter(c=>c.nome.toLowerCase().includes(t)||(c.tel||'').includes(t)).slice(0,4);
-  const resProdutos=state.produtos.filter(p=>p.nome.toLowerCase().includes(t)||(p.sku||'').toLowerCase().includes(t)||(p.categoria||'').toLowerCase().includes(t)).slice(0,4);
+  const resClientes=state.clientes.filter(c=>c.nome.toLowerCase().includes(t)||(c.tel||'').includes(t)||(typeof fmtClienteNum==='function'&&fmtClienteNum(c.id).toLowerCase().includes(t))).slice(0,4);
+  const tCod=t.replace(/\s+/g,'');
+  const resProdutos=state.produtos.filter(p=>p.nome.toLowerCase().includes(t)||(p.sku||'').toLowerCase().includes(t)||(p.categoria||'').toLowerCase().includes(t)||
+    (/^p\d/.test(tCod)&&(fmtProdutoCod(p.id).toLowerCase().includes(tCod)||(p.variantes||[]).some(v=>fmtProdutoCod(p.id,v.id).toLowerCase().includes(tCod))))).slice(0,4);
   const resVendas=state.vendas.filter(v=>getCliente(v.clienteId).nome.toLowerCase().includes(t)).slice(0,4);
   if(resClientes.length===0&&resProdutos.length===0&&resVendas.length===0){
     el.innerHTML='<div style="padding:14px;color:var(--muted);font-size:13px">Nenhum resultado encontrado</div>';
@@ -938,7 +1196,7 @@ function buscaGlobal(termo){
   }
   let html='';
   if(resClientes.length){html+=`<div class="busca-grupo-titulo">👥 Clientes</div>`+resClientes.map(c=>`<div class="busca-item" onclick="irParaCliente(${c.id})"><strong>${escapeHtml(c.nome)}</strong><span>${escapeHtml(c.tel||'')}</span></div>`).join('');}
-  if(resProdutos.length){html+=`<div class="busca-grupo-titulo">📦 Produtos</div>`+resProdutos.map(p=>`<div class="busca-item" onclick="goto('estoque');fecharBuscaGlobal()"><strong>${escapeHtml(p.nome)}</strong><span>${escapeHtml(p.sku||'')} ${p.categoria?'· '+escapeHtml(p.categoria):''}</span></div>`).join('');}
+  if(resProdutos.length){html+=`<div class="busca-grupo-titulo">📦 Produtos</div>`+resProdutos.map(p=>`<div class="busca-item" onclick="goto('estoque');fecharBuscaGlobal()"><strong>${escapeHtml(p.nome)}</strong><span><b style="font-family:monospace">${fmtProdutoCod(p.id)}</b> ${escapeHtml(p.sku||'')} ${p.categoria?'· '+escapeHtml(p.categoria):''}</span></div>`).join('');}
   if(resVendas.length){html+=`<div class="busca-grupo-titulo">🛒 Vendas</div>`+resVendas.map(v=>`<div class="busca-item" onclick="goto('vendas');fecharBuscaGlobal()"><strong>${escapeHtml(getCliente(v.clienteId).nome)}</strong><span>${fmtDate(v.data)} · ${fmt(v.total)}</span></div>`).join('');}
   el.innerHTML=html;
   el.style.display='block';
