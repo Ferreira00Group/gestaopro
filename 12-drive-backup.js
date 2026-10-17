@@ -263,6 +263,13 @@ function driveGarantirToken(depois){
   driveTokenClient.requestAccessToken({prompt: state.driveBackupAtivo ? '' : 'consent'});
 }
 
+// O toast fica por cima do canto inferior direito (onde ficam os botões dos modais) por 3s:
+// some antes de abrir qualquer modal, senão engole o toque em "Confirmar".
+function driveLimparToast(){
+  const t=document.getElementById('toast');
+  if(t) t.classList.remove('show');
+}
+
 function restaurarDoDrive(){
   driveGarantirToken(async ()=>{
     try{
@@ -279,6 +286,7 @@ function restaurarDoDrive(){
       if(principal) corpo += `<li><strong>Mais recente:</strong> ${fmt(principal)}</li>`;
       if(anterior) corpo += `<li><strong>Versão anterior:</strong> ${fmt(anterior)}</li>`;
       corpo += '</ul>';
+      driveLimparToast();
       abrirAvisoDados('☁️ Restaurar do Google Drive', corpo, botoes);
     }catch(e){
       if(e && e.status === 401) driveAccessToken = null;
@@ -319,6 +327,7 @@ async function driveRestaurarArquivo(arquivo, ehAnterior){
       showToast('Restaurado do Drive ✓','green');
     }
   };
+  driveLimparToast();
   confirmarAcao(`Substituir os dados deste aparelho pelo backup do Drive (${n} registros)?`, ()=>{
     const r = criarSnapshot('Antes de restaurar do Drive');
     if(r === false){
