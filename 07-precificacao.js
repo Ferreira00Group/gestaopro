@@ -81,7 +81,7 @@ function renderPrecVisaoGeral(){
       </tr>`).join('')}
       <tr><td style="padding:10px 4px;font-size:13px;font-weight:700">Total</td><td style="padding:10px 4px;font-size:14px;font-weight:800;text-align:right;color:var(--navy)">${fmt(totalCF)}/mês</td></tr>
     </table>
-    <div style="margin-top:10px;padding:10px 12px;background:#EBF5FB;border-radius:8px;font-size:13px">
+    <div style="margin-top:10px;padding:10px 12px;background:var(--gold-soft);border-radius:8px;font-size:13px">
       ${unidadesProduzidasMes>0
         ?`<strong>${fmt(totalCF)} ÷ ${unidadesProduzidasMes} un = <span style="color:var(--blue)">${fmt(cfPorUn)}/un</span></strong> adicionado ao custo de cada produto`
         :`<span style="color:var(--muted)">⚠️ Sem produções registradas este mês — o custo fixo não está sendo rateado. Registre produções para ativar o rateio.</span>`}
@@ -95,7 +95,7 @@ function renderPrecVisaoGeral(){
       ${canais.map(c=>{
         const cor=c.desconto>0?'var(--red)':c.desconto<0?'var(--green)':'var(--muted)';
         const sinal=c.desconto>0?'−':c.desconto<0?'+':'';
-        return`<div style="background:#F8F9FA;border-radius:10px;padding:12px 18px;min-width:130px">
+        return`<div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:130px">
           <div style="font-size:13px;font-weight:700">${escapeHtml(c.nome)}</div>
           <div style="font-size:20px;font-weight:800;color:${cor};margin-top:4px">${sinal}${Math.abs(c.desconto||0)}%</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${c.desconto>0?'desconto sobre preço base':c.desconto<0?'acréscimo sobre preço base':'preço cheio'}</div>
@@ -126,7 +126,7 @@ function renderPrecificacao(){
 
   const el=document.getElementById('precificacao-lista');
   if(!el) return;
-  if(linhas.length===0){el.innerHTML='<div class="empty-state"><div class="icon">🏷️</div><p>Nenhum produto cadastrado</p></div>';return;}
+  if(linhas.length===0){el.innerHTML='<div class="empty-state"><div class="icon"><i data-lucide="tag"></i></div><p>Nenhum produto cadastrado</p></div>';return;}
 
   el.innerHTML=`<div class="table-card"><div class="table-scroll"><table>
     <thead><tr>
@@ -212,14 +212,14 @@ function simRecalc(){
       <div class="stat-card ${margemRS<=0?'red':margemPct<25?'yellow':'green'}"><div class="label">Margem</div><div class="value" style="font-size:18px">${margemPct.toFixed(1)}%</div><div class="sub">${fmt(margemRS)}/un</div></div>
     </div>
     <div class="cards-grid cards-grid-2">
-      <div style="background:#F8F9FA;border-radius:10px;padding:14px 16px">
+      <div style="background:var(--card-2);border-radius:10px;padding:14px 16px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Preços</div>
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>Preço base</span><strong>${fmt(precoBase)}</strong></div>
         ${canal?`<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>Preço ${escapeHtml(canal.nome)}</span><strong>${fmt(precoSugerido)}</strong></div>`:''}
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;${practicado!==precoSugerido?'color:var(--blue)':''}" ><span>Preço praticado</span><strong>${fmt(practicado)}</strong></div>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-size:13px"><span>Total ${qtd} un</span><strong>${fmt(totalVenda)}</strong></div>
       </div>
-      <div style="background:#F8F9FA;border-radius:10px;padding:14px 16px">
+      <div style="background:var(--card-2);border-radius:10px;padding:14px 16px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Piso de Desconto</div>
         <div style="font-size:28px;font-weight:800;color:${pisoDescPct<5?'var(--red)':'var(--green)'}">${pisoDescPct.toFixed(1)}%</div>
         <div style="font-size:12px;color:var(--muted);margin-top:4px">máximo sem entrar no prejuízo</div>
@@ -248,7 +248,7 @@ function renderCustosFixosLista(){
   const el=document.getElementById('custos-fixos-lista');
   if(!el) return;
   el.innerHTML=cfTemp.map((c,i)=>`
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;${c.isProLabore?'background:#FEF9E7;border-radius:8px;padding:8px':''}">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;${c.isProLabore?'background:var(--gold-soft);border-radius:8px;padding:8px':''}">
       <input class="form-control" style="flex:1 1 100%" value="${escapeHtml(c.nome)}" placeholder="Nome do custo (ex: Aluguel)" oninput="cfTemp[${i}].nome=this.value">
       <div style="display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0">
         <span style="font-size:14px;color:var(--muted);flex-shrink:0">R$</span>

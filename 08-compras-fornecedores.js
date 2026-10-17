@@ -129,7 +129,7 @@ function processarNotaColada(){
     const parecida = !isExato ? encontrarMpParecida(i.nome) : null;
     let badge='';
     if(isExato){badge='';}
-    else if(parecida){badge=`<span style="font-size:10px;background:#EBF5FB;color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-left:6px">⚠️ PARECIDO</span>`;}
+    else if(parecida){badge=`<span style="font-size:10px;background:var(--gold-soft);color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-left:6px">⚠️ PARECIDO</span>`;}
     else{badge='<span style="font-size:10px;background:var(--yellow);color:#000;border-radius:4px;padding:1px 5px;margin-left:6px">NOVA MP</span>';}
     html += `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:6px 0">${escapeHtml(i.nome)}${badge}
@@ -156,13 +156,13 @@ function processarNotaColada(){
 
   const semParecido = novos.filter(i=>!encontrarMpParecida(i.nome));
   if(semParecido.length > 0){
-    html += `<div style="background:#FEF9E7;border:1.5px solid var(--yellow);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
+    html += `<div style="background:var(--gold-soft);border:1.5px solid var(--yellow);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
       ⚠️ <strong>${semParecido.length} matéria(s)-prima nova(s)</strong> serão criadas automaticamente com unidade <strong>un</strong>. Você pode ajustar depois em Estoque.<br>
       <span style="color:var(--muted)">${semParecido.map(i=>escapeHtml(i.nome)).join(', ')}</span>
     </div>`;
   }
   if(parecidos.length > 0){
-    html += `<div style="background:#EBF5FB;border:1.5px solid var(--blue);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
+    html += `<div style="background:var(--gold-soft);border:1.5px solid var(--blue);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
       🔎 <strong>${parecidos.length} item(ns)</strong> têm nome parecido com uma matéria-prima que já existe. Confira acima se é a mesma ou não, pra evitar duplicidade.
     </div>`;
   }
@@ -640,13 +640,13 @@ function renderPagar(){
     ].sort((a,b)=>b.data.localeCompare(a.data));
     // próximo vencimento em aberto, pra dar destaque visual (mesma ideia do vencBadge em Vendas)
     const proximaPendente=comprasPrazo.map(c=>situacaoCompra(c,mapaPagar)).filter(s=>s.vencimentoPendente).sort((a,b)=>(a.vencimentoPendente||'').localeCompare(b.vencimentoPendente||''))[0];
-    return`<div class="client-debt-hero" style="background:linear-gradient(135deg,#8E44AD,#6C3483)">
+    return`<div class="client-debt-hero" style="background:var(--card-2)">
       <div><div class="name">🚚 ${escapeHtml(f.nome)}</div><div class="phone">📞 ${escapeHtml(f.tel||'—')}</div></div>
       <div style="text-align:right">
         <div class="amount">${fmt(f.saldo)}</div>
         <div class="amount-label">saldo em aberto${proximaPendente?' · '+vencBadge(proximaPendente.vencimentoPendente,hoje):''}</div>
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button class="btn btn-sm" style="background:#fff;color:#8E44AD;font-weight:700" onclick="abrirPagamentoFornecedor(${f.id})">💰 Pagar</button>
+          <button class="btn btn-sm" style="background:var(--card);color:var(--gold-2);font-weight:700" onclick="abrirPagamentoFornecedor(${f.id})">💰 Pagar</button>
         </div>
       </div>
     </div>
@@ -923,7 +923,7 @@ function editarProduto(id){
   if(p.variantes&&p.variantes.length>0){
     wrap.innerHTML=`<div class="form-group"><label>Preço por Variante</label>${p.variantes.map((v,i)=>`
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <span class="form-control" style="flex:2;background:#F8F9FA;color:var(--muted)">${escapeHtml(v.nome)}</span>
+        <span class="form-control" style="flex:2;background:var(--card-2);color:var(--muted)">${escapeHtml(v.nome)}</span>
         <input class="form-control" type="number" step="0.01" min="0" style="flex:1" value="${v.preco||p.preco||''}" placeholder="Preço" id="ep-var-preco-${i}">
       </div>`).join('')}</div>`;
   } else {

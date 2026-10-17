@@ -16,7 +16,7 @@ function dashTabSwitch(group,tab,btn){
 let chartDash=null, chartFin=null, chartRel=null, chartHistPreco=null, chart30Dias=null;
 if(typeof Chart!=='undefined'){
   Chart.defaults.font.family="'Inter', sans-serif";
-  Chart.defaults.color='#8A94A3';
+  Chart.defaults.color='#9A9486';
 }
 
 function renderChart30Dias(){
@@ -37,17 +37,17 @@ function renderChart30Dias(){
 
   // Gradiente suave por trás da linha (efeito "area chart" mais refinado)
   const gradiente=ctx.getContext('2d').createLinearGradient(0,0,0,ctx.clientHeight||220);
-  gradiente.addColorStop(0,'rgba(39,174,96,0.28)');
-  gradiente.addColorStop(1,'rgba(39,174,96,0)');
+  gradiente.addColorStop(0,'rgba(201,162,75,0.28)');
+  gradiente.addColorStop(1,'rgba(201,162,75,0)');
 
   chart30Dias=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[{
       label:'Vendas',data:valoresPorDia,
-      borderColor:'#27AE60',backgroundColor:gradiente,
+      borderColor:'#C9A24B',backgroundColor:gradiente,
       fill:true,tension:.4,borderWidth:3,
       pointRadius:3,pointHoverRadius:6,
-      pointBackgroundColor:'#27AE60',pointBorderColor:'#fff',pointBorderWidth:2,
+      pointBackgroundColor:'#C9A24B',pointBorderColor:'#141415',pointBorderWidth:2,
       pointHoverBorderWidth:3,
     }]},
     options:{
@@ -55,10 +55,10 @@ function renderChart30Dias(){
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{backgroundColor:'#1E2D40',padding:12,cornerRadius:10,displayColors:false,titleFont:{weight:'600'},callbacks:{title:c=>`📅 ${c[0].label}`,label:c=>` ${fmt(c.parsed.y)}`}}
+        tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,displayColors:false,titleFont:{weight:'600'},callbacks:{title:c=>`📅 ${c[0].label}`,label:c=>` ${fmt(c.parsed.y)}`}}
       },
       scales:{
-        y:{border:{display:false},ticks:{callback:v=>fmt(v),font:{size:10.5}},grid:{color:'#EEF1F4'}},
+        y:{border:{display:false},ticks:{callback:v=>fmt(v),font:{size:10.5}},grid:{color:'rgba(255,255,255,.06)'}},
         x:{border:{display:false},grid:{display:false},ticks:{font:{size:9.5},maxRotation:0,autoSkip:true,maxTicksLimit:8}}
       }
     }
@@ -119,11 +119,11 @@ function renderChartDash(){
       },
       {
         label:'Lucro',data:lucroF,type:'line',
-        borderColor:'#1565C0',
-        backgroundColor:'rgba(21,101,192,0.08)',
+        borderColor:'#C9A24B',
+        backgroundColor:'rgba(201,162,75,0.08)',
         fill:true,tension:.4,
-        pointRadius:5,pointBackgroundColor:'#1565C0',
-        pointBorderColor:'#fff',pointBorderWidth:2,
+        pointRadius:5,pointBackgroundColor:'#C9A24B',
+        pointBorderColor:'#141415',pointBorderWidth:2,
         borderWidth:2.5,order:1,
         yAxisID:'y2'
       },
@@ -142,7 +142,7 @@ function renderChartDash(){
           }
         },
         tooltip:{
-          backgroundColor:'#1E2D40',padding:12,cornerRadius:10,
+          backgroundColor:'#232326',padding:12,cornerRadius:10,
           callbacks:{
             title:c=>`📅 ${c[0].label}`,
             label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`
@@ -153,14 +153,14 @@ function renderChartDash(){
         y:{
           position:'left',
           ticks:{callback:v=>fmt(v),font:{size:10}},
-          grid:{color:'#F0F2F5'},
+          grid:{color:'rgba(255,255,255,.06)'},
           title:{display:true,text:'Entradas / Saídas',font:{size:10},color:'#888'}
         },
         y2:{
           position:'right',
           ticks:{callback:v=>fmt(v),font:{size:10}},
           grid:{drawOnChartArea:false},
-          title:{display:true,text:'Lucro',font:{size:10},color:'#1565C0'}
+          title:{display:true,text:'Lucro',font:{size:10},color:'#C9A24B'}
         },
         x:{grid:{display:false},ticks:{font:{size:10}}}
       }
@@ -175,9 +175,9 @@ function renderChartDash(){
     const l=lucroF[lucroF.length-1]||0;
     const cor=l>=0?'var(--green)':'var(--red)';
     kpiEl.innerHTML=`
-      <div style="background:#EAFAF1;border-radius:8px;padding:7px 12px;font-size:12px"><span style="color:var(--muted)">Entradas</span><br><strong style="color:var(--green)">${fmt(e)}</strong></div>
-      <div style="background:#FDECEA;border-radius:8px;padding:7px 12px;font-size:12px"><span style="color:var(--muted)">Saídas</span><br><strong style="color:var(--red)">${fmt(s)}</strong></div>
-      <div style="background:#EBF5FB;border-radius:8px;padding:7px 12px;font-size:12px"><span style="color:var(--muted)">Lucro mês</span><br><strong style="color:${cor}">${fmt(l)}</strong></div>`;
+      <div style="background:rgba(76,195,138,.12);border-radius:8px;padding:7px 12px;font-size:12px"><span style="color:var(--muted)">Entradas</span><br><strong style="color:var(--green)">${fmt(e)}</strong></div>
+      <div style="background:rgba(229,96,79,.12);border-radius:8px;padding:7px 12px;font-size:12px"><span style="color:var(--muted)">Saídas</span><br><strong style="color:var(--red)">${fmt(s)}</strong></div>
+      <div style="background:var(--gold-soft);border-radius:8px;padding:7px 12px;font-size:12px"><span style="color:var(--muted)">Lucro mês</span><br><strong style="color:${cor}">${fmt(l)}</strong></div>`;
   }
 }
 let chartDespCat=null, chartDespVs=null;
@@ -238,12 +238,12 @@ function renderDespesasCategoria(){
       type:'doughnut',
       data:{
         labels:['Matéria-Prima','Custos Fixos','Outras Saídas'],
-        datasets:[{data:[totalMP,totalCF,totalOutros],backgroundColor:['#E74C3C','#F39C12','#8E44AD'],borderWidth:3,borderColor:'#fff',hoverOffset:8}]
+        datasets:[{data:[totalMP,totalCF,totalOutros],backgroundColor:['#C9A24B','#7E6A3A','#55524A'],borderWidth:3,borderColor:'#141415',hoverOffset:8}]
       },
       options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
         plugins:{
           legend:{display:false},
-          tooltip:{backgroundColor:'#1E2D40',padding:12,cornerRadius:10,
+          tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,
             callbacks:{label:c=>`  ${c.label}: ${fmt(c.parsed)} (${totalDespesas>0?(c.parsed/totalDespesas*100).toFixed(1)+'%':'—'})`}}
         }
       }
@@ -253,7 +253,7 @@ function renderDespesasCategoria(){
     // caber conteúdo extra, e o que passar do limite invade visualmente o card seguinte.
     // Por isso anexamos no .chart-card (o pai do .chart-wrap), que tem altura livre.
     const cardEl=ctx1.parentElement.parentElement;
-    const legRows=[['#E74C3C','Matéria-Prima',totalMP],['#F39C12','Custos Fixos',totalCF],['#8E44AD','Outras Saídas',totalOutros]];
+    const legRows=[['#C9A24B','Matéria-Prima',totalMP],['#7E6A3A','Custos Fixos',totalCF],['#55524A','Outras Saídas',totalOutros]];
     let legHtml='<div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">';
     legRows.forEach(([cor,nome,val])=>{
       const pct=totalDespesas>0?(val/totalDespesas*100).toFixed(1):0;
@@ -298,17 +298,17 @@ function renderDespesasCategoria(){
         labels:['Receita','Despesas','Saldo'],
         datasets:[{
           data:[totalVendas+totalEntradas, totalDespesas, (totalVendas+totalEntradas)-totalDespesas],
-          backgroundColor:['rgba(39,174,96,.8)','rgba(231,76,60,.8)',(totalVendas+totalEntradas-totalDespesas)>=0?'rgba(41,128,185,.8)':'rgba(231,76,60,.8)'],
+          backgroundColor:['rgba(39,174,96,.8)','rgba(231,76,60,.8)',(totalVendas+totalEntradas-totalDespesas)>=0?'rgba(201,162,75,.8)':'rgba(231,76,60,.8)'],
           borderRadius:10,borderSkipped:false,borderWidth:0
         }]
       },
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{
           legend:{display:false},
-          tooltip:{backgroundColor:'#1E2D40',padding:12,cornerRadius:10,
+          tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,
             callbacks:{label:c=>` ${fmt(c.parsed.y)}`}}
         },
-        scales:{y:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'#F0F2F5'}},x:{grid:{display:false},ticks:{font:{size:11,weight:'600'}}}}
+        scales:{y:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'rgba(255,255,255,.06)'}},x:{grid:{display:false},ticks:{font:{size:11,weight:'600'}}}}
       }
     });
   }
@@ -338,7 +338,7 @@ function renderDespesasCategoria(){
             <td>${escapeHtml(f.desc)}</td>
             <td style="color:var(--red);font-weight:700">${fmt(f.valor)}</td>
             <td><div style="display:flex;align-items:center;gap:8px">
-              <div style="flex:1;height:6px;background:#F0F2F5;border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--red);width:${totalDespesas>0?(f.valor/totalDespesas*100).toFixed(0)+'%':'0%'}"></div></div>
+              <div style="flex:1;height:6px;background:var(--card-2);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--red);width:${totalDespesas>0?(f.valor/totalDespesas*100).toFixed(0)+'%':'0%'}"></div></div>
               <span style="font-size:12px;color:var(--muted);min-width:36px">${totalDespesas>0?(f.valor/totalDespesas*100).toFixed(1)+'%':'—'}</span>
             </div></td>
           </tr>`).join('')}
@@ -489,21 +489,21 @@ function renderChartFinanceiro(){
     type:'line',
     data:{labels,datasets:[
       {label:'Entradas',data:entradas,borderColor:'#27AE60',backgroundColor:'rgba(39,174,96,.12)',
-        tension:.4,fill:true,pointRadius:6,pointBackgroundColor:'#27AE60',pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5},
+        tension:.4,fill:true,pointRadius:6,pointBackgroundColor:'#27AE60',pointBorderColor:'#141415',pointBorderWidth:2,borderWidth:2.5},
       {label:'Saídas',data:saidas,borderColor:'#E74C3C',backgroundColor:'rgba(231,76,60,.07)',
-        tension:.4,fill:true,pointRadius:6,pointBackgroundColor:'#E74C3C',pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5},
-      {label:'Saldo',data:saldo,borderColor:'#2980B9',
+        tension:.4,fill:true,pointRadius:6,pointBackgroundColor:'#E74C3C',pointBorderColor:'#141415',pointBorderWidth:2,borderWidth:2.5},
+      {label:'Saldo',data:saldo,borderColor:'#C9A24B',
         backgroundColor:function(ctx){
           const g=ctx.chart.ctx.createLinearGradient(0,0,0,240);
-          g.addColorStop(0,'rgba(41,128,185,.22)');g.addColorStop(1,'rgba(41,128,185,.02)');return g;
+          g.addColorStop(0,'rgba(201,162,75,.22)');g.addColorStop(1,'rgba(201,162,75,.02)');return g;
         },
-        tension:.4,fill:true,pointRadius:6,pointBackgroundColor:'#2980B9',pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5},
+        tension:.4,fill:true,pointRadius:6,pointBackgroundColor:'#C9A24B',pointBorderColor:'#141415',pointBorderWidth:2,borderWidth:2.5},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
         tooltip:{
-          backgroundColor:'#1E2D40',padding:12,cornerRadius:10,
+          backgroundColor:'#232326',padding:12,cornerRadius:10,
           callbacks:{
             title:ctx=>`📅 ${ctx[0].label}`,
             label:ctx=>` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
@@ -511,7 +511,7 @@ function renderChartFinanceiro(){
         }
       },
       scales:{
-        y:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'#F0F2F5'}},
+        y:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'rgba(255,255,255,.06)'}},
         x:{grid:{display:false},ticks:{font:{size:10}}}
       }
     }
@@ -532,7 +532,7 @@ function toggleFooterMenu(){
   const icon=document.getElementById('footer-toggle-icon');
   const abrindo=el.style.display==='none';
   el.style.display=abrindo?'block':'none';
-  icon.textContent=abrindo?'▴':'▾';
+  icon.classList.toggle('open',abrindo);
 }
 // Toque na linha da versão (rodapé do menu) abre a manutenção: verificar atualização / limpar cache.
 // Espera 600ms sem novo toque para não atrapalhar os 5 toques do modo diagnóstico.

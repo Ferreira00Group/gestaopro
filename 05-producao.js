@@ -114,7 +114,7 @@ function mostrarFicha(){
       <span class="unit">${ok?'✓':'⚠️ insuficiente'}</span>
     </div>`;
   }).join('');
-  pv.innerHTML=`<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">INGREDIENTES</div>${html}</div>`;
+  pv.innerHTML=`<div style="background:var(--card-2);border-radius:8px;padding:12px;margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">INGREDIENTES</div>${html}</div>`;
   cv.style.display='block';
   document.getElementById('prod-custo-val').textContent=fmt(custo);
 }
@@ -274,7 +274,7 @@ function renderFichaItens(ficha){
   const el=document.getElementById('ficha-itens');
   if(ficha.length===0){el.innerHTML='<p style="color:var(--muted);font-size:13px;margin-top:8px">Nenhum item na ficha.</p>';return;}
   const opts=opcoesIngredientesFicha();
-  el.innerHTML=`<div style="background:#F8F9FA;border-radius:8px;padding:12px;margin-top:8px">
+  el.innerHTML=`<div style="background:var(--card-2);border-radius:8px;padding:12px;margin-top:8px">
     ${ficha.map((f,i)=>{
       const valorAtual=`${f.tipo||'mp'}_${f.mpId}`;
       return `<div class="recipe-item">

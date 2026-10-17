@@ -201,7 +201,7 @@ function gerarRelatorio(){
   vendasPeriodo.forEach(v=>v.itens.forEach(it=>{const n=getNomeCompletoItem(it.produtoId,it.varianteId);prodMap[n]=(prodMap[n]||0)+it.total;}));
   const sortedEntries=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]);
   const labels=sortedEntries.map(e=>e[0]);const values=sortedEntries.map(e=>e[1]);
-  const colors=['rgba(41,128,185,.85)','rgba(39,174,96,.85)','rgba(243,156,18,.85)','rgba(142,68,173,.85)','rgba(231,76,60,.85)','rgba(26,188,156,.85)'];
+  const colors=['rgba(201,162,75,.9)','rgba(227,193,111,.85)','rgba(160,130,60,.85)','rgba(120,115,100,.85)','rgba(90,88,80,.85)','rgba(70,68,62,.85)'];
   const ctx=document.getElementById('chart-relatorio-produtos');
   if(ctx&&labels.length>0){
     chartRel=new Chart(ctx,{
@@ -212,17 +212,17 @@ function gerarRelatorio(){
         responsive:true,maintainAspectRatio:false,
         plugins:{
           legend:{display:false},
-          tooltip:{backgroundColor:'#1E2D40',padding:12,cornerRadius:10,callbacks:{label:c=>` ${fmt(c.parsed.x)}`}}
+          tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,callbacks:{label:c=>` ${fmt(c.parsed.x)}`}}
         },
         scales:{
-          x:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'#F0F2F5'}},
+          x:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'rgba(255,255,255,.06)'}},
           y:{grid:{display:false},ticks:{font:{size:11,weight:'600'}}}
         }
       }
     });
     // altura dinâmica conforme número de produtos
     ctx.parentElement.style.height=Math.max(180,labels.length*44)+'px';
-  } else if(ctx){ctx.parentElement.innerHTML='<div class="empty-state"><div class="icon">📊</div><p>Sem vendas no período</p></div>';}
+  } else if(ctx){ctx.parentElement.innerHTML='<div class="empty-state"><div class="icon"><i data-lucide="trending-up"></i></div><p>Sem vendas no período</p></div>';}
   const rankMap={};
   // custo somado item a item usando o snapshot gravado na hora da venda (custoFichaUn) — vendas
   // antigas sem esse campo caem no fallback de recalcular pela ficha técnica atual, única opção
@@ -460,10 +460,10 @@ function gerarFluxo(){
     new Chart(ctx,{
       type:'line',
       data:{labels:chartLabels,datasets:[
-        {label:'Saldo (R$)',data:chartSaldos,borderColor:'#2980B9',backgroundColor:chartSaldos.map(v=>v>=0?'rgba(41,128,185,.1)':'rgba(231,76,60,.1)'),tension:.3,fill:true,pointRadius:3},
+        {label:'Saldo (R$)',data:chartSaldos,borderColor:'#C9A24B',backgroundColor:chartSaldos.map(v=>v>=0?'rgba(201,162,75,.1)':'rgba(231,76,60,.1)'),tension:.3,fill:true,pointRadius:3},
         {label:'Zero',data:chartLabels.map(()=>0),borderColor:'rgba(231,76,60,.4)',borderDash:[4,4],pointRadius:0,borderWidth:1}
       ]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`Saldo: ${fmt(v.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt(v)},grid:{color:'#F0F2F5'}},x:{grid:{display:false}}}}
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`Saldo: ${fmt(v.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt(v)},grid:{color:'rgba(255,255,255,.06)'}},x:{grid:{display:false}}}}
     });
   },50);
 }
@@ -499,7 +499,7 @@ function gerarInadimplencia(){
   el.style.display='block';
 
   if(lista.length===0){
-    el.innerHTML=`<div class="empty-state" style="background:#fff;border-radius:12px;box-shadow:var(--shadow);padding:40px"><div class="icon">✅</div><p>Nenhuma inadimplência encontrada com os filtros selecionados.</p></div>`;
+    el.innerHTML=`<div class="empty-state" style="background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:40px"><div class="icon"><i data-lucide="circle-check"></i></div><p>Nenhuma inadimplência encontrada com os filtros selecionados.</p></div>`;
     return;
   }
 
@@ -527,7 +527,7 @@ function gerarInadimplencia(){
             <td>${l.cliente.tel?`<a href="https://wa.me/55${l.cliente.tel.replace(/\D/g,'')}" target="_blank" class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:4px 10px">WhatsApp</a>`:'—'}</td>
           </tr>`).join('')}
         </tbody>
-        <tfoot><tr style="background:#FAFBFC;border-top:2px solid var(--border)">
+        <tfoot><tr style="background:var(--card-2);border-top:2px solid var(--border)">
           <td colspan="3" style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--muted)">TOTAL INADIMPLENTE</td>
           <td style="padding:10px 14px;font-size:14px;font-weight:800;color:var(--red)">${fmt(totalInadimplente)}</td>
           <td colspan="3"></td>
@@ -570,17 +570,17 @@ function renderHistoricoPreco(){
   chartHistPreco=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[
-      {label:`Custo/un`,data:precos,borderColor:'#2980B9',
-        backgroundColor:function(c){const g=c.chart.ctx.createLinearGradient(0,0,0,240);g.addColorStop(0,'rgba(41,128,185,.2)');g.addColorStop(1,'rgba(41,128,185,.02)');return g;},
-        tension:.3,fill:true,pointRadius:6,pointBackgroundColor:precos.map((p,i)=>p===Math.min(...precos)?'#27AE60':p===Math.max(...precos)?'#E74C3C':'#2980B9'),
-        pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2.5},
-      {label:'Média',data:mediaArr,borderColor:'rgba(243,156,18,.7)',backgroundColor:'transparent',
+      {label:`Custo/un`,data:precos,borderColor:'#C9A24B',
+        backgroundColor:function(c){const g=c.chart.ctx.createLinearGradient(0,0,0,240);g.addColorStop(0,'rgba(201,162,75,.2)');g.addColorStop(1,'rgba(201,162,75,.02)');return g;},
+        tension:.3,fill:true,pointRadius:6,pointBackgroundColor:precos.map((p,i)=>p===Math.min(...precos)?'#27AE60':p===Math.max(...precos)?'#E74C3C':'#C9A24B'),
+        pointBorderColor:'#141415',pointBorderWidth:2,borderWidth:2.5},
+      {label:'Média',data:mediaArr,borderColor:'rgba(227,193,111,.7)',backgroundColor:'transparent',
         borderDash:[5,4],pointRadius:0,borderWidth:1.5,tension:0},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
-        tooltip:{backgroundColor:'#1E2D40',padding:12,cornerRadius:10,
+        tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,
           callbacks:{
             title:ctx=>ctx[0].label,
             label:ctx=>{
@@ -590,7 +590,7 @@ function renderHistoricoPreco(){
           }
         }
       },
-      scales:{y:{ticks:{callback:v=>'R$ '+v.toFixed(2).replace('.',','),font:{size:10}},grid:{color:'#F0F2F5'}},x:{grid:{display:false},ticks:{font:{size:10}}}}
+      scales:{y:{ticks:{callback:v=>'R$ '+v.toFixed(2).replace('.',','),font:{size:10}},grid:{color:'rgba(255,255,255,.06)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}
     }
   });
 

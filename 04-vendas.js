@@ -86,7 +86,7 @@ function renderVendas(){
          <button class="icon-btn" onclick="duplicarVenda(${v.id})" title="Duplicar">📑</button>
          <button class="icon-btn edit" onclick="editarVenda(${v.id})" title="Editar">✏️</button>
          <button class="icon-btn del" onclick="excluirVenda(${v.id})" title="Excluir">🗑️</button>`;
-    const linhaPrincipal=`<tr style="${sel?'background:#EBF5FB;':''}" id="venda-row-${v.id}">
+    const linhaPrincipal=`<tr style="${sel?'background:var(--gold-soft);':''}" id="venda-row-${v.id}">
     <td><input type="checkbox" class="venda-check" data-id="${v.id}" ${sel?'checked':''} onchange="toggleSelecaoVenda(${v.id},this.checked)" style="cursor:pointer;width:15px;height:15px"></td>
     <td data-label="Código" style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">${isOrc?'OR':'VD'}${String(v.id).padStart(4,'0')}</td>
     <td data-label="Data">${fmtDate(v.data)}</td>
@@ -100,7 +100,7 @@ function renderVendas(){
     <td><div class="actions-cell">${acoes}</div></td>
   </tr>`;
     if(!isOrc && v.parcelado && expandido && sit.parcelas){
-      const detalhe=`<tr id="venda-row-${v.id}-detalhe"><td></td><td colspan="10" style="padding:2px 14px 12px 14px;background:#FAFBFC">
+      const detalhe=`<tr id="venda-row-${v.id}-detalhe"><td></td><td colspan="10" style="padding:2px 14px 12px 14px;background:var(--card-2)">
         <div class="parcelas-wrap">${sit.parcelas.map(p=>renderLinhaParcela(v,p,hoje2)).join('')}</div>
       </td></tr>`;
       return linhaPrincipal+detalhe;
@@ -113,7 +113,7 @@ function renderVendas(){
   const totalPago=listVendasOnly.filter(v=>sitDe(v).status==='pago').reduce((s,v)=>s+v.total,0);
   const totalAberto=listVendasOnly.filter(v=>sitDe(v).status!=='pago').reduce((s,v)=>s+v.total,0);
   const totalGeral=list.reduce((s,v)=>s+v.total,0);
-  if(tfoot) tfoot.innerHTML=`<tr style="background:#FAFBFC;border-top:2px solid var(--border)">
+  if(tfoot) tfoot.innerHTML=`<tr style="background:var(--card-2);border-top:2px solid var(--border)">
     <td colspan="6" style="padding:11px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">
       TOTAL (${list.length} ${state.venda_tipo_filter==='orcamento'?'orçamento':'venda'}${list.length!==1?'s':''} filtrada${list.length!==1?'s':''})
     </td>
@@ -1070,7 +1070,7 @@ function renderReceber(){
         <div class="amount-label">saldo devedor</div>
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
           <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="cobrarWhatsapp(${c.id})">📲 WhatsApp</button>
-          <button class="btn btn-sm" style="background:#fff;color:var(--red);font-weight:700" onclick="abrirPagamento(${c.id})">💰 Receber</button>
+          <button class="btn btn-sm" style="background:var(--card);color:var(--red);font-weight:700" onclick="abrirPagamento(${c.id})">💰 Receber</button>
         </div>
       </div>
     </div>
@@ -1324,15 +1324,15 @@ function impPedRenderPreview(){
     } else cliTxt='<span style="color:var(--muted)">(cliente não identificado)</span>';
     const itensTxt=L.itens.length?L.itens.map(it=>`${it.qtd}× ${escapeHtml(it.nome)} <span style="color:var(--muted)">(${escapeHtml(it.cod)})</span>`).join('<br>'):'';
     const erros=L.erros.map(e=>`<div style="color:var(--red);font-size:12px">❌ ${escapeHtml(e)}</div>`).join('');
-    const avisos=L.avisos.map(a=>`<div style="color:#B7791F;font-size:12px">⚠️ ${escapeHtml(a)}</div>`).join('');
+    const avisos=L.avisos.map(a=>`<div style="color:var(--gold-2);font-size:12px">⚠️ ${escapeHtml(a)}</div>`).join('');
     let novoBox='';
     if(L.cliente&&L.cliente.tipo==='novo'&&ok){
       if(!mostrouNovo[L.cliente.key]){
         mostrouNovo[L.cliente.key]=true;
         const idx=impPed.novoKeys.indexOf(L.cliente.key);
-        novoBox=`<div style="margin-top:6px;padding:8px;background:#EEF4FF;border-radius:8px;font-size:12px">
+        novoBox=`<div style="margin-top:6px;padding:8px;background:var(--gold-soft);border-radius:8px;font-size:12px">
           <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer"><input type="checkbox" ${nv.cadastrar?'checked':''} onchange="impPedNovoToggle(${idx},this.checked)" style="width:auto;margin:0"> Cadastrar como novo cliente</label>
-          ${L.cliente.arquivadoIgual?'<div style="color:#B7791F;margin-top:4px">⚠️ Existe um cliente arquivado com esse nome. Reative-o em Clientes se for o mesmo.</div>':''}
+          ${L.cliente.arquivadoIgual?'<div style="color:var(--gold-2);margin-top:4px">⚠️ Existe um cliente arquivado com esse nome. Reative-o em Clientes se for o mesmo.</div>':''}
           ${nv.cadastrar?`<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
             <input class="form-control" placeholder="Telefone (opcional)" value="${escapeHtml(nv.tel)}" oninput="impPedNovoCampo(${idx},'tel',this.value)" style="flex:1;min-width:130px;font-size:12.5px;padding:6px 8px">
             <select class="form-control" onchange="impPedNovoCampo(${idx},'rotaId',this.value)" style="flex:1;min-width:110px;font-size:12.5px;padding:6px 8px">${rotasOpts(nv.rotaId)}</select>
@@ -1342,7 +1342,7 @@ function impPedRenderPreview(){
         novoBox=`<div style="margin-top:4px;font-size:12px;color:var(--muted)">🆕 Mesmo cliente novo de outra linha: cadastrado uma vez só.</div>`;
       }
     }
-    return `<div style="padding:9px 10px;border-bottom:1px solid var(--border);${(!importavel)?'background:#FAFAFA;':''}">
+    return `<div style="padding:9px 10px;border-bottom:1px solid var(--border);${(!importavel)?'background:var(--card-2);':''}">
       <div style="display:flex;gap:8px;align-items:flex-start">
         <input type="checkbox" id="impped-chk-${i}" ${marcada?'checked':''} ${importavel?'':'disabled'} onchange="impPedToggle(${i},this.checked)" style="width:auto;margin:4px 0 0 0">
         <div style="flex:1;min-width:0">

@@ -151,7 +151,7 @@ function renderDashboard(){
     ...state.pagamentos.map(p=>({type:'pay',data:p.data,title:'Pagamento recebido',sub:getCliente(p.clienteId).nome+' · '+p.forma,val:p.valor})),
     ...state.producoes.map(p=>({type:'prod',data:p.data,title:'Produção — '+getNomeCompletoItem(p.produtoId,p.varianteId),sub:p.qtd+' unidades produzidas',val:null})),
   ].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8);
-  if(items.length===0){hist.innerHTML='<div class="empty-state"><p>Sem movimentações</p></div>';}
+  if(items.length===0){hist.innerHTML='<div class="empty-state"><div class="icon"><i data-lucide="inbox"></i></div><p>Sem movimentações</p></div>';}
   else{hist.innerHTML=items.map(i=>`<div class="history-item">
     <div class="history-dot h-${i.type}"></div>
     <div class="history-info"><div class="title">${escapeHtml(i.title)}</div><div class="sub">${fmtDate(i.data)} · ${escapeHtml(i.sub)}</div></div>

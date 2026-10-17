@@ -350,10 +350,10 @@ function atualizarStatusDrive(){
   }
   btn.style.display = 'block';
   if(state.driveBackupAtivo){
-    btn.innerHTML = '☁️ <span style="color:var(--green)" onclick="event.stopPropagation();testarBackupDriveAgora()">Drive conectado (tocar p/ testar)</span> — <span style="color:var(--red)" onclick="event.stopPropagation();desconectarGoogleDrive()">desconectar</span>';
+    btn.innerHTML = '<i data-lucide="cloud" class="ic"></i> <span style="color:var(--green)" onclick="event.stopPropagation();testarBackupDriveAgora()">Drive conectado (tocar p/ testar)</span> — <span style="color:var(--red)" onclick="event.stopPropagation();desconectarGoogleDrive()">desconectar</span>';
     btn.onclick = null;
   } else {
-    btn.innerHTML = '<span style="color:#2980B9">☁️ Conectar Google Drive (backup automático)</span>';
+    btn.innerHTML = '<span style="color:var(--gold)"><i data-lucide="cloud" class="ic"></i> Conectar Google Drive (backup automático)</span>';
     btn.onclick = conectarGoogleDrive;
   }
 }

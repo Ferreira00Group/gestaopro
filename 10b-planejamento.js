@@ -120,7 +120,7 @@ function renderPlanejamento(){
   if(avisoImp){
     const nImp = orcamentos.filter(o => o.origem==='importacao' && o.statusOrc!=='aprovado').length;
     avisoImp.innerHTML = nImp>0
-      ? `<div style="background:#FFF8E1;border:1px solid #F5D77A;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      ? `<div style="background:var(--gold-soft);border:1px solid rgba(201,162,75,.4);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
           <span>📥 <strong>${nImp}</strong> rascunho${nImp!==1?'s':''} importado${nImp!==1?'s':''} (ainda não aprovado${nImp!==1?'s':''}) ${nImp!==1?'estão':'está'} na conta desta tela.</span>
           <button class="btn btn-outline btn-sm" onclick="togglePlanApenasAprovados(true)">Considerar só aprovados</button>
         </div>`
@@ -173,7 +173,7 @@ function renderPlanejamento(){
   const wrap = document.getElementById('plan-sugestoes-lista');
   const chaves = Object.keys(grupos);
   if(chaves.length===0){
-    wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--muted);font-size:13px;background:#fff;border-radius:12px;box-shadow:var(--shadow)">🎉 Nenhuma compra necessária no momento!</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--muted);font-size:13px;background:var(--card);border-radius:12px;box-shadow:var(--shadow)">🎉 Nenhuma compra necessária no momento!</div>';
   } else {
     wrap.innerHTML = chaves.map(key=>{
       const itens = grupos[key];

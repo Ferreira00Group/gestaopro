@@ -87,6 +87,16 @@ function inicializarIconesLucide(tentativas=0){
   lucide.createIcons();
 }
 inicializarIconesLucide();
+// Ícones inseridos depois (listas, estados vazios, botão do Drive): redesenha só quando aparece um <i data-lucide>
+(function(){
+  let timer=null;
+  new MutationObserver(muts=>{
+    if(timer)return;
+    const novo=muts.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&((n.matches&&n.matches('i[data-lucide]'))||(n.querySelector&&n.querySelector('i[data-lucide]')))));
+    if(!novo)return;
+    timer=setTimeout(()=>{timer=null;if(typeof lucide!=='undefined')lucide.createIcons();},50);
+  }).observe(document.body,{childList:true,subtree:true});
+})();
 initGoogleDriveClient();
 setTimeout(tentarBackupSilenciosoDrive, 1000);
 setTimeout(verificarLembreteBackup, 3000);

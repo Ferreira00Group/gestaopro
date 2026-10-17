@@ -170,7 +170,7 @@ function renderDropEstoque(){
   state.materias.forEach(m=>{if(m.qtd<=m.minimo)baixos.push({nome:`🌿 ${m.nome}`,estoque:m.qtd,minimo:m.minimo,unidade:m.unidade});});
 
   const body=document.getElementById('drop-estoque-body');
-  if(baixos.length===0){body.innerHTML='<div class="alert-empty">✅ Todos os itens com estoque OK!</div>';return;}
+  if(baixos.length===0){body.innerHTML='<div class="alert-empty"><i data-lucide="check" class="ic"></i> Todos os itens com estoque OK!</div>';return;}
   body.innerHTML=baixos.map(b=>`
     <div class="alert-item">
       <div class="alert-item-info">
@@ -197,7 +197,7 @@ function renderDropCobranca(){
       return `<div class="alert-item">
         <div class="alert-item-info">
           <strong>${escapeHtml(c.nome)}</strong>
-          <span><b style="color:#d35400">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
+          <span><b style="color:var(--gold-2)">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
         </div>
         <div class="alert-item-action">
           <button class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:5px 9px" onclick="closeAlertDrop('drop-cobranca');cobrarWhatsapp(${c.id})">📲</button>
@@ -225,7 +225,7 @@ function renderDropCobranca(){
       </div>`).join('');
   }
 
-  if(!html) html='<div class="alert-empty">🎉 Nenhum cliente com saldo em aberto!</div>';
+  if(!html) html='<div class="alert-empty"><i data-lucide="check" class="ic"></i> Nenhum cliente com saldo em aberto!</div>';
   body.innerHTML=html;
 }
 
@@ -245,10 +245,10 @@ function renderDropPagar(){
       return `<div class="alert-item">
         <div class="alert-item-info">
           <strong>${f?escapeHtml(f.nome):'?'}</strong>
-          <span><b style="color:#d35400">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
+          <span><b style="color:var(--gold-2)">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
         </div>
         <div class="alert-item-action">
-          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:#8E44AD;color:#fff" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${u.fornecedorId})">💰</button>
+          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:var(--gold);color:#17120A" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${u.fornecedorId})">💰</button>
         </div>
       </div>`;
     }).join('');
@@ -265,15 +265,15 @@ function renderDropPagar(){
       <div class="alert-item">
         <div class="alert-item-info">
           <strong>${escapeHtml(f.nome)}</strong>
-          <span>Deve: <b style="color:#8E44AD">${fmt(f.saldo)}</b></span>
+          <span>Deve: <b style="color:var(--gold-2)">${fmt(f.saldo)}</b></span>
         </div>
         <div class="alert-item-action">
-          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:#8E44AD;color:#fff" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${f.id})">💰</button>
+          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:var(--gold);color:#17120A" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${f.id})">💰</button>
         </div>
       </div>`).join('');
   }
 
-  if(!html) html='<div class="alert-empty">🎉 Nenhum fornecedor com saldo em aberto!</div>';
+  if(!html) html='<div class="alert-empty"><i data-lucide="check" class="ic"></i> Nenhum fornecedor com saldo em aberto!</div>';
   body.innerHTML=html;
 }
 

@@ -383,7 +383,7 @@ function abrirModalAtualizacao(novaVersao,html){
       <div class="modal-header"><h3>🔄 Atualização Disponível</h3></div>
       <div class="modal-body">
         <p style="margin:0 0 10px">Nova versão disponível!</p>
-        <div style="display:flex;justify-content:space-between;margin-bottom:18px;background:#F8F9FA;padding:12px;border-radius:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:18px;background:var(--card-2);padding:12px;border-radius:8px">
           <span>Versão atual: <strong id="upd-atual"></strong></span>
           <span>→</span>
           <span>Nova: <strong id="upd-nova" style="color:var(--green)"></strong></span>
@@ -445,10 +445,9 @@ function salvarDados(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     state.dados_alterados=false;
     const btn = document.getElementById('topbar-save');
-    btn.textContent = '✅';
     btn.classList.add('saved');
     btn.classList.remove('unsaved');
-    setTimeout(()=>{btn.textContent='💾';btn.classList.remove('saved');},2000);
+    setTimeout(()=>{btn.classList.remove('saved');},2000);
   } catch(e){
     showToast('Erro ao salvar dados','red');
   }

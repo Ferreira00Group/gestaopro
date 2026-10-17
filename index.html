@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>GestãoPRO</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1E2D40">
+<meta name="theme-color" content="#0B0B0C">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,34 +15,34 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.33.7">
+<link rel="stylesheet" href="styles.css?v=5.34.0">
 </head>
 <body>
-<div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#1B2838;display:none;align-items:center;justify-content:center;padding:24px">
-  <div style="width:100%;max-width:340px;background:#fff;border-radius:14px;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
-    <div style="text-align:center;font-size:38px;margin-bottom:6px">🔒</div>
-    <h2 style="text-align:center;margin:0 0 4px;font-size:18px;color:#1B2838">GestãoPRO</h2>
+<div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:340px;background:var(--card);border-radius:14px;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+    <div style="text-align:center;margin-bottom:8px;color:var(--gold)"><i data-lucide="lock" style="width:34px;height:34px;stroke-width:1.5"></i></div>
+    <h2 style="text-align:center;margin:0 0 4px;font-size:18px;color:var(--text)">GestãoPRO</h2>
 
     <div id="lock-criar" style="display:none">
-      <p style="text-align:center;font-size:13px;color:#666;margin:0 0 18px">Crie uma senha de acesso ao app</p>
+      <p style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 18px">Crie uma senha de acesso ao app</p>
       <div class="form-group"><label>Nova senha</label>
         <input class="form-control" type="password" id="lock-nova-senha" placeholder="Mínimo 4 caracteres">
       </div>
       <div class="form-group"><label>Confirmar senha</label>
         <input class="form-control" type="password" id="lock-confirma-senha" placeholder="Repita a senha">
       </div>
-      <p id="lock-erro-criar" style="display:none;color:#E74C3C;font-size:12.5px;margin:0 0 10px"></p>
+      <p id="lock-erro-criar" style="display:none;color:var(--red);font-size:12.5px;margin:0 0 10px"></p>
       <button class="btn btn-primary" style="width:100%" onclick="lockCriarSenha()">Salvar senha e entrar</button>
     </div>
 
     <div id="lock-entrar" style="display:none">
-      <p style="text-align:center;font-size:13px;color:#666;margin:0 0 18px">Digite sua senha para acessar</p>
+      <p style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 18px">Digite sua senha para acessar</p>
       <div class="form-group"><label>Senha</label>
         <input class="form-control" type="password" id="lock-senha-input" placeholder="Senha" onkeydown="if(event.key==='Enter')lockEntrar()">
       </div>
-      <p id="lock-erro-entrar" style="display:none;color:#E74C3C;font-size:12.5px;margin:0 0 10px"></p>
+      <p id="lock-erro-entrar" style="display:none;color:var(--red);font-size:12.5px;margin:0 0 10px"></p>
       <button class="btn btn-primary" style="width:100%" onclick="lockEntrar()">Entrar</button>
-      <p style="text-align:center;margin:14px 0 0"><a onclick="lockEsqueciSenha()" style="font-size:12px;color:#2980B9;cursor:pointer;text-decoration:underline">Esqueci minha senha</a></p>
+      <p style="text-align:center;margin:14px 0 0"><a onclick="lockEsqueciSenha()" style="font-size:12px;color:var(--gold);cursor:pointer;text-decoration:underline">Esqueci minha senha</a></p>
     </div>
   </div>
 </div>
@@ -53,20 +53,20 @@
   <button id="hamburger" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div id="topbar-title">GestãoPRO <span>Powered by Ferreira Group</span></div>
   <div class="topbar-alerts">
-    <button class="alert-bell bell-estoque" id="topbar-bell-estoque" onclick="toggleAlertDrop('drop-estoque')" title="Estoque baixo">📦<span class="badge-dot"></span></button>
-    <button class="alert-bell bell-cobranca" id="topbar-bell-cobranca" onclick="toggleAlertDrop('drop-cobranca')" title="A receber">💰<span class="badge-dot"></span></button>
-    <button class="alert-bell bell-pagar" id="topbar-bell-pagar" onclick="toggleAlertDrop('drop-pagar')" title="A pagar">📤<span class="badge-dot"></span></button>
-    <button id="topbar-print" onclick="abrirEscolhaImpressao()" title="Imprimir">🖨️</button>
-    <button id="topbar-save" onclick="salvarDados()" title="Salvar">💾</button>
+    <button class="alert-bell bell-estoque" id="topbar-bell-estoque" onclick="toggleAlertDrop('drop-estoque')" title="Estoque baixo"><i data-lucide="package" class="ic"></i><span class="badge-dot"></span></button>
+    <button class="alert-bell bell-cobranca" id="topbar-bell-cobranca" onclick="toggleAlertDrop('drop-cobranca')" title="A receber"><i data-lucide="wallet" class="ic"></i><span class="badge-dot"></span></button>
+    <button class="alert-bell bell-pagar" id="topbar-bell-pagar" onclick="toggleAlertDrop('drop-pagar')" title="A pagar"><i data-lucide="credit-card" class="ic"></i><span class="badge-dot"></span></button>
+    <button id="topbar-print" onclick="abrirEscolhaImpressao()" title="Imprimir"><i data-lucide="printer" class="ic"></i></button>
+    <button id="topbar-save" onclick="salvarDados()" title="Salvar"><i data-lucide="save" class="ic ic-save"></i><i data-lucide="check" class="ic ic-ok"></i></button>
   </div>
 </div>
 
 <!-- BARRA DE BUSCA ESTILO GOOGLE -->
 <div id="busca-bar-wrap">
   <div id="busca-bar-inner">
-    <span id="busca-bar-icon">🔍</span>
+    <i data-lucide="search" class="ic" id="busca-bar-icon"></i>
     <input id="busca-global-input" placeholder="Buscar cliente, produto, venda..." oninput="buscaGlobal(this.value)" onfocus="mostrarResultadosBusca()" onblur="setTimeout(fecharBuscaGlobal,200)">
-    <button id="busca-bar-clear" onclick="limparBusca()" style="display:none">✕</button>
+    <button id="busca-bar-clear" onclick="limparBusca()" style="display:none"><i data-lucide="x" class="ic"></i></button>
   </div>
   <div id="busca-global-resultados"></div>
 </div>
@@ -74,8 +74,8 @@
 <!-- DROPDOWN: Estoque Baixo -->
 <div class="alert-dropdown" id="drop-estoque">
   <div class="alert-drop-header">
-    <h4>📦 Estoque Baixo</h4>
-    <button class="alert-drop-close" onclick="closeAlertDrop('drop-estoque')">✕</button>
+    <h4><i data-lucide="package" class="ic"></i>Estoque Baixo</h4>
+    <button class="alert-drop-close" onclick="closeAlertDrop('drop-estoque')"><i data-lucide="x" class="ic"></i></button>
   </div>
   <div class="alert-drop-body" id="drop-estoque-body"></div>
   <div class="alert-drop-footer"><a onclick="closeAlertDrop('drop-estoque');goto('estoque')">Ver estoque completo →</a></div>
@@ -84,8 +84,8 @@
 <!-- DROPDOWN: Cobranças -->
 <div class="alert-dropdown" id="drop-cobranca">
   <div class="alert-drop-header">
-    <h4>💳 Clientes a Cobrar</h4>
-    <button class="alert-drop-close" onclick="closeAlertDrop('drop-cobranca')">✕</button>
+    <h4><i data-lucide="wallet" class="ic"></i>Clientes a Cobrar</h4>
+    <button class="alert-drop-close" onclick="closeAlertDrop('drop-cobranca')"><i data-lucide="x" class="ic"></i></button>
   </div>
   <div class="alert-drop-body" id="drop-cobranca-body"></div>
   <div class="alert-drop-footer"><a onclick="closeAlertDrop('drop-cobranca');goto('receber')">Ver contas a receber →</a></div>
@@ -94,8 +94,8 @@
 <!-- DROPDOWN: Contas a Pagar -->
 <div class="alert-dropdown" id="drop-pagar">
   <div class="alert-drop-header">
-    <h4>📤 Fornecedores a Pagar</h4>
-    <button class="alert-drop-close" onclick="closeAlertDrop('drop-pagar')">✕</button>
+    <h4><i data-lucide="credit-card" class="ic"></i>Fornecedores a Pagar</h4>
+    <button class="alert-drop-close" onclick="closeAlertDrop('drop-pagar')"><i data-lucide="x" class="ic"></i></button>
   </div>
   <div class="alert-drop-body" id="drop-pagar-body"></div>
   <div class="alert-drop-footer"><a onclick="closeAlertDrop('drop-pagar');goto('pagar')">Ver contas a pagar →</a></div>
@@ -121,19 +121,19 @@
 
   <div class="sidebar-footer">
     <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
-    <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:#B8C2CC;display:flex;justify-content:space-between;align-items:center">
-      <span>⚙️ Backup e manutenção</span><span id="footer-toggle-icon">▾</span>
+    <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
+      <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>
     </a>
     <div id="footer-actions-collapsible" style="display:none">
       <div class="footer-actions">
-        <a onclick="compartilharBackup()" class="footer-action-link" style="color:#27AE60">⬇ Exportar JSON</a>
-        <label class="footer-action-link" style="color:#2980B9">⬆ Importar JSON
+        <a onclick="compartilharBackup()" class="footer-action-link"><i data-lucide="download" class="ic"></i>Exportar JSON</a>
+        <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
         </label>
-        <a id="link-restaurar-anterior" onclick="closeSidebar();restaurarEstadoAnterior()" class="footer-action-link" style="color:#F39C12;display:none">↩️ Restaurar estado anterior</a>
-        <a id="link-baixar-recuperacao" onclick="baixarCopiaRecuperacao()" class="footer-action-link" style="color:#E74C3C;display:none">🛟 Baixar cópia de recuperação</a>
+        <a id="link-restaurar-anterior" onclick="closeSidebar();restaurarEstadoAnterior()" class="footer-action-link" style="display:none"><i data-lucide="undo-2" class="ic"></i>Restaurar estado anterior</a>
+        <a id="link-baixar-recuperacao" onclick="baixarCopiaRecuperacao()" class="footer-action-link" style="color:var(--red);display:none"><i data-lucide="life-buoy" class="ic"></i>Baixar cópia de recuperação</a>
         <a id="drive-status-btn" onclick="cliqueBotaoDrive()" class="footer-action-link" style="display:none"></a>
-        <a id="drive-restaurar-btn" onclick="closeSidebar();restaurarDoDrive()" class="footer-action-link" style="color:#2980B9;display:none">☁️ Restaurar do Google Drive</a>
+        <a id="drive-restaurar-btn" onclick="closeSidebar();restaurarDoDrive()" class="footer-action-link" style="display:none"><i data-lucide="cloud-download" class="ic"></i>Restaurar do Google Drive</a>
       </div>
     </div>
   </div>
@@ -150,38 +150,38 @@
     </div>
   </div>
   <div class="dash-grid2" id="dash-cards-grid" style="margin-bottom:10px;margin-top:4px">
-    <div class="card-hero red" style="cursor:pointer" onclick="goto('receber')" title="Ver contas a receber"><div class="label">🔴 Total a Receber</div><div class="value debt-pulse" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
-    <div class="card-hero green" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">🟢 Recebido Hoje</div><div class="value" id="dash-recebido">R$ 0</div><div class="sub"><span id="dash-recebido-sub">valor recebido hoje</span> <span id="dash-trend-recebido"></span></div></div>
-    <div class="card-hero blue" style="cursor:pointer" onclick="goto('vendas')" title="Ver vendas"><div class="label">🔵 Vendas Hoje</div><div class="value" id="dash-vendas-hoje">R$ 0</div><div class="sub"><span id="dash-vendas-hoje-count">total vendido no dia</span> <span id="dash-trend-vendas-hoje"></span></div></div>
-    <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">🟡 Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
+    <div class="card-hero red" style="cursor:pointer" onclick="goto('receber')" title="Ver contas a receber"><div class="label">Total a Receber</div><div class="value debt-pulse" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
+    <div class="card-hero green" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Recebido Hoje</div><div class="value" id="dash-recebido">R$ 0</div><div class="sub"><span id="dash-recebido-sub">valor recebido hoje</span> <span id="dash-trend-recebido"></span></div></div>
+    <div class="card-hero blue" style="cursor:pointer" onclick="goto('vendas')" title="Ver vendas"><div class="label">Vendas Hoje</div><div class="value" id="dash-vendas-hoje">R$ 0</div><div class="sub"><span id="dash-vendas-hoje-count">total vendido no dia</span> <span id="dash-trend-vendas-hoje"></span></div></div>
+    <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
   </div>
 
-  <div class="dash-section-title">⚠️ Alertas</div>
+  <div class="dash-section-title"><i data-lucide="triangle-alert" class="ic"></i>Alertas</div>
   <div class="dash-grid2" id="dash-cards-grid-2" style="margin-bottom:10px">
-    <div class="card-compacto alerta" style="cursor:pointer" onclick="goto('receber')" title="Ver contas vencidas"><div class="icon">⚠️</div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
-    <div class="card-compacto aviso" style="cursor:pointer" onclick="goto('receber')" title="Vencimentos de hoje"><div class="icon">📅</div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
-    <div class="card-compacto aviso" style="cursor:pointer" onclick="goto('estoque')" title="Ver estoque"><div class="icon">📦</div><div class="info"><span class="label">Estoque Baixo</span><span class="value" id="dash-estoque-baixo">0</span><span class="sub">abaixo do mínimo</span></div></div>
-    <div class="card-compacto" style="cursor:pointer" onclick="filterVendaTipo('orcamento');goto('vendas')" title="Ver orçamentos"><div class="icon">📋</div><div class="info"><span class="label">Orçamentos</span><span class="value" id="dash-orc-pendentes">0</span><span class="sub" id="dash-orc-sub">aguardando aprovação</span></div></div>
+    <div class="card-compacto alerta" style="cursor:pointer" onclick="goto('receber')" title="Ver contas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
+    <div class="card-compacto aviso" style="cursor:pointer" onclick="goto('receber')" title="Vencimentos de hoje"><div class="icon"><i data-lucide="calendar-clock"></i></div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
+    <div class="card-compacto aviso" style="cursor:pointer" onclick="goto('estoque')" title="Ver estoque"><div class="icon"><i data-lucide="package"></i></div><div class="info"><span class="label">Estoque Baixo</span><span class="value" id="dash-estoque-baixo">0</span><span class="sub">abaixo do mínimo</span></div></div>
+    <div class="card-compacto" style="cursor:pointer" onclick="filterVendaTipo('orcamento');goto('vendas')" title="Ver orçamentos"><div class="icon"><i data-lucide="clipboard-list"></i></div><div class="info"><span class="label">Orçamentos</span><span class="value" id="dash-orc-pendentes">0</span><span class="sub" id="dash-orc-sub">aguardando aprovação</span></div></div>
   </div>
 
-  <div class="dash-section-title">📊 Desempenho do mês</div>
+  <div class="dash-section-title"><i data-lucide="activity" class="ic"></i>Desempenho do mês</div>
   <div class="scroll-pilulas" id="dash-cards-grid-3" style="margin-bottom:10px">
-    <div class="pilula" onclick="goto('vendas')" title="Ver vendas"><span class="label">📈 Vendas Mês</span><span class="value" id="dash-vendas-mes">R$ 0</span><span class="sub"><span id="dash-vendas-count">0 pedidos</span> <span id="dash-trend-vendas-mes"></span></span></div>
-    <div class="pilula" title="Ticket médio do mês"><span class="label">🛒 Ticket Médio</span><span class="value" id="dash-ticket-medio">R$ 0</span><span class="sub">média por venda</span></div>
+    <div class="pilula" onclick="goto('vendas')" title="Ver vendas"><span class="label">Vendas Mês</span><span class="value" id="dash-vendas-mes">R$ 0</span><span class="sub"><span id="dash-vendas-count">0 pedidos</span> <span id="dash-trend-vendas-mes"></span></span></div>
+    <div class="pilula" title="Ticket médio do mês"><span class="label">Ticket Médio</span><span class="value" id="dash-ticket-medio">R$ 0</span><span class="sub">média por venda</span></div>
     <div class="pilula" onclick="gotoFornecedores()" title="Ver compras"><span class="label">Compras Mês</span><span class="value" id="dash-compras-mes">R$ 0</span><span class="sub"><span id="dash-compras-mes-sub">0 pedidos</span> <span id="dash-trend-compras-mes"></span></span></div>
   </div>
 
   <!-- META DE VENDAS (compacta, uma linha) -->
   <div class="table-card" style="margin-bottom:10px;padding:10px 14px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <strong style="font-size:12.5px;white-space:nowrap">🎯 Meta do Mês</strong>
+      <strong style="font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px"><i data-lucide="target" class="ic" style="color:var(--gold)"></i>Meta do Mês</strong>
       <div style="display:flex;align-items:center;gap:5px">
         <span style="font-size:11px;color:var(--muted)">R$</span>
         <input type="number" id="dash-meta-input" min="0" step="100" placeholder="0,00"
           style="width:88px;padding:4px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;font-weight:700;outline:none;transition:border .15s"
           oninput="salvarMeta()" onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor='var(--border)';salvarMetaAgora()">
       </div>
-      <div style="flex:1;min-width:110px;height:8px;background:#E8ECF0;border-radius:4px;overflow:hidden">
+      <div style="flex:1;min-width:110px;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
         <div id="dash-meta-bar" style="height:100%;border-radius:4px;background:var(--green);transition:width .5s ease,background .3s;width:0%"></div>
       </div>
       <span id="dash-meta-pct" style="font-size:13.5px;font-weight:800;color:var(--navy);white-space:nowrap">0%</span>
@@ -193,8 +193,8 @@
   <div class="table-card" style="margin-bottom:10px">
     <div class="dash-tabs-header">
       <div class="tabs-mini">
-        <button type="button" class="tab-mini active" onclick="dashTabSwitch('vm','venc',this)">🔔 Vencimentos</button>
-        <button type="button" class="tab-mini" onclick="dashTabSwitch('vm','mov',this)">📋 Movimentações</button>
+        <button type="button" class="tab-mini active" onclick="dashTabSwitch('vm','venc',this)">Vencimentos</button>
+        <button type="button" class="tab-mini" onclick="dashTabSwitch('vm','mov',this)">Movimentações</button>
       </div>
       <a onclick="goto('receber')" style="font-size:11.5px;color:var(--blue);cursor:pointer;white-space:nowrap">Ver todas →</a>
     </div>
@@ -213,8 +213,8 @@
   <div class="table-card" style="margin-bottom:10px">
     <div class="dash-tabs-header">
       <div class="tabs-mini">
-        <button type="button" class="tab-mini active" onclick="dashTabSwitch('cp','clientes',this)">💸 Mais Devem</button>
-        <button type="button" class="tab-mini" onclick="dashTabSwitch('cp','produtos',this)">🔥 Mais Vendidos</button>
+        <button type="button" class="tab-mini active" onclick="dashTabSwitch('cp','clientes',this)">Mais Devem</button>
+        <button type="button" class="tab-mini" onclick="dashTabSwitch('cp','produtos',this)">Mais Vendidos</button>
       </div>
     </div>
     <div class="dash-tab-content" data-group="cp" data-tab="clientes">
@@ -235,8 +235,8 @@
   <div class="chart-card" style="padding:0;margin-bottom:0">
     <div class="dash-tabs-header" style="padding:14px 16px 0">
       <div class="tabs-mini">
-        <button type="button" class="tab-mini active" onclick="dashTabSwitch('graf','d30',this)">📈 30 dias</button>
-        <button type="button" class="tab-mini" onclick="dashTabSwitch('graf','m6',this)">📊 6 meses</button>
+        <button type="button" class="tab-mini active" onclick="dashTabSwitch('graf','d30',this)">30 dias</button>
+        <button type="button" class="tab-mini" onclick="dashTabSwitch('graf','m6',this)">6 meses</button>
       </div>
     </div>
     <div class="dash-tab-content" data-group="graf" data-tab="d30" style="padding:12px 16px 16px">
@@ -246,7 +246,7 @@
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#27AE60"></div>Entradas</div>
         <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#E74C3C"></div>Saídas</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:#2980B9"></div>Lucro</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:50%;background:var(--gold)"></div>Lucro</div>
       </div>
       <div class="chart-wrap"><canvas id="chart-dash"></canvas></div>
       <div id="dash-chart-kpis" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div>
@@ -260,13 +260,13 @@
   <div class="page-header">
     <div><h2>Clientes</h2><p>Cadastro e saldo devedor</p></div>
     <div class="page-header-actions">
-      <button class="btn btn-outline" onclick="abrirImportarClientes()">📋 Importar Lista</button>
-      <button class="btn btn-outline" onclick="copiarListaClientes()">📋 Copiar lista</button>
+      <button class="btn btn-outline" onclick="abrirImportarClientes()">Importar Lista</button>
+      <button class="btn btn-outline" onclick="copiarListaClientes()">Copiar lista</button>
       <button class="btn btn-primary" onclick="openModal('modal-cliente')">+ Novo Cliente</button>
     </div>
   </div>
   <div class="search-bar">
-    <input class="search-input" id="cliente-busca-input" placeholder="🔍  Buscar por nome, telefone ou nº..." oninput="filterClientesDebounced(this.value)">
+    <input class="search-input" id="cliente-busca-input" placeholder="Buscar por nome, telefone ou nº..." oninput="filterClientesDebounced(this.value)">
     <select class="filter" id="cliente-status-filter" onchange="filterClienteStatus(this.value)">
       <option value="">Todos</option><option value="devendo">Com dívida</option><option value="em-dia">Em dia</option>
     </select>
@@ -275,7 +275,7 @@
     </select>
     <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap">
       <input type="checkbox" id="clientes-mostrar-arquivados" onchange="filterClienteArquivados(this.checked)" style="width:auto;margin:0">
-      🗄️ Mostrar arquivados
+      Mostrar arquivados
     </label>
   </div>
   <div class="table-card table-cards">
@@ -293,22 +293,22 @@
   <div class="page-header">
     <div><h2>Vendas / Pedidos</h2><p>Lançar venda e controlar fiado</p></div>
     <div class="page-header-actions">
-      <button class="btn btn-outline" onclick="abrirImportarPedidos()">📥 Importar Pedidos</button>
-      <button class="btn btn-outline" onclick="abrirNovoOrcamento()">📋 Novo Orçamento</button>
+      <button class="btn btn-outline" onclick="abrirImportarPedidos()">Importar Pedidos</button>
+      <button class="btn btn-outline" onclick="abrirNovoOrcamento()">Novo Orçamento</button>
       <button class="btn btn-primary" onclick="abrirNovaVenda()">+ Nova Venda</button>
     </div>
   </div>
   <div class="search-bar">
-    <input class="search-input" placeholder="🔍  Buscar por cliente ou produto..." oninput="filterVendasDebounced(this.value)">
+    <input class="search-input" placeholder="Buscar por cliente ou produto..." oninput="filterVendasDebounced(this.value)">
     <select class="filter" onchange="filterVendaTipo(this.value)" id="venda-tipo-filter-select">
-      <option value="">Todos</option><option value="orcamento">📋 Orçamentos</option><option value="fiado">Fiado</option><option value="pago">Pago</option>
+      <option value="">Todos</option><option value="orcamento">Orçamentos</option><option value="fiado">Fiado</option><option value="pago">Pago</option>
     </select>
   </div>
   <!-- Barra de ação em lote -->
-  <div id="vendas-lote-bar" style="display:none;background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <div id="vendas-lote-bar" style="display:none;background:var(--card-2);color:#fff;padding:10px 16px;border-radius:10px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
     <span id="vendas-lote-label" style="font-size:13px;font-weight:600">0 venda(s) selecionada(s)</span>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn btn-green btn-sm" onclick="marcarLotePago()">✅ Marcar como Pagas</button>
+      <button class="btn btn-green btn-sm" onclick="marcarLotePago()">Marcar como Pagas</button>
       <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff" onclick="limparSelecaoVendas()">✕ Cancelar</button>
     </div>
   </div>
@@ -341,7 +341,7 @@
   <div class="page-header">
     <div><h2>Contas a Pagar</h2><p>Compras a prazo e pagamentos a fornecedor</p></div>
     <div class="page-header-actions">
-      <button class="btn btn-outline" onclick="abrirRegistrarCompra()">🛒 Registrar Compra</button>
+      <button class="btn btn-outline" onclick="abrirRegistrarCompra()">Registrar Compra</button>
     </div>
   </div>
   <div id="pagar-lista"></div>
@@ -353,13 +353,13 @@
   <div class="page-header">
     <div><h2>Produção</h2><p>Fichas técnicas e lotes de produção</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-outline" onclick="openModal('modal-ficha')">✏️ Fichas</button>
+      <button class="btn btn-outline" onclick="openModal('modal-ficha')">Fichas</button>
       <button class="btn btn-primary" onclick="openModal('modal-producao')">+ Registrar</button>
     </div>
   </div>
   <div class="cards-grid cards-grid-3" style="margin-bottom:20px" id="prod-stats"></div>
   <div class="table-card table-cards">
-    <div style="padding:16px 20px 0"><strong style="font-size:14px">📋 Histórico de Produção</strong></div>
+    <div style="padding:16px 20px 0"><strong style="font-size:14px">Histórico de Produção</strong></div>
     <div class="table-scroll"><table style="margin-top:12px">
       <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Custo</th><th>MP Consumida</th><th>Validade</th><th>Ações</th></tr></thead>
       <tbody id="producao-table"></tbody>
@@ -374,14 +374,14 @@
     <div><h2>Estoque</h2><p>Produtos acabados, semiacabados, matérias-primas e fornecedores</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <span id="eq-actions-estoque" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-green btn-sm" onclick="abrirEntradaEstoque()">📦 Entrada de Estoque</button>
-        <button class="btn btn-red btn-sm" onclick="abrirBaixaEstoque()">📉 Baixa Manual</button>
+        <button class="btn btn-green btn-sm" onclick="abrirEntradaEstoque()">Entrada de Estoque</button>
+        <button class="btn btn-red btn-sm" onclick="abrirBaixaEstoque()">Baixa Manual</button>
         <button class="btn btn-primary btn-sm" onclick="abrirNovoProduto()">+ Produto</button>
         <button class="btn btn-outline" onclick="openModal('modal-materia')">+ Matéria-Prima</button>
-        <button class="btn btn-outline btn-sm" id="btn-copiar-lista-estoque" onclick="copiarListaEstoque()">📋 Copiar lista</button>
+        <button class="btn btn-outline btn-sm" id="btn-copiar-lista-estoque" onclick="copiarListaEstoque()">Copiar lista</button>
       </span>
       <span id="eq-actions-fornecedores" style="display:none;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="abrirRegistrarCompra()">🛒 Registrar Compra</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirRegistrarCompra()">Registrar Compra</button>
         <button class="btn btn-primary btn-sm" onclick="openModal('modal-fornecedor')">+ Novo Fornecedor</button>
       </span>
     </div>
@@ -389,17 +389,17 @@
   <div id="alerta-estoque-banner"></div>
   <div class="tabs">
     <button class="tab active" onclick="showEstoqueTab('produtos',this)">Produtos Acabados</button>
-    <button class="tab" onclick="showEstoqueTab('semiacabados',this)">🧪 Semiacabados</button>
+    <button class="tab" onclick="showEstoqueTab('semiacabados',this)">Semiacabados</button>
     <button class="tab" onclick="showEstoqueTab('materias',this)">Matérias-Primas</button>
-    <button class="tab" onclick="showEstoqueTab('fornecedores',this)">🚚 Fornecedores</button>
+    <button class="tab" onclick="showEstoqueTab('fornecedores',this)">Fornecedores</button>
   </div>
 
   <div id="estoque-produtos-wrap">
     <div class="search-bar">
-      <input class="search-input" placeholder="🔍  Buscar produto..." oninput="filterEstoqueDebounced(this.value)">
+      <input class="search-input" placeholder="Buscar produto..." oninput="filterEstoqueDebounced(this.value)">
       <label id="estoque-mostrar-arquivados" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap">
         <input type="checkbox" onchange="filterEstoqueArquivados(this.checked)" style="width:auto;margin:0">
-        🗄️ Mostrar arquivados
+        Mostrar arquivados
       </label>
     </div>
     <div class="cat-pills" id="estoque-cat-pills"></div>
@@ -414,7 +414,7 @@
   <!-- FORNECEDORES (agora dentro de Estoque) -->
   <div id="estoque-fornecedores-wrap" style="display:none">
     <div class="search-bar">
-      <input class="search-input" placeholder="🔍  Buscar por nome, telefone ou categoria..." oninput="filterFornecedoresDebounced(this.value)">
+      <input class="search-input" placeholder="Buscar por nome, telefone ou categoria..." oninput="filterFornecedoresDebounced(this.value)">
       <select class="filter" onchange="filterFornecedorStatus(this.value)">
         <option value="">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option>
       </select>
@@ -427,7 +427,7 @@
     </div>
     <div style="margin-top:24px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <strong style="font-size:15px">🛒 Histórico de Compras</strong>
+        <strong style="font-size:15px">Histórico de Compras</strong>
         <div style="display:flex;gap:8px;align-items:center">
           <select class="filter" id="hist-compras-fornecedor-filter" onchange="renderHistoricoCompras()">
             <option value="">Todos os fornecedores</option>
@@ -449,7 +449,7 @@
     <div style="margin-top:28px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div>
-          <strong style="font-size:15px">📈 Histórico de Preço por Matéria-Prima</strong>
+          <strong style="font-size:15px">Histórico de Preço por Matéria-Prima</strong>
           <p style="font-size:12px;color:var(--muted);margin-top:2px">Evolução do custo/un nas compras registradas — identifique fornecedores encarecendo</p>
         </div>
         <select class="filter" id="hist-preco-mp-filter" onchange="renderHistoricoPreco()" style="max-width:200px">
@@ -469,7 +469,7 @@
           </table></div>
         </div>
       </div>
-      <div id="hist-preco-empty" style="display:none;text-align:center;padding:28px;color:var(--muted);font-size:13px;background:#fff;border-radius:12px;box-shadow:var(--shadow)">
+      <div id="hist-preco-empty" style="display:none;text-align:center;padding:28px;color:var(--muted);font-size:13px;background:var(--card);border-radius:12px;box-shadow:var(--shadow)">
         Nenhuma compra registrada para esta matéria-prima ainda.
       </div>
     </div>
@@ -486,7 +486,7 @@
         <input type="checkbox" id="plan-apenas-aprovados" onchange="togglePlanApenasAprovados(this.checked)" style="width:auto;margin:0">
         Considerar só orçamentos aprovados
       </label>
-      <button class="btn btn-outline btn-sm" onclick="renderPlanejamento()">🔄 Recalcular</button>
+      <button class="btn btn-outline btn-sm" onclick="renderPlanejamento()">Recalcular</button>
     </div>
   </div>
 
@@ -495,7 +495,7 @@
 
   <div class="table-card table-cards" style="margin-bottom:24px">
     <div style="padding:16px 20px 0">
-      <strong style="font-size:14px">🏭 Produtos a Produzir</strong>
+      <strong style="font-size:14px">Produtos a Produzir</strong>
       <p style="font-size:12px;color:var(--muted);margin-top:2px">Falta em relação ao que já está em estoque, considerando a demanda dos orçamentos</p>
     </div>
     <div class="table-scroll"><table style="margin-top:12px">
@@ -506,7 +506,7 @@
 
   <div class="table-card table-cards" style="margin-bottom:24px">
     <div style="padding:16px 20px 0">
-      <strong style="font-size:14px">🧂 Matérias-Primas Necessárias</strong>
+      <strong style="font-size:14px">Matérias-Primas Necessárias</strong>
       <p style="font-size:12px;color:var(--muted);margin-top:2px">Explosão da ficha técnica dos produtos acima, líquida do estoque atual</p>
     </div>
     <div class="table-scroll"><table style="margin-top:12px">
@@ -516,7 +516,7 @@
   </div>
 
   <div id="plan-sugestoes-wrap">
-    <strong style="font-size:15px">🛒 Sugestão de Compra por Fornecedor</strong>
+    <strong style="font-size:15px">Sugestão de Compra por Fornecedor</strong>
     <div id="plan-sugestoes-lista" style="margin-top:12px"></div>
   </div>
 </div>
@@ -525,42 +525,42 @@
 <div id="page-precificacao" class="page">
   <div class="print-header"><h1>GestãoPRO — Precificação</h1><p id="print-date-precificacao"></p></div>
   <div class="page-header">
-    <div><h2>🏷️ Precificação</h2><p>Custo real, margens por canal e piso de desconto</p></div>
+    <div><h2>Precificação</h2><p>Custo real, margens por canal e piso de desconto</p></div>
     <div class="page-header-actions">
-      <button class="btn btn-outline btn-sm" onclick="openModal('modal-canais')">⚙️ Canais de Venda</button>
-      <button class="btn btn-outline btn-sm" onclick="openModal('modal-custos-fixos')">🏗️ Custos Fixos</button>
+      <button class="btn btn-outline btn-sm" onclick="openModal('modal-canais')">Canais de Venda</button>
+      <button class="btn btn-outline btn-sm" onclick="openModal('modal-custos-fixos')">Custos Fixos</button>
     </div>
   </div>
   <div class="tabs">
-    <button class="tab active" onclick="showPrecTab('visao-geral',this)">📊 Visão Geral</button>
-    <button class="tab" onclick="showPrecTab('por-produto',this)">📦 Por Produto</button>
-    <button class="tab" onclick="showPrecTab('simulador',this)">🧮 Simulador</button>
+    <button class="tab active" onclick="showPrecTab('visao-geral',this)">Visão Geral</button>
+    <button class="tab" onclick="showPrecTab('por-produto',this)">Por Produto</button>
+    <button class="tab" onclick="showPrecTab('simulador',this)">Simulador</button>
   </div>
   <div id="prec-tab-visao-geral">
     <div class="cards-grid cards-grid-4" id="prec-cards-resumo" style="margin-bottom:20px"></div>
     <div class="detail-panel" style="margin-bottom:20px">
-      <h3>🏗️ Rateio de Custos Fixos</h3>
+      <h3>Rateio de Custos Fixos</h3>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Informe os custos fixos mensais. O sistema divide pelo total de unidades produzidas no mês para calcular o custo fixo por unidade.</p>
       <div id="prec-custos-resumo"></div>
-      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModal('modal-custos-fixos')">✏️ Editar custos fixos</button>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModal('modal-custos-fixos')">Editar custos fixos</button>
     </div>
     <div class="detail-panel" style="margin-bottom:0">
-      <h3>📢 Canais de Venda</h3>
+      <h3>Canais de Venda</h3>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Defina os canais (Varejo, Atacado, Revendedor…) com o desconto ou markup de cada um sobre o preço base.</p>
       <div id="prec-canais-resumo"></div>
-      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModal('modal-canais')">✏️ Editar canais</button>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModal('modal-canais')">Editar canais</button>
     </div>
   </div>
   <div id="prec-tab-por-produto" style="display:none">
     <div class="search-bar">
-      <input class="search-input" placeholder="🔍  Buscar produto..." oninput="filterPrecificacaoDebounced(this.value)">
+      <input class="search-input" placeholder="Buscar produto..." oninput="filterPrecificacaoDebounced(this.value)">
       <select class="filter" id="prec-filtro-canal" onchange="renderPrecificacao()"><option value="">Todos os canais</option></select>
     </div>
     <div id="precificacao-lista"></div>
   </div>
   <div id="prec-tab-simulador" style="display:none">
     <div class="detail-panel">
-      <h3>🧮 Simulador de Preço e Desconto</h3>
+      <h3>Simulador de Preço e Desconto</h3>
       <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Descubra o preço sugerido por canal, o piso máximo de desconto sem prejuízo e a margem real.</p>
       <div class="form-row" style="margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0"><label>Produto</label>
@@ -593,9 +593,9 @@
     </div>
   </div>
   <div class="tabs">
-    <button class="tab active" onclick="showFinTab('movimentacoes',this)">📋 Movimentações</button>
-    <button class="tab" onclick="showFinTab('despesas',this)">🥧 Despesas</button>
-    <button class="tab" onclick="showFinTab('fechamento',this)">📅 Fechamento Mensal</button>
+    <button class="tab active" onclick="showFinTab('movimentacoes',this)">Movimentações</button>
+    <button class="tab" onclick="showFinTab('despesas',this)">Despesas</button>
+    <button class="tab" onclick="showFinTab('fechamento',this)">Fechamento Mensal</button>
   </div>
 
   <!-- MOVIMENTAÇÕES -->
@@ -606,17 +606,17 @@
       <div class="stat-card"><div class="label">Saldo do Caixa</div><div class="value" id="fin-saldo" style="color:var(--navy)">R$ 0</div><div class="sub" id="fin-saldo-sub"></div></div>
     </div>
     <div class="chart-card">
-      <h3>📊 Evolução Financeira (últimos 6 meses)</h3>
+      <h3>Evolução Financeira (últimos 6 meses)</h3>
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#27AE60"></div>Entradas</div>
         <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#E74C3C"></div>Saídas</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#2980B9"></div>Saldo</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:var(--gold)"></div>Saldo</div>
       </div>
       <div class="chart-wrap"><canvas id="chart-financeiro"></canvas></div>
     </div>
     <div class="table-card table-cards">
       <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <strong style="font-size:14px">📋 Movimentações</strong>
+        <strong style="font-size:14px">Movimentações</strong>
         <div style="display:flex;gap:8px;align-items:center">
           <select class="filter" id="fin-filtro-tipo" onchange="renderFinanceiro()">
             <option value="">Todos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option>
@@ -638,11 +638,11 @@
     </div>
     <div class="cards-grid cards-grid-2" style="margin-bottom:20px">
       <div class="chart-card">
-        <h3>🥧 Despesas por Origem</h3>
+        <h3>Despesas por Origem</h3>
         <div class="chart-wrap"><canvas id="chart-despesas-cat"></canvas></div>
       </div>
       <div class="chart-card">
-        <h3>📊 Comparativo Entradas vs Saídas</h3>
+        <h3>Comparativo Entradas vs Saídas</h3>
         <div class="chart-wrap"><canvas id="chart-despesas-vs"></canvas></div>
       </div>
     </div>
@@ -653,8 +653,8 @@
   <div id="fin-tab-fechamento" style="display:none">
     <div class="relatorio-filtros" style="align-items:flex-end;margin-bottom:16px">
       <div class="form-group"><label>Mês de referência</label><input type="month" class="form-control" id="fech-mes" style="max-width:180px"></div>
-      <button class="btn btn-primary" onclick="gerarFechamento()">📅 Gerar Fechamento</button>
-      <button class="btn btn-outline" onclick="salvarSnapshotFechamento()">💾 Salvar Snapshot</button>
+      <button class="btn btn-primary" onclick="gerarFechamento()">Gerar Fechamento</button>
+      <button class="btn btn-outline" onclick="salvarSnapshotFechamento()">Salvar Snapshot</button>
     </div>
     <div id="fech-resultado" style="display:none"></div>
     <div id="fech-historico" style="margin-top:20px"></div>
@@ -665,17 +665,17 @@
 <div id="page-relatorio" class="page">
   <div class="print-header"><h1>GestãoPRO — Relatórios</h1><p id="print-date-relatorio"></p></div>
   <div class="page-header">
-    <div><h2>📊 Relatórios</h2><p>DRE, Fluxo de Caixa, Inadimplência e análise por período</p></div>
+    <div><h2>Relatórios</h2><p>DRE, Fluxo de Caixa, Inadimplência e análise por período</p></div>
     <div class="page-header-actions">
     </div>
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="showRelTab('periodo',this)">📋 Por Período</button>
-    <button class="tab" onclick="showRelTab('dre',this)">📈 DRE</button>
-    <button class="tab" onclick="showRelTab('fluxo',this)">💸 Fluxo de Caixa</button>
-    <button class="tab" onclick="showRelTab('inadimplencia',this)">⚠️ Inadimplência</button>
-    <button class="tab" onclick="showRelTab('balanco',this)">🏛️ Balanço</button>
+    <button class="tab active" onclick="showRelTab('periodo',this)">Por Período</button>
+    <button class="tab" onclick="showRelTab('dre',this)">DRE</button>
+    <button class="tab" onclick="showRelTab('fluxo',this)">Fluxo de Caixa</button>
+    <button class="tab" onclick="showRelTab('inadimplencia',this)">Inadimplência</button>
+    <button class="tab" onclick="showRelTab('balanco',this)">Balanço</button>
   </div>
 
   <!-- POR PERÍODO -->
@@ -683,7 +683,7 @@
     <div class="relatorio-filtros">
       <div class="form-group"><label>Data Início</label><input type="date" class="form-control" id="rel-inicio"></div>
       <div class="form-group"><label>Data Fim</label><input type="date" class="form-control" id="rel-fim"></div>
-      <button class="btn btn-primary" onclick="gerarRelatorio()">📊 Gerar Relatório</button>
+      <button class="btn btn-primary" onclick="gerarRelatorio()">Gerar Relatório</button>
     </div>
     <div id="relatorio-resultado" style="display:none">
       <div class="cards-grid cards-grid-4" style="margin-bottom:20px">
@@ -693,30 +693,30 @@
         <div class="stat-card"><div class="label">Lucro Estimado</div><div class="value" id="rel-lucro" style="color:var(--navy)">R$ 0</div><div class="sub" id="rel-lucro-sub"></div></div>
       </div>
       <div class="chart-card">
-        <h3>📊 Vendas por Produto no Período</h3>
+        <h3>Vendas por Produto no Período</h3>
         <div class="chart-wrap"><canvas id="chart-relatorio-produtos"></canvas></div>
       </div>
       <div class="cards-grid cards-grid-2" style="margin-bottom:20px">
         <div class="table-card" style="padding:16px 18px">
-          <strong style="font-size:14px">🏆 Produtos Mais Vendidos</strong>
+          <strong style="font-size:14px">Produtos Mais Vendidos</strong>
           <p style="font-size:11.5px;color:var(--muted);margin:2px 0 6px">Por valor, com lucro estimado pela ficha técnica</p>
           <div id="rel-ranking-produtos"></div>
         </div>
         <div class="table-card" style="padding:16px 18px">
-          <strong style="font-size:14px">👤 Clientes com Maior Volume</strong>
+          <strong style="font-size:14px">Clientes com Maior Volume</strong>
           <p style="font-size:11.5px;color:var(--muted);margin:2px 0 6px">Quem mais comprou no período</p>
           <div id="rel-clientes-volume"></div>
         </div>
       </div>
       <div class="table-card table-cards" style="margin-bottom:20px">
-        <div style="padding:16px 20px 0"><strong style="font-size:14px">🛒 Vendas no Período</strong></div>
+        <div style="padding:16px 20px 0"><strong style="font-size:14px">Vendas no Período</strong></div>
         <div class="table-scroll"><table style="margin-top:12px">
           <thead><tr><th>Data</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Forma</th></tr></thead>
           <tbody id="rel-vendas-table"></tbody>
         </table></div>
       </div>
       <div class="table-card table-cards">
-        <div style="padding:16px 20px 0"><strong style="font-size:14px">📋 Movimentações Financeiras</strong></div>
+        <div style="padding:16px 20px 0"><strong style="font-size:14px">Movimentações Financeiras</strong></div>
         <div class="table-scroll"><table style="margin-top:12px">
           <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead>
           <tbody id="rel-fin-table"></tbody>
@@ -729,7 +729,7 @@
   <div id="rel-tab-dre" style="display:none">
     <div class="relatorio-filtros" style="align-items:flex-end">
       <div class="form-group"><label>Mês de referência</label><input type="month" class="form-control" id="dre-mes" style="max-width:180px"></div>
-      <button class="btn btn-primary" onclick="gerarDRE()">📈 Gerar DRE</button>
+      <button class="btn btn-primary" onclick="gerarDRE()">Gerar DRE</button>
     </div>
     <div id="dre-resultado" style="display:none"></div>
   </div>
@@ -745,7 +745,7 @@
           <option value="60">60 dias</option>
         </select>
       </div>
-      <button class="btn btn-primary" onclick="gerarFluxo()">💸 Projetar</button>
+      <button class="btn btn-primary" onclick="gerarFluxo()">Projetar</button>
     </div>
     <div id="fluxo-resultado" style="display:none"></div>
   </div>
@@ -762,8 +762,8 @@
           <option value="60">60 dias</option>
         </select>
       </div>
-      <button class="btn btn-primary" onclick="gerarInadimplencia()">⚠️ Gerar Relatório</button>
-      <button class="btn btn-outline" onclick="imprimirPagina()">🖨️ Imprimir / Exportar</button>
+      <button class="btn btn-primary" onclick="gerarInadimplencia()">Gerar Relatório</button>
+      <button class="btn btn-outline" onclick="imprimirPagina()">Imprimir / Exportar</button>
     </div>
     <div id="inadimp-resultado" style="display:none"></div>
   </div>
@@ -771,8 +771,8 @@
   <!-- BALANÇO PATRIMONIAL -->
   <div id="rel-tab-balanco" style="display:none">
     <div class="relatorio-filtros" style="align-items:center">
-      <p style="font-size:12.5px;color:var(--muted);margin:0;flex:1;min-width:220px">📌 Posição <strong>atual</strong> (hoje) — sem histórico de estoque por data, não há como apurar balanço retroativo.</p>
-      <button class="btn btn-primary" onclick="gerarBalanco()">🏛️ Gerar Balanço</button>
+      <p style="font-size:12.5px;color:var(--muted);margin:0;flex:1;min-width:220px">Posição <strong>atual</strong> (hoje) — sem histórico de estoque por data, não há como apurar balanço retroativo.</p>
+      <button class="btn btn-primary" onclick="gerarBalanco()">Gerar Balanço</button>
     </div>
     <div id="balanco-resultado" style="display:none"></div>
   </div>
@@ -783,13 +783,13 @@
 <!-- BOTÃO FLUTUANTE: Nova Venda -->
 <div id="fab-wrap">
   <div id="fab-menu">
-    <button class="fab-mini" onclick="fabAction('compra')"><span>📦</span> Compra</button>
-    <button class="fab-mini" onclick="fabAction('orcamento')"><span>📝</span> Orçamento</button>
-    <button class="fab-mini" onclick="fabAction('cliente')"><span>👤</span> Cliente</button>
-    <button class="fab-mini" onclick="fabAction('receber')"><span>💰</span> Receber</button>
-    <button class="fab-mini" onclick="fabAction('venda')"><span>🛒</span> Nova Venda</button>
+    <button class="fab-mini" onclick="fabAction('compra')"><i data-lucide="package" class="ic"></i> Compra</button>
+    <button class="fab-mini" onclick="fabAction('orcamento')"><i data-lucide="file-text" class="ic"></i> Orçamento</button>
+    <button class="fab-mini" onclick="fabAction('cliente')"><i data-lucide="user" class="ic"></i> Cliente</button>
+    <button class="fab-mini" onclick="fabAction('receber')"><i data-lucide="wallet" class="ic"></i> Receber</button>
+    <button class="fab-mini" onclick="fabAction('venda')"><i data-lucide="shopping-cart" class="ic"></i> Nova Venda</button>
   </div>
-  <button id="fab-nova-venda" onclick="toggleFabMenu()" title="Ações rápidas">+</button>
+  <button id="fab-nova-venda" onclick="toggleFabMenu()" title="Ações rápidas"><i data-lucide="plus" class="ic"></i></button>
 </div>
 <div id="fab-backdrop" onclick="toggleFabMenu(false)"></div>
 
@@ -797,7 +797,7 @@
 <!-- CLIENTE -->
 <div class="modal-overlay" id="modal-cliente">
   <div class="modal">
-    <div class="modal-header"><h3 id="modal-cliente-title">Novo Cliente</h3><button class="modal-close" onclick="closeModal('modal-cliente')">✕</button></div>
+    <div class="modal-header"><h3 id="modal-cliente-title">Novo Cliente</h3><button class="modal-close" onclick="closeModal('modal-cliente')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="cliente-edit-id">
       <div class="form-group"><label>Nome completo</label><input class="form-control" id="cliente-nome" placeholder="Ex: João Silva"></div>
@@ -807,7 +807,7 @@
       <div class="form-group"><label>Rota</label>
         <div style="display:flex;gap:8px">
           <select class="form-control" id="cliente-rota" style="flex:1"></select>
-          <button type="button" class="btn btn-outline btn-sm" onclick="abrirGerenciarRotas()" title="Gerenciar rotas">⚙️</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="abrirGerenciarRotas()" title="Gerenciar rotas"></button>
         </div>
       </div>
       <div class="modal-footer">
@@ -821,7 +821,7 @@
 <!-- MODAL GERENCIAR ROTAS -->
 <div class="modal-overlay" id="modal-rotas">
   <div class="modal" style="max-width:420px">
-    <div class="modal-header"><h3>🗺️ Gerenciar Rotas</h3><button class="modal-close" onclick="closeModal('modal-rotas')">✕</button></div>
+    <div class="modal-header"><h3>Gerenciar Rotas</h3><button class="modal-close" onclick="closeModal('modal-rotas')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <input class="form-control" id="rota-nova-nome" placeholder="Nome da nova rota" style="flex:1" onkeydown="if(event.key==='Enter')adicionarRota()">
@@ -838,14 +838,14 @@
 <!-- IMPORTAR PEDIDOS EM LOTE -->
 <div class="modal-overlay" id="modal-importar-pedidos">
   <div class="modal" style="max-width:600px">
-    <div class="modal-header"><h3>📥 Importar Pedidos</h3><button class="modal-close" onclick="closeModal('modal-importar-pedidos')">✕</button></div>
+    <div class="modal-header"><h3>Importar Pedidos</h3><button class="modal-close" onclick="closeModal('modal-importar-pedidos')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">
         Cole um pedido por linha. Formato: <strong>CLIENTE, PRODUTO:QTD; PRODUTO:QTD, OBSERVAÇÃO</strong><br>
         Cliente pelo código (<code>#040</code>) ou pelo nome. Produto pelo código (<code>P001</code>, ou <code>P002-1</code> se tiver variante). Cada linha vira um <strong>orçamento rascunho</strong>.
       </p>
-      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="copiarCodigosParaIA()">📋 Copiar códigos p/ IA</button>
-      <div style="background:#F8F9FA;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:var(--muted)">
+      <button class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="copiarCodigosParaIA()">Copiar códigos p/ IA</button>
+      <div style="background:var(--card-2);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:var(--muted)">
         Exemplo:<br>
         <code>#040, P001:2; P002-1:3, fiado</code><br>
         <code>Maria Nova, P003:1, pix</code>
@@ -865,13 +865,13 @@
 <!-- IMPORTAR CLIENTES EM LOTE -->
 <div class="modal-overlay" id="modal-importar-clientes">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3>📋 Importar Lista de Clientes</h3><button class="modal-close" onclick="closeModal('modal-importar-clientes')">✕</button></div>
+    <div class="modal-header"><h3>Importar Lista de Clientes</h3><button class="modal-close" onclick="closeModal('modal-importar-clientes')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">
         Cole um cliente por linha. Formato: <strong>Nome, Telefone, Endereço, Rota</strong> (telefone, endereço e rota são opcionais).<br>
         Pode separar por vírgula ou TAB — funciona colando direto de uma planilha (Excel/Google Sheets). Se a rota não existir, ela será criada automaticamente.
       </p>
-      <div style="background:#F8F9FA;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:var(--muted)">
+      <div style="background:var(--card-2);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:var(--muted)">
         Exemplo:<br>
         <code>João Silva, 11999999999, Rua A 123, Centro</code><br>
         <code>Maria Souza, (11) 98888-7777, , Belmonte</code><br>
@@ -892,7 +892,7 @@
 <!-- CONFIRMAÇÃO GENÉRICA (substitui confirm() nativo, mais confiável no mobile) -->
 <div class="modal-overlay" id="modal-confirmar">
   <div class="modal" style="max-width:360px">
-    <div class="modal-header"><h3>⚠️ Confirmar</h3><button class="modal-close" onclick="closeModal('modal-confirmar')">✕</button></div>
+    <div class="modal-header"><h3>Confirmar</h3><button class="modal-close" onclick="closeModal('modal-confirmar')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p id="modal-confirmar-texto" style="font-size:14px;color:var(--text);margin-bottom:18px"></p>
       <div class="modal-footer">
@@ -906,12 +906,12 @@
 <!-- LEMBRETE DE BACKUP -->
 <div class="modal-overlay" id="modal-lembrete-backup">
   <div class="modal" style="max-width:400px">
-    <div class="modal-header"><h3>💾 Que tal um backup?</h3><button class="modal-close" onclick="lembreteBackupDepois()">✕</button></div>
+    <div class="modal-header"><h3>Que tal um backup?</h3><button class="modal-close" onclick="lembreteBackupDepois()"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p id="lembrete-backup-texto" style="font-size:14px;color:var(--text);margin-bottom:18px"></p>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="lembreteBackupDepois()">Lembrar amanhã</button>
-        <button class="btn btn-primary" onclick="lembreteBackupAgora()">📤 Fazer backup agora</button>
+        <button class="btn btn-primary" onclick="lembreteBackupAgora()">Fazer backup agora</button>
       </div>
     </div>
   </div>
@@ -920,11 +920,11 @@
 <!-- BACKUP EXPORTADO -->
 <div class="modal-overlay" id="modal-backup-exportado">
   <div class="modal" style="max-width:400px">
-    <div class="modal-header"><h3>✅ Backup exportado</h3><button class="modal-close" onclick="closeModal('modal-backup-exportado')">✕</button></div>
+    <div class="modal-header"><h3>Backup exportado</h3><button class="modal-close" onclick="closeModal('modal-backup-exportado')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--muted);margin-bottom:10px">O arquivo abaixo foi baixado:</p>
-      <div style="background:#F8F9FA;border-radius:9px;padding:12px 14px;font-size:13px;font-weight:700;color:var(--navy);word-break:break-all;margin-bottom:14px" id="backup-exportado-nome"></div>
-      <p style="font-size:13px;color:var(--text);margin-bottom:8px">📂 Geralmente ele fica salvo na pasta <strong>Downloads</strong> do seu celular (ou onde seu navegador costuma salvar downloads).</p>
+      <div style="background:var(--card-2);border-radius:9px;padding:12px 14px;font-size:13px;font-weight:700;color:var(--navy);word-break:break-all;margin-bottom:14px" id="backup-exportado-nome"></div>
+      <p style="font-size:13px;color:var(--text);margin-bottom:8px">Geralmente ele fica salvo na pasta <strong>Downloads</strong> do seu celular (ou onde seu navegador costuma salvar downloads).</p>
       <p style="font-size:13px;color:var(--text)">Guarde bem esse arquivo — é ele que você vai selecionar em <strong>"⬆ Importar"</strong> (no menu lateral) se precisar restaurar o backup depois.</p>
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="closeModal('modal-backup-exportado')">Entendi</button>
@@ -936,12 +936,12 @@
 <!-- RECIBO -->
 <div class="modal-overlay" id="modal-recibo">
   <div class="modal" style="max-width:420px">
-    <div class="modal-header"><h3>Recibo de Venda</h3><button class="modal-close" onclick="closeModal('modal-recibo')">✕</button></div>
+    <div class="modal-header"><h3>Recibo de Venda</h3><button class="modal-close" onclick="closeModal('modal-recibo')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
-      <div id="recibo-conteudo" style="background:#fff;border:1.5px dashed var(--border);border-radius:10px;padding:18px;font-size:13px;line-height:1.6"></div>
+      <div id="recibo-conteudo" style="background:var(--card);border:1.5px dashed var(--border);border-radius:10px;padding:18px;font-size:13px;line-height:1.6"></div>
       <div class="modal-footer" style="margin-top:14px">
-        <button class="btn btn-outline" onclick="imprimirRecibo()">🖨️ Imprimir</button>
-        <button class="btn btn-whatsapp" onclick="enviarReciboWhatsapp()">📲 Enviar WhatsApp</button>
+        <button class="btn btn-outline" onclick="imprimirRecibo()">Imprimir</button>
+        <button class="btn btn-whatsapp" onclick="enviarReciboWhatsapp()">Enviar WhatsApp</button>
       </div>
     </div>
   </div>
@@ -950,30 +950,30 @@
 <!-- VENDA (multi-item) -->
 <div class="modal-overlay" id="modal-venda">
   <div class="modal" style="max-width:600px">
-    <div class="modal-header"><h3 id="modal-venda-title">Nova Venda</h3><button class="modal-close" onclick="closeModal('modal-venda')">✕</button></div>
+    <div class="modal-header"><h3 id="modal-venda-title">Nova Venda</h3><button class="modal-close" onclick="closeModal('modal-venda')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="venda-edit-id">
       <input type="hidden" id="venda-tipo" value="venda">
       <div class="form-group" id="venda-tipo-toggle-wrap">
         <div style="display:flex;gap:8px">
-          <button type="button" class="btn btn-sm" id="venda-tipo-btn-venda" onclick="setVendaTipo('venda')" style="flex:1">🛒 Venda</button>
-          <button type="button" class="btn btn-outline btn-sm" id="venda-tipo-btn-orcamento" onclick="setVendaTipo('orcamento')" style="flex:1">📋 Orçamento</button>
+          <button type="button" class="btn btn-sm" id="venda-tipo-btn-venda" onclick="setVendaTipo('venda')" style="flex:1">Venda</button>
+          <button type="button" class="btn btn-outline btn-sm" id="venda-tipo-btn-orcamento" onclick="setVendaTipo('orcamento')" style="flex:1">Orçamento</button>
         </div>
       </div>
       <div class="form-group"><label>Cliente</label>
         <div id="venda-cliente-combo-wrap" style="position:relative">
           <div style="display:flex;gap:8px;align-items:center">
             <input type="hidden" id="venda-cliente">
-            <input class="form-control" id="venda-cliente-busca" style="flex:1" autocomplete="off" placeholder="🔍 Buscar por nome, telefone ou nº..."
+            <input class="form-control" id="venda-cliente-busca" style="flex:1" autocomplete="off" placeholder="Buscar por nome, telefone ou nº..."
               oninput="document.getElementById('venda-cliente').value='';renderClienteComboResultados(this.value)"
               onfocus="this.select();renderClienteComboResultados(this.value)">
             <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="toggleNovoClienteInline()">+ Novo</button>
           </div>
-          <div id="venda-cliente-resultados" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:10px;box-shadow:var(--shadow-lg);max-height:240px;overflow-y:auto;z-index:50;margin-top:4px"></div>
+          <div id="venda-cliente-resultados" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border-radius:10px;box-shadow:var(--shadow-lg);max-height:240px;overflow-y:auto;z-index:50;margin-top:4px"></div>
         </div>
         <!-- MINI-FORM NOVO CLIENTE INLINE -->
         <div id="novo-cliente-inline">
-          <div class="nci-title">👤 Cadastrar novo cliente</div>
+          <div class="nci-title">Cadastrar novo cliente</div>
           <div class="form-group" style="margin-bottom:8px">
             <label>Nome completo *</label>
             <input class="form-control" id="nci-nome" placeholder="Ex: João Silva">
@@ -1018,7 +1018,7 @@
         <label>Desconto extra <span style="font-weight:400;color:var(--muted)">(R$, opcional)</span></label>
         <input class="form-control" type="number" step="0.01" min="0" id="venda-desconto-extra" placeholder="0,00" oninput="calcTotalVendaGeral()">
       </div>
-      <div class="orc-total-box" style="background:#F0FBF4;border:1px solid var(--green)">
+      <div class="orc-total-box" style="background:rgba(76,195,138,.12);border:1px solid var(--green)">
         <span style="font-size:13px;font-weight:600;color:var(--muted)">Total a cobrar</span>
         <span style="font-size:20px;font-weight:800;color:var(--green)" id="venda-total-final">R$ 0,00</span>
       </div>
@@ -1035,12 +1035,12 @@
           </span>
         </label>
         <select class="form-control" id="venda-forma" onchange="toggleVendaEntradaShortcut()">
-          <option value="fiado">📝 Fiado</option><option value="dinheiro">💵 Dinheiro</option><option value="pix">⚡ PIX</option><option value="cartao">💳 Cartão</option>
+          <option value="fiado">Fiado</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option>
         </select>
         <div id="venda-pag-misto-wrap" style="display:none;margin-top:8px">
           <div id="venda-pag-misto-lista"></div>
           <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="adicionarPagamentoMisto()">+ Adicionar forma</button>
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:8px;padding:8px 10px;background:#F8F9FA;border-radius:7px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:8px;padding:8px 10px;background:var(--card-2);border-radius:7px">
             <span style="color:var(--muted)">Restante a alocar:</span>
             <strong id="venda-pag-misto-restante" style="color:var(--navy)">R$ 0,00</strong>
           </div>
@@ -1052,9 +1052,9 @@
           <div style="display:flex;gap:8px">
             <input class="form-control" type="number" step="0.01" min="0" id="venda-entrada-valor" placeholder="0,00" style="flex:2" oninput="atualizarInfoEntrada()">
             <select class="form-control" id="venda-entrada-forma" style="flex:1">
-              <option value="dinheiro">💵 Dinheiro</option>
-              <option value="pix">⚡ PIX</option>
-              <option value="cartao">💳 Cartão</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="cartao">Cartão</option>
             </select>
           </div>
           <div id="venda-entrada-restante-info" style="display:none;font-size:12px;margin-top:6px"></div>
@@ -1078,14 +1078,14 @@
           </div>
           <div class="parcelas-wrap" id="venda-parcelas-lista"></div>
         </div>
-        <div id="venda-parcelado-edit-note" style="display:none;margin-top:8px;background:#FEF9E7;border:1px solid #F39C12;border-radius:8px;padding:10px 12px;font-size:12px;color:#7d6608">
-          📌 Esta venda já está parcelada. As datas de vencimento de cada parcela ficam como estão; se você mudar o total, ele será redistribuído proporcionalmente entre as parcelas existentes. Para mudar o número de parcelas, exclua e recrie a venda.
+        <div id="venda-parcelado-edit-note" style="display:none;margin-top:8px;background:var(--gold-soft);border:1px solid rgba(201,162,75,.5);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gold-2)">
+          Esta venda já está parcelada. As datas de vencimento de cada parcela ficam como estão; se você mudar o total, ele será redistribuído proporcionalmente entre as parcelas existentes. Para mudar o número de parcelas, exclua e recrie a venda.
         </div>
       </div>
       <div class="form-group"><label>Status do Pedido</label>
         <select class="form-control" id="venda-status-pedido">
-          <option value="preparando">⏳ Pedido em Preparação</option>
-          <option value="entregue">✅ Pedido Entregue</option>
+          <option value="preparando">Pedido em Preparação</option>
+          <option value="entregue">Pedido Entregue</option>
         </select>
       </div>
       </div>
@@ -1102,20 +1102,20 @@
 <!-- PAGAMENTO -->
 <div class="modal-overlay" id="modal-pagamento">
   <div class="modal">
-    <div class="modal-header"><h3>Registrar Pagamento</h3><button class="modal-close" onclick="closeModal('modal-pagamento')">✕</button></div>
+    <div class="modal-header"><h3>Registrar Pagamento</h3><button class="modal-close" onclick="closeModal('modal-pagamento')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="pag-cliente-id">
-      <div style="background:#FEF9E7;border:1px solid #F39C12;border-radius:8px;padding:14px;margin-bottom:16px">
-        <div style="font-size:12px;color:#7F8C8D;margin-bottom:4px">Saldo devedor atual</div>
+      <div style="background:var(--gold-soft);border:1px solid rgba(201,162,75,.5);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Saldo devedor atual</div>
         <div style="font-size:24px;font-weight:800;color:var(--red)" id="pag-saldo-atual">R$ 0,00</div>
-        <div style="font-size:12px;color:#7F8C8D;margin-top:2px" id="pag-cliente-nome-label"></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="pag-cliente-nome-label"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Valor Pago (R$)</label>
           <input class="form-control" id="pag-valor" type="number" step="0.01" placeholder="0,00" oninput="calcRestante()">
         </div>
         <div class="form-group"><label>Restante</label>
-          <input class="form-control" id="pag-restante" readonly style="background:#FAFBFC;font-weight:700;color:var(--red)">
+          <input class="form-control" id="pag-restante" readonly style="background:var(--card-2);font-weight:700;color:var(--red)">
         </div>
       </div>
       <div class="form-group"><label>Forma</label>
@@ -1134,20 +1134,20 @@
 <!-- PAGAMENTO A FORNECEDOR (Contas a Pagar) -->
 <div class="modal-overlay" id="modal-pagamento-fornecedor">
   <div class="modal">
-    <div class="modal-header"><h3>Pagar Fornecedor</h3><button class="modal-close" onclick="closeModal('modal-pagamento-fornecedor')">✕</button></div>
+    <div class="modal-header"><h3>Pagar Fornecedor</h3><button class="modal-close" onclick="closeModal('modal-pagamento-fornecedor')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="pagf-fornecedor-id">
-      <div style="background:#F4ECF7;border:1px solid #8E44AD;border-radius:8px;padding:14px;margin-bottom:16px">
-        <div style="font-size:12px;color:#7F8C8D;margin-bottom:4px">Saldo em aberto</div>
-        <div style="font-size:24px;font-weight:800;color:#8E44AD" id="pagf-saldo-atual">R$ 0,00</div>
-        <div style="font-size:12px;color:#7F8C8D;margin-top:2px" id="pagf-fornecedor-nome-label"></div>
+      <div style="background:var(--gold-soft);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Saldo em aberto</div>
+        <div style="font-size:24px;font-weight:800;color:var(--gold-2)" id="pagf-saldo-atual">R$ 0,00</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="pagf-fornecedor-nome-label"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Valor Pago (R$)</label>
           <input class="form-control" id="pagf-valor" type="number" step="0.01" placeholder="0,00" oninput="calcRestanteFornecedor()">
         </div>
         <div class="form-group"><label>Restante</label>
-          <input class="form-control" id="pagf-restante" readonly style="background:#FAFBFC;font-weight:700;color:#8E44AD">
+          <input class="form-control" id="pagf-restante" readonly style="background:var(--card-2);font-weight:700;color:var(--gold-2)">
         </div>
       </div>
       <div class="form-group"><label>Forma</label>
@@ -1167,7 +1167,7 @@
 <!-- PRODUÇÃO -->
 <div class="modal-overlay" id="modal-producao">
   <div class="modal">
-    <div class="modal-header"><h3>Registrar Produção</h3><button class="modal-close" onclick="closeModal('modal-producao')">✕</button></div>
+    <div class="modal-header"><h3>Registrar Produção</h3><button class="modal-close" onclick="closeModal('modal-producao')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <div class="form-row">
         <div class="form-group"><label>Produto</label>
@@ -1184,7 +1184,7 @@
         <input class="form-control" id="prod-validade" type="date" placeholder="Data de validade">
       </div>
       <div id="prod-ficha-preview"></div>
-      <div id="prod-custo-preview" style="margin-top:12px;padding:12px;background:#EAFAF1;border-radius:8px;display:none">
+      <div id="prod-custo-preview" style="margin-top:12px;padding:12px;background:rgba(76,195,138,.12);border-radius:8px;display:none">
         <div style="font-size:12px;color:var(--muted)">Custo estimado</div>
         <div style="font-size:20px;font-weight:800;color:var(--green)" id="prod-custo-val">R$ 0,00</div>
       </div>
@@ -1199,12 +1199,12 @@
 <!-- FICHA TÉCNICA -->
 <div class="modal-overlay" id="modal-ficha">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3>Fichas Técnicas</h3><button class="modal-close" onclick="closeModal('modal-ficha')">✕</button></div>
+    <div class="modal-header"><h3>Fichas Técnicas</h3><button class="modal-close" onclick="closeModal('modal-ficha')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <div class="form-group"><label>Produto / Semiacabado</label>
         <select class="form-control" id="ficha-produto" onchange="onFichaProdutoChange()"><option value="">Selecione...</option></select>
       </div>
-      <div id="ficha-novo-item-form" style="display:none;background:#F8F9FA;border-radius:8px;padding:12px;margin-bottom:12px">
+      <div id="ficha-novo-item-form" style="display:none;background:var(--card-2);border-radius:8px;padding:12px;margin-bottom:12px">
         <div class="form-group" style="margin-bottom:8px"><label id="ficha-novo-item-label">Nome do novo item</label>
           <input class="form-control" id="ficha-novo-item-nome" placeholder="Ex: Base Neutra">
         </div>
@@ -1234,7 +1234,7 @@
 <!-- MATÉRIA PRIMA -->
 <div class="modal-overlay" id="modal-materia">
   <div class="modal">
-    <div class="modal-header"><h3 id="modal-materia-title">Nova Matéria-Prima</h3><button class="modal-close" onclick="closeModal('modal-materia')">✕</button></div>
+    <div class="modal-header"><h3 id="modal-materia-title">Nova Matéria-Prima</h3><button class="modal-close" onclick="closeModal('modal-materia')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="mp-edit-id">
       <div class="form-group"><label>Nome</label><input class="form-control" id="mp-nome" placeholder="Ex: Farinha de trigo"></div>
@@ -1266,7 +1266,7 @@
 <!-- PRODUTO -->
 <div class="modal-overlay" id="modal-semiacabado">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3 id="modal-semi-title">Novo Semiacabado</h3><button class="modal-close" onclick="closeModal('modal-semiacabado')">✕</button></div>
+    <div class="modal-header"><h3 id="modal-semi-title">Novo Semiacabado</h3><button class="modal-close" onclick="closeModal('modal-semiacabado')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="semi-edit-id">
       <div class="form-row">
@@ -1311,16 +1311,16 @@
 <!-- REGISTRAR COMPRA -->
 <div class="modal-overlay" id="modal-compra">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3>🛒 Registrar Compra</h3><button class="modal-close" onclick="closeModal('modal-compra')">✕</button></div>
+    <div class="modal-header"><h3>Registrar Compra</h3><button class="modal-close" onclick="closeModal('modal-compra')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="compra-edit-id">
 
       <!-- Abas modo entrada -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button id="compra-tab-manual" onclick="showCompraTab('manual')"
-          style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--primary);background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">✏️ Manual</button>
+          style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--primary);background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Manual</button>
         <button id="compra-tab-colar" onclick="showCompraTab('colar')"
-          style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:14px;cursor:pointer">📋 Colar Nota</button>
+          style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:14px;cursor:pointer">Colar Nota</button>
       </div>
 
       <!-- ABA COLAR NOTA -->
@@ -1339,8 +1339,8 @@
             </select>
             <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="toggleNovoFornecedorInlineColar()">+ Novo</button>
           </div>
-          <div id="novo-fornecedor-inline-colar" style="display:none;background:#EBF5FB;border:1.5px solid #2980B9;border-radius:10px;padding:14px;margin-top:8px;">
-            <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:6px">🚚 Cadastrar novo fornecedor</div>
+          <div id="novo-fornecedor-inline-colar" style="display:none;background:var(--gold-soft);border:1.5px solid rgba(201,162,75,.5);border-radius:10px;padding:14px;margin-top:8px;">
+            <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:6px">Cadastrar novo fornecedor</div>
             <div class="form-group" style="margin-bottom:8px">
               <label>Nome / Empresa *</label>
               <input class="form-control" id="nfi-colar-nome" placeholder="Ex: Distribuidora XYZ">
@@ -1367,7 +1367,7 @@
             <option value="Cartão de Débito">Cartão de Débito</option>
             <option value="Boleto">Boleto</option>
             <option value="Dinheiro">Dinheiro</option>
-            <option value="A Prazo">📝 A Prazo</option>
+            <option value="A Prazo">A Prazo</option>
           </select>
         </div>
         <div id="compra-colar-prazo-wrap" style="display:none">
@@ -1395,11 +1395,11 @@
         <div class="form-group">
           <label>Atualizar custo/un das MPs?</label>
           <select class="form-control" id="compra-colar-atualiza-custo">
-            <option value="sim">✅ Sim, atualizar</option>
+            <option value="sim">Sim, atualizar</option>
             <option value="nao">Não, manter atual</option>
           </select>
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:12px" onclick="processarNotaColada()">🔍 Extrair dados da nota</button>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:12px" onclick="processarNotaColada()">Extrair dados da nota</button>
         <div id="compra-nota-preview" style="display:none"></div>
         <div class="modal-footer" style="display:none" id="compra-nota-footer">
           <button class="btn btn-outline" onclick="closeModal('modal-compra')">Cancelar</button>
@@ -1419,8 +1419,8 @@
               <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="toggleNovoFornecedorInline()">+ Novo</button>
             </div>
             <!-- MINI-FORM NOVO FORNECEDOR INLINE -->
-            <div id="novo-fornecedor-inline" style="display:none;background:#EBF5FB;border:1.5px solid #2980B9;border-radius:10px;padding:14px;margin-top:8px;">
-              <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:6px">🚚 Cadastrar novo fornecedor</div>
+            <div id="novo-fornecedor-inline" style="display:none;background:var(--gold-soft);border:1.5px solid rgba(201,162,75,.5);border-radius:10px;padding:14px;margin-top:8px;">
+              <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:6px">Cadastrar novo fornecedor</div>
               <div class="form-group" style="margin-bottom:8px">
                 <label>Nome / Empresa *</label>
                 <input class="form-control" id="nfi-nome" placeholder="Ex: Distribuidora XYZ">
@@ -1457,7 +1457,7 @@
               <option value="Cartão de Débito">Cartão de Débito</option>
               <option value="Boleto">Boleto</option>
               <option value="Dinheiro">Dinheiro</option>
-              <option value="A Prazo">📝 A Prazo</option>
+              <option value="A Prazo">A Prazo</option>
             </select>
           </div>
         </div>
@@ -1488,7 +1488,7 @@
           <p style="font-size:11px;color:var(--muted);margin-bottom:8px">Adicione cada matéria-prima do pedido.</p>
           <div id="compra-itens-lista"></div>
           <button class="btn btn-outline btn-sm" id="btn-compra-add-item" style="margin-top:8px" onclick="adicionarItemCompra()">+ Adicionar item</button>
-          <p id="compra-add-item-edit-note" style="display:none;font-size:11px;color:var(--muted);margin-top:6px">✏️ Editando um item existente — pra adicionar mais itens, registre uma nova compra.</p>
+          <p id="compra-add-item-edit-note" style="display:none;font-size:11px;color:var(--muted);margin-top:6px">Editando um item existente — pra adicionar mais itens, registre uma nova compra.</p>
         </div>
         <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
           <div class="form-row" style="margin-bottom:0">
@@ -1516,7 +1516,7 @@
         <div class="form-group">
           <label>Atualizar custo/un das MPs?</label>
           <select class="form-control" id="compra-atualiza-custo">
-            <option value="sim">✅ Sim, atualizar</option>
+            <option value="sim">Sim, atualizar</option>
             <option value="nao">Não, manter atual</option>
           </select>
         </div>
@@ -1532,7 +1532,7 @@
 <!-- FORNECEDOR -->
 <div class="modal-overlay" id="modal-fornecedor">
   <div class="modal">
-    <div class="modal-header"><h3 id="modal-fornecedor-title">Novo Fornecedor</h3><button class="modal-close" onclick="closeModal('modal-fornecedor')">✕</button></div>
+    <div class="modal-header"><h3 id="modal-fornecedor-title">Novo Fornecedor</h3><button class="modal-close" onclick="closeModal('modal-fornecedor')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="forn-edit-id">
       <div class="form-group"><label>Nome / Razão Social</label><input class="form-control" id="forn-nome" placeholder="Ex: Distribuidora Quimicasa"></div>
@@ -1556,11 +1556,11 @@
 <!-- LANÇAMENTO FINANCEIRO -->
 <div class="modal-overlay" id="modal-lancamento">
   <div class="modal">
-    <div class="modal-header"><h3 id="modal-lanc-title">Novo Lançamento</h3><button class="modal-close" onclick="closeModal('modal-lancamento')">✕</button></div>
+    <div class="modal-header"><h3 id="modal-lanc-title">Novo Lançamento</h3><button class="modal-close" onclick="closeModal('modal-lancamento')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="lanc-edit-id">
       <div class="form-group"><label>Tipo</label>
-        <select class="form-control" id="lanc-tipo" onchange="toggleCategoriaLanc()"><option value="entrada">📥 Entrada</option><option value="saida">📤 Saída</option></select>
+        <select class="form-control" id="lanc-tipo" onchange="toggleCategoriaLanc()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>
       </div>
       <div class="form-group"><label>Descrição</label><input class="form-control" id="lanc-desc" placeholder="Ex: Compra de farinha, Pagamento aluguel..."></div>
       <div class="form-group" id="lanc-categoria-wrap"><label>Categoria (opcional)</label>
@@ -1583,7 +1583,7 @@
 <!-- BAIXA MANUAL ESTOQUE -->
 <div class="modal-overlay" id="modal-baixa-estoque">
   <div class="modal" style="max-width:480px">
-    <div class="modal-header"><h3>📉 Baixa Manual de Estoque</h3><button class="modal-close" onclick="closeModal('modal-baixa-estoque')">✕</button></div>
+    <div class="modal-header"><h3>Baixa Manual de Estoque</h3><button class="modal-close" onclick="closeModal('modal-baixa-estoque')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Use para registrar perda, quebra, amostra ou qualquer saída de estoque sem criar uma venda ou produção.</p>
       <div class="form-group"><label>Tipo de item</label>
@@ -1602,21 +1602,21 @@
         </div>
         <div class="form-group"><label>Motivo</label>
           <select class="form-control" id="baixa-motivo">
-            <option value="quebra">🔨 Quebra / Dano</option>
-            <option value="amostra">🎁 Amostra / Brinde</option>
-            <option value="perda">❌ Perda / Vencimento</option>
-            <option value="uso_interno">🏭 Uso interno</option>
-            <option value="outro">📝 Outro</option>
+            <option value="quebra">Quebra / Dano</option>
+            <option value="amostra">Amostra / Brinde</option>
+            <option value="perda">Perda / Vencimento</option>
+            <option value="uso_interno">Uso interno</option>
+            <option value="outro">Outro</option>
           </select>
         </div>
       </div>
-      <div id="baixa-preview" style="display:none;background:#FEF9E7;border:1.5px solid var(--yellow);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
+      <div id="baixa-preview" style="display:none;background:var(--gold-soft);border:1.5px solid var(--yellow);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
       <div class="form-group"><label>Observação (opcional)</label>
         <input class="form-control" id="baixa-obs" placeholder="Detalhes da ocorrência...">
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modal-baixa-estoque')">Cancelar</button>
-        <button class="btn btn-red" onclick="confirmarBaixaEstoque()">📉 Confirmar Baixa</button>
+        <button class="btn btn-red" onclick="confirmarBaixaEstoque()">Confirmar Baixa</button>
       </div>
     </div>
   </div>
@@ -1625,7 +1625,7 @@
 <!-- ENTRADA MANUAL DE ESTOQUE -->
 <div class="modal-overlay" id="modal-entrada-estoque">
   <div class="modal" style="max-width:480px">
-    <div class="modal-header"><h3>📦 Entrada de Estoque</h3><button class="modal-close" onclick="closeModal('modal-entrada-estoque')">✕</button></div>
+    <div class="modal-header"><h3>Entrada de Estoque</h3><button class="modal-close" onclick="closeModal('modal-entrada-estoque')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Use para lançar a chegada de matéria-prima ou semiacabado no estoque (reposição, estoque inicial, etc.), sem precisar registrar uma compra completa.</p>
       <div class="form-group"><label>Tipo de item</label>
@@ -1641,13 +1641,13 @@
       <div class="form-group"><label>Quantidade a adicionar</label>
         <input class="form-control" type="number" id="entrada-qtd" min="0.01" step="0.01" placeholder="0" oninput="atualizarEstoqueEntrada()">
       </div>
-      <div id="entrada-preview" style="display:none;background:#EAFAF1;border:1.5px solid var(--green);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
+      <div id="entrada-preview" style="display:none;background:rgba(76,195,138,.12);border:1.5px solid var(--green);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
       <div class="form-group"><label>Observação (opcional)</label>
         <input class="form-control" id="entrada-obs" placeholder="Ex: reposição, estoque inicial...">
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modal-entrada-estoque')">Cancelar</button>
-        <button class="btn btn-green" onclick="confirmarEntradaEstoque()">📦 Confirmar Entrada</button>
+        <button class="btn btn-green" onclick="confirmarEntradaEstoque()">Confirmar Entrada</button>
       </div>
     </div>
   </div>
@@ -1656,12 +1656,12 @@
 <!-- CUSTOS FIXOS -->
 <div class="modal-overlay" id="modal-custos-fixos">
   <div class="modal" style="max-width:520px">
-    <div class="modal-header"><h3>🏗️ Custos Fixos Mensais</h3><button class="modal-close" onclick="closeModal('modal-custos-fixos')">✕</button></div>
+    <div class="modal-header"><h3>Custos Fixos Mensais</h3><button class="modal-close" onclick="closeModal('modal-custos-fixos')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Informe o valor mensal de cada custo. O total será rateado pelo volume produzido para calcular o custo fixo por unidade.</p>
       <div id="custos-fixos-lista"></div>
       <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="adicionarCustoFixo()">+ Adicionar custo</button>
-      <div style="margin-top:14px;padding:12px;background:#F8F9FA;border-radius:8px">
+      <div style="margin-top:14px;padding:12px;background:var(--card-2);border-radius:8px">
         <div style="display:flex;justify-content:space-between;font-size:13px">
           <span style="color:var(--muted)">Total custos fixos/mês</span>
           <strong id="cf-total-label">R$ 0,00</strong>
@@ -1686,7 +1686,7 @@
 <!-- CANAIS DE VENDA -->
 <div class="modal-overlay" id="modal-canais">
   <div class="modal" style="max-width:520px">
-    <div class="modal-header"><h3>📢 Canais de Venda</h3><button class="modal-close" onclick="closeModal('modal-canais')">✕</button></div>
+    <div class="modal-header"><h3>Canais de Venda</h3><button class="modal-close" onclick="closeModal('modal-canais')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Defina os canais com o desconto (−) ou acréscimo (+) em % sobre o preço base do produto.</p>
       <div id="canais-lista"></div>
@@ -1702,7 +1702,7 @@
 <!-- MODAL ESCOLHA DE IMPRESSÃO -->
 <div class="modal-overlay" id="modal-imprimir">
   <div class="modal" style="max-width:420px">
-    <div class="modal-header"><h3>🖨️ O que deseja imprimir?</h3><button class="modal-close" onclick="closeModal('modal-imprimir')">✕</button></div>
+    <div class="modal-header"><h3>O que deseja imprimir?</h3><button class="modal-close" onclick="closeModal('modal-imprimir')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body" style="padding-top:4px">
       <div style="display:flex;flex-direction:column;gap:8px" id="lista-opcoes-impressao"></div>
     </div>
@@ -1729,7 +1729,7 @@
       taps=0;
       var novoEstado = localStorage.getItem(LS_KEY)==='1' ? '0' : '1';
       localStorage.setItem(LS_KEY, novoEstado);
-      alert(novoEstado==='1' ? '🔧 Modo diagnóstico ATIVADO — recarregando...' : '✅ Modo diagnóstico desativado — recarregando...');
+      alert(novoEstado==='1' ? 'Modo diagnóstico ATIVADO — recarregando...' : 'Modo diagnóstico desativado — recarregando...');
       location.reload();
     }
   };
@@ -1771,26 +1771,26 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.33.7"></script>
-<script src="00-core.js?v=5.33.7"></script>
-<script src="01-ui-nav.js?v=5.33.7"></script>
-<script src="02-dashboard.js?v=5.33.7"></script>
-<script src="03-clientes.js?v=5.33.7"></script>
-<script src="04-vendas.js?v=5.33.7"></script>
-<script src="05-producao.js?v=5.33.7"></script>
-<script src="06-estoque.js?v=5.33.7"></script>
-<script src="07-precificacao.js?v=5.33.7"></script>
-<script src="08-compras-fornecedores.js?v=5.33.7"></script>
-<script src="09-financeiro-relatorios.js?v=5.33.7"></script>
-<script src="10-fab-inline.js?v=5.33.7"></script>
-<script src="10b-planejamento.js?v=5.33.7"></script>
-<script src="12-drive-backup.js?v=5.33.7"></script>
-<script src="11-app-init.js?v=5.33.7"></script>
+<script src="00a-config.js?v=5.34.0"></script>
+<script src="00-core.js?v=5.34.0"></script>
+<script src="01-ui-nav.js?v=5.34.0"></script>
+<script src="02-dashboard.js?v=5.34.0"></script>
+<script src="03-clientes.js?v=5.34.0"></script>
+<script src="04-vendas.js?v=5.34.0"></script>
+<script src="05-producao.js?v=5.34.0"></script>
+<script src="06-estoque.js?v=5.34.0"></script>
+<script src="07-precificacao.js?v=5.34.0"></script>
+<script src="08-compras-fornecedores.js?v=5.34.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.34.0"></script>
+<script src="10-fab-inline.js?v=5.34.0"></script>
+<script src="10b-planejamento.js?v=5.34.0"></script>
+<script src="12-drive-backup.js?v=5.34.0"></script>
+<script src="11-app-init.js?v=5.34.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
   <div class="modal" style="max-width:480px">
-    <div class="modal-header"><h3>+ Novo Produto</h3><button class="modal-close" onclick="closeModal('modal-novo-produto')">✕</button></div>
+    <div class="modal-header"><h3>+ Novo Produto</h3><button class="modal-close" onclick="closeModal('modal-novo-produto')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <div class="form-group"><label>Tipo</label>
         <div class="tabs" style="width:100%">
@@ -1847,7 +1847,7 @@
 <!-- MODAL EDITAR PRODUTO -->
 <div class="modal-overlay" id="modal-editar-produto">
   <div class="modal" style="max-width:480px">
-    <div class="modal-header"><h3>✏️ Editar Produto</h3><button class="modal-close" onclick="closeModal('modal-editar-produto')">✕</button></div>
+    <div class="modal-header"><h3>✏️ Editar Produto</h3><button class="modal-close" onclick="closeModal('modal-editar-produto')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="ep-id">
       <div class="form-group"><label>Nome do Produto</label>
