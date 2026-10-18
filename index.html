@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.34.0">
+<link rel="stylesheet" href="styles.css?v=5.34.1">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -1318,7 +1318,7 @@
       <!-- Abas modo entrada -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button id="compra-tab-manual" onclick="showCompraTab('manual')"
-          style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--primary);background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Manual</button>
+          style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--primary);background:var(--primary);color:#17120A;font-weight:700;font-size:14px;cursor:pointer">Manual</button>
         <button id="compra-tab-colar" onclick="showCompraTab('colar')"
           style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--border);background:var(--card);color:var(--text);font-weight:700;font-size:14px;cursor:pointer">Colar Nota</button>
       </div>
@@ -1500,7 +1500,7 @@
               <label style="display:flex;align-items:center;justify-content:space-between;gap:8px">
                 <span>Taxa Maquineta</span>
                 <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:6px;overflow:hidden">
-                  <button type="button" id="compra-taxa-modo-valor" class="taxa-modo-btn active" style="border:none;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff" onclick="setTaxaModo('valor')">R$</button>
+                  <button type="button" id="compra-taxa-modo-valor" class="taxa-modo-btn active" style="border:none;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;background:var(--primary);color:#17120A" onclick="setTaxaModo('valor')">R$</button>
                   <button type="button" id="compra-taxa-modo-pct" class="taxa-modo-btn" style="border:none;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)" onclick="setTaxaModo('percentual')">%</button>
                 </span>
               </label>
@@ -1709,7 +1709,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- MODO DIAGNÓSTICO — permanente, desligado por padrão.
      Ativar: 5 toques rápidos no texto "v · GestãoPRO..." no rodapé do menu,
@@ -1771,21 +1771,21 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.34.0"></script>
-<script src="00-core.js?v=5.34.0"></script>
-<script src="01-ui-nav.js?v=5.34.0"></script>
-<script src="02-dashboard.js?v=5.34.0"></script>
-<script src="03-clientes.js?v=5.34.0"></script>
-<script src="04-vendas.js?v=5.34.0"></script>
-<script src="05-producao.js?v=5.34.0"></script>
-<script src="06-estoque.js?v=5.34.0"></script>
-<script src="07-precificacao.js?v=5.34.0"></script>
-<script src="08-compras-fornecedores.js?v=5.34.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.34.0"></script>
-<script src="10-fab-inline.js?v=5.34.0"></script>
-<script src="10b-planejamento.js?v=5.34.0"></script>
-<script src="12-drive-backup.js?v=5.34.0"></script>
-<script src="11-app-init.js?v=5.34.0"></script>
+<script src="00a-config.js?v=5.34.1"></script>
+<script src="00-core.js?v=5.34.1"></script>
+<script src="01-ui-nav.js?v=5.34.1"></script>
+<script src="02-dashboard.js?v=5.34.1"></script>
+<script src="03-clientes.js?v=5.34.1"></script>
+<script src="04-vendas.js?v=5.34.1"></script>
+<script src="05-producao.js?v=5.34.1"></script>
+<script src="06-estoque.js?v=5.34.1"></script>
+<script src="07-precificacao.js?v=5.34.1"></script>
+<script src="08-compras-fornecedores.js?v=5.34.1"></script>
+<script src="09-financeiro-relatorios.js?v=5.34.1"></script>
+<script src="10-fab-inline.js?v=5.34.1"></script>
+<script src="10b-planejamento.js?v=5.34.1"></script>
+<script src="12-drive-backup.js?v=5.34.1"></script>
+<script src="11-app-init.js?v=5.34.1"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

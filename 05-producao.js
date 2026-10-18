@@ -2,7 +2,7 @@
 function renderProducao(){
   const tb=document.getElementById('producao-table');
   const prods=[...state.producoes].sort((a,b)=>b.data.localeCompare(a.data));
-  if(prods.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhuma produção registrada</td></tr>';}
+  if(prods.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma produção registrada</span></div></td></tr>';}
   else{tb.innerHTML=prods.map(p=>{
     const diasVal=p.validade?Math.ceil((new Date(p.validade)-new Date(today()))/86400000):null;
     let validadeHtml='<span style="color:var(--muted);font-size:12px">—</span>';

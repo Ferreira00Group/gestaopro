@@ -101,7 +101,7 @@ function salvarNovoFornecedorInline(){
   if(s1){s1.innerHTML=opts;s1.value=id;}
   if(s2){s2.innerHTML=opts;s2.value=id;}
   document.getElementById('novo-fornecedor-inline').style.display='none';
-  showToast('✅ Fornecedor "'+nome+'" cadastrado e selecionado!','green');
+  showToast('Fornecedor "'+nome+'" cadastrado e selecionado!','green');
 }
 
 function toggleNovoFornecedorInlineColar(){
@@ -133,7 +133,7 @@ function salvarNovoFornecedorInlineColar(){
   if(s1){s1.innerHTML=opts;}
   if(s2){s2.innerHTML=opts;s2.value=id;}
   document.getElementById('novo-fornecedor-inline-colar').style.display='none';
-  showToast('✅ Fornecedor "'+nome+'" cadastrado e selecionado!','green');
+  showToast('Fornecedor "'+nome+'" cadastrado e selecionado!','green');
 }
 
 // ============ ALERT BELLS ============

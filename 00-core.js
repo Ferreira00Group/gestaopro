@@ -358,13 +358,13 @@ async function verificarAtualizacao(){
     if(!match) throw new Error('Versão não encontrada');
     const novaVersao=match[1];
     if(novaVersao===APP_VERSION){
-      showToast('✅ Sistema já está na versão mais recente (v'+APP_VERSION+')','green');
+      showToast('Sistema já está na versão mais recente (v'+APP_VERSION+')','green');
       if(btn){btn.textContent='🔄';btn.disabled=false;}
       return;
     }
     abrirModalAtualizacao(novaVersao,html);
   }catch(e){
-    showToast('❌ Erro ao verificar atualização: '+e.message,'red');
+    showToast('Erro ao verificar atualização: '+e.message,'red');
   }
   if(btn){btn.textContent='🔄';btn.disabled=false;}
 }
@@ -472,7 +472,7 @@ function gravarLocalAgora(){
     console.warn('[GestãoPRO] Falha ao gravar no localStorage:', e);
     if(!_avisouFalhaGravacao){
       _avisouFalhaGravacao = true;
-      try{ showToast('⚠️ Não consegui salvar neste aparelho (sem espaço?). Faça um backup agora.','red'); }catch(_){}
+      try{ showToast('Não consegui salvar neste aparelho (sem espaço?). Faça um backup agora.','red'); }catch(_){}
     }
     return false;
   }
@@ -838,11 +838,13 @@ function valorParaQuitarAteFornecedor(fornecedorId,compraId,parcelaIdx){
   return parseFloat(soma.toFixed(2));
 }
 
+let _toastTimer=null;
 function showToast(msg,type=''){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast '+(type||'');
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
+  clearTimeout(_toastTimer); // aviso novo não some junto com o timer do anterior
+  _toastTimer=setTimeout(()=>t.classList.remove('show'),type==='red'?5000:3000);
 }
 function getUltimosMeses(n){
   const meses=[];

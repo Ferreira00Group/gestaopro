@@ -49,7 +49,7 @@ function renderVendas(){
   const tb=document.getElementById('vendas-table');
   const tfoot=document.getElementById('vendas-tfoot');
   if(list.length===0){
-    tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">Nenhuma venda encontrada</td></tr>';
+    tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma venda encontrada</span></div></td></tr>';
     if(tfoot) tfoot.innerHTML='';
     return;
   }
@@ -924,7 +924,7 @@ function abrirRecibo(id){
 function imprimirRecibo(){
   const conteudo=document.getElementById('recibo-conteudo').innerHTML;
   const w=window.open('','_blank');
-  w.document.write(`<html><head><title>Recibo</title><style>body{font-family:Arial,sans-serif;max-width:380px;margin:24px auto;font-size:13px;line-height:1.6}hr{border:none;border-top:1px dashed #ccc;margin:10px 0}</style></head><body>${conteudo}</body></html>`);
+  w.document.write(`<html><head><title>Recibo</title><style>:root{--text:#111;--muted:#666;--border:#ccc;--red:#c0392b;--green:#1e8449}body{font-family:Arial,sans-serif;max-width:380px;margin:24px auto;font-size:13px;line-height:1.6}hr{border:none;border-top:1px dashed #ccc;margin:10px 0}</style></head><body>${conteudo}</body></html>`);
   w.document.close();w.print();
 }
 function enviarReciboWhatsapp(){

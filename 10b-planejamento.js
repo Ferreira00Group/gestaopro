@@ -142,7 +142,7 @@ function renderPlanejamento(){
 
   const tbP = document.getElementById('plan-produtos-table');
   if(produtosFaltantes.length===0){
-    tbP.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Nenhum orçamento em aberto no momento</td></tr>';
+    tbP.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhum orçamento em aberto no momento</span></div></td></tr>';
   } else {
     tbP.innerHTML = produtosFaltantes.map(p=>`<tr>
       <td data-label="Produto"><strong>${getNomeCompletoItem(p.produtoId,p.varianteId)}</strong></td>
@@ -154,7 +154,7 @@ function renderPlanejamento(){
 
   const tbM = document.getElementById('plan-materias-table');
   if(materiasNecessarias.length===0){
-    tbM.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Nenhuma matéria-prima necessária no momento</td></tr>';
+    tbM.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma matéria-prima necessária no momento</span></div></td></tr>';
   } else {
     tbM.innerHTML = materiasNecessarias.map(m=>{
       const forn = m.fornecedorId ? getFornecedor(m.fornecedorId) : null;

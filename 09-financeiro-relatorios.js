@@ -42,7 +42,7 @@ function renderFinanceiro(){
   if(tipoFiltro) list=list.filter(f=>f.tipo===tipoFiltro);
   list=list.filter(f=>f.data.startsWith(mes));
   const tb=document.getElementById('fin-table');
-  if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma movimentação neste período</td></tr>';return;}
+  if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação neste período</span></div></td></tr>';return;}
   tb.innerHTML=list.map(f=>{
     const origemTxt=f.compraId?'🔗 gerado por compra':f.vendaId?'🔗 gerado por venda':f.pagamentoId?'🔗 gerado por pagamento':f.pagamentoFornecedorId?'🔗 gerado por pagamento a fornecedor':null;
     return `<tr>
@@ -180,7 +180,7 @@ function gerarRelatorio(){
   }
 
   const tvs=document.getElementById('rel-vendas-table');
-  if(vendasPeriodo.length===0) tvs.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Nenhuma venda no período</td></tr>';
+  if(vendasPeriodo.length===0) tvs.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma venda no período</span></div></td></tr>';
   else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>`<tr>
     <td data-label="Data">${fmtDate(v.data)}</td>
     <td data-label="Cliente">${escapeHtml(getCliente(v.clienteId).nome)}</td>
@@ -189,7 +189,7 @@ function gerarRelatorio(){
     <td data-label="Forma">${v.forma==='fiado'?'📝 Fiado':v.forma==='dinheiro'?'💵 Dinheiro':v.forma==='pix'?'⚡ PIX':'💳 Cartão'}</td>
   </tr>`).join('');
   const tff=document.getElementById('rel-fin-table');
-  if(finPeriodo.length===0) tff.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">Nenhuma movimentação no período</td></tr>';
+  if(finPeriodo.length===0) tff.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação no período</span></div></td></tr>';
   else tff.innerHTML=[...finPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(f=>`<tr>
     <td data-label="Data">${fmtDate(f.data)}</td><td data-label="Descrição">${escapeHtml(f.desc)}</td>
     <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'📥 Entrada':'📤 Saída'}</span></td>
@@ -447,7 +447,7 @@ function gerarFluxo(){
               <td style="color:var(--red);font-weight:600">${l.saidas>0?fmt(l.saidas):'—'}</td>
               <td style="font-weight:700;color:${l.saldo>=0?'var(--navy)':'var(--red)'}">${fmt(l.saldo)}</td>
             </tr>`).join('')}
-          ${linhas.filter(l=>l.entradas>0||l.saidas>0).length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Nenhum evento projetado no período. Cadastre vendas fiado com vencimento ou lançamentos futuros.</td></tr>':''}
+          ${linhas.filter(l=>l.entradas>0||l.saidas>0).length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhum evento projetado no período. Cadastre vendas fiado com vencimento ou lançamentos futuros.</span></div></td></tr>':''}
         </tbody>
       </table></div>
     </div>`;

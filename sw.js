@@ -17,6 +17,18 @@ const CACHE_NAME = 'gestaopro-cache-v' + APP_VERSION;
 // Por isso o precache abaixo também precisa das mesmas URLs com "?v=", senão o SW guardaria
 // uma versão desalinhada (a de baixo, sem query) que a página nunca chega a pedir de verdade.
 const v = '?v=' + APP_VERSION;
+// Bibliotecas de CDN (Chart.js e Lucide). Um <script> de outra origem volta "opaco" (status 0) e o
+// handler de fetch só guarda status 200 — por isso essas duas nunca iam pro cache e o app offline
+// ficava sem gráficos e sem ícones. Aqui elas são baixadas com CORS (instalação e 1º uso online)
+// e o cache só entra como último recurso, mantendo a regra "rede primeiro".
+const CDN_LIBS = [
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+  'https://unpkg.com/lucide@latest/dist/umd/lucide.js',
+];
+function guardarLib(cache, url){
+  return fetch(url, {mode:'cors'}).then(r=>r.ok ? cache.put(url, r) : null).catch(()=>null);
+}
+
 const ASSETS = [
   './',
   './index.html',
@@ -45,7 +57,7 @@ const ASSETS = [
 self.addEventListener('install', (event)=>{
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache=>cache.addAll(ASSETS))
+      .then(cache=>cache.addAll(ASSETS).then(()=>Promise.all(CDN_LIBS.map(u=>guardarLib(cache,u)))))
       .then(()=>self.skipWaiting())
   );
 });
@@ -61,6 +73,16 @@ self.addEventListener('activate', (event)=>{
 self.addEventListener('fetch', (event)=>{
   const req = event.request;
   if(req.method !== 'GET') return;
+
+  if(CDN_LIBS.includes(req.url)){
+    event.respondWith(
+      fetch(req).then(res=>{
+        caches.open(CACHE_NAME).then(cache=>cache.match(req.url).then(hit=>{ if(!hit) guardarLib(cache, req.url); }));
+        return res;
+      }).catch(()=>caches.match(req.url))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(req).then(res=>{

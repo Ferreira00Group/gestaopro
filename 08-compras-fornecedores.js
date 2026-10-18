@@ -5,7 +5,7 @@ let compraNotaParsed = null;
 function showCompraTab(tab){
   const btnManual=document.getElementById('compra-tab-manual');
   const btnColar=document.getElementById('compra-tab-colar');
-  const ativo='2px solid var(--primary);background:var(--primary);color:#fff';
+  const ativo='2px solid var(--primary);background:var(--primary);color:#17120A';
   const inativo='2px solid var(--border);background:var(--card);color:var(--text)';
   if(tab==='manual'){
     btnManual.style.cssText=`flex:1;padding:10px;border-radius:9px;border:${ativo};font-weight:700;font-size:14px;cursor:pointer`;
@@ -340,9 +340,9 @@ let compraTaxaModo='valor';
 function setTaxaModo(modo){
   compraTaxaModo=modo;
   document.getElementById('compra-taxa-modo-valor').style.background=modo==='valor'?'var(--primary)':'transparent';
-  document.getElementById('compra-taxa-modo-valor').style.color=modo==='valor'?'#fff':'var(--muted)';
+  document.getElementById('compra-taxa-modo-valor').style.color=modo==='valor'?'#17120A':'var(--muted)';
   document.getElementById('compra-taxa-modo-pct').style.background=modo==='percentual'?'var(--primary)':'transparent';
-  document.getElementById('compra-taxa-modo-pct').style.color=modo==='percentual'?'#fff':'var(--muted)';
+  document.getElementById('compra-taxa-modo-pct').style.color=modo==='percentual'?'#17120A':'var(--muted)';
   document.getElementById('compra-taxa').placeholder=modo==='percentual'?'0,00 %':'0,00';
   calcularTotalCompra();
 }
@@ -717,7 +717,7 @@ function renderHistoricoCompras(){
   const tb=document.getElementById('hist-compras-table');
   if(!tb) return;
   if(list.length===0){
-    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px">Nenhuma compra registrada ainda. Clique em "🛒 Registrar Compra" para começar.</td></tr>';
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma compra registrada ainda. Clique em "Registrar Compra" para começar.</span></div></td></tr>';
     return;
   }
   tb.innerHTML=list.map(c=>{
@@ -748,7 +748,7 @@ function renderFornecedores(){
   }
   if(state.fornecedor_status_filter)list=list.filter(f=>f.status===state.fornecedor_status_filter);
   const tb=document.getElementById('fornecedores-table');
-  if(list.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhum fornecedor encontrado</td></tr>';return;}
+  if(list.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhum fornecedor encontrado</span></div></td></tr>';return;}
   tb.innerHTML=list.map(f=>{
     const materiasVinc=state.materias.filter(m=>m.fornecedorId===f.id);
     const materiasTxt=materiasVinc.length?materiasVinc.map(m=>`<span class="variante-tag">${escapeHtml(m.nome)}</span>`).join(''):'<span style="color:var(--muted);font-size:12px">—</span>';

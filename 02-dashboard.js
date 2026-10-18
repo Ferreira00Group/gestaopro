@@ -87,7 +87,7 @@ function renderDashboard(){
   // Top 5 clientes que mais devem (reaproveita "devedores", já ordenado por saldo desc)
   const tbTopDev=document.getElementById('dash-top-devedores');
   if(devedores.length===0){
-    tbTopDev.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Nenhum cliente devendo 🎉</td></tr>';
+    tbTopDev.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px"><div class="empty-inline"><i data-lucide="circle-check"></i><span>Nenhum cliente devendo</span></div></td></tr>';
   } else {
     tbTopDev.innerHTML=devedores.slice(0,5).map(c=>`<tr>
       <td><strong>${escapeHtml(c.nome)}</strong></td>
@@ -109,7 +109,7 @@ function renderDashboard(){
   const topProdutos=Object.values(prodMap).sort((a,b)=>b.valor-a.valor).slice(0,5);
   const tbTopProd=document.getElementById('dash-top-produtos');
   if(topProdutos.length===0){
-    tbTopProd.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Sem vendas este mês</td></tr>';
+    tbTopProd.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Sem vendas este mês</span></div></td></tr>';
   } else {
     tbTopProd.innerHTML=topProdutos.map(p=>`<tr>
       <td><strong>${escapeHtml(p.nome)}</strong></td>
@@ -129,7 +129,7 @@ function renderDashboard(){
   const alertasUnicos=alertasVenc.filter(u=>{if(vistosD.has(u.clienteId))return false;vistosD.add(u.clienteId);return true;});
   const tb=document.getElementById('dash-devedores');
   if(alertasUnicos.length===0){
-    tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Nenhuma cobrança vencida 🎉</td></tr>';
+    tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px"><div class="empty-inline"><i data-lucide="circle-check"></i><span>Nenhuma cobrança vencida</span></div></td></tr>';
   } else {
     tb.innerHTML=alertasUnicos.slice(0,6).map(u=>{
       const c=getCliente(u.clienteId);
