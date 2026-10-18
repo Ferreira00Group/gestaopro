@@ -320,7 +320,7 @@ async function driveRestaurarArquivo(arquivo, ehAnterior){
     atualizarLinksProtecao();
     atualizarStatusDrive();
     if(comSnapshot){
-      abrirAvisoDados('✅ Restaurado do Drive',
+      abrirAvisoDados('Restaurado do Drive',
         'Seus dados foram substituídos pelos do Drive.<br><br>Se foi engano, abra ⚙️ Backup e manutenção e toque em <strong>↩️ Restaurar estado anterior</strong>.',
         [{texto:'Entendi',classe:'btn-primary'}]);
     } else {

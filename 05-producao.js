@@ -8,7 +8,7 @@ function renderProducao(){
     let validadeHtml='<span style="color:var(--muted);font-size:12px">—</span>';
     if(p.validade){
       let cor='var(--green)',icon='✓';
-      if(diasVal<0){cor='var(--red)';icon='⚠️ Vencido';}
+      if(diasVal<0){cor='var(--red)';icon='Vencido';}
       else if(diasVal<=15){cor='var(--yellow)';icon='⏳';}
       validadeHtml=`<span style="color:${cor};font-weight:600;font-size:12px">${icon} ${fmtDate(p.validade)}${diasVal>=0?` (${diasVal}d)`:''}</span>`;
     }
@@ -19,7 +19,7 @@ function renderProducao(){
     <td data-label="Custo"><strong style="color:var(--yellow)">${fmt(p.custo)}</strong></td>
     <td data-label="MP Consumida" class="td-block" style="font-size:12px;color:var(--muted)">${(p.consumo||[]).map(c=>{const info=nomeUnidadeItemFicha(c.tipo||'mp',c.mpId);return `${escapeHtml(info.nome)}: ${c.qtdConsumida}${info.unidade}`;}).join(' · ')}</td>
     <td data-label="Validade">${validadeHtml}</td>
-    <td><button class="icon-btn del" onclick="excluirProducao(${p.id})" title="Excluir">🗑️</button></td>
+    <td><button class="icon-btn del" onclick="excluirProducao(${p.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button></td>
   </tr>`;}).join('');}
   const totalProd=state.producoes.reduce((s,p)=>s+p.custo,0);
   const vencendoEm15=state.producoes.filter(p=>p.validade&&Math.ceil((new Date(p.validade)-new Date(today()))/86400000)<=15&&Math.ceil((new Date(p.validade)-new Date(today()))/86400000)>=0).length;
@@ -111,7 +111,7 @@ function mostrarFicha(){
     return`<div class="recipe-item">
       <span class="mat">${tipo==='semi'?'🧪 ':''}${escapeHtml(nome)}</span>
       <span style="font-weight:600;color:${ok?'var(--green)':'var(--red)'}">${qtdNec.toFixed(2)} ${unidade}</span>
-      <span class="unit">${ok?'✓':'⚠️ insuficiente'}</span>
+      <span class="unit">${ok?'✓':'insuficiente'}</span>
     </div>`;
   }).join('');
   pv.innerHTML=`<div style="background:var(--card-2);border-radius:8px;padding:12px;margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">INGREDIENTES</div>${html}</div>`;
@@ -165,7 +165,7 @@ function registrarProducao(){
 function populateFichaModal(){
   const ps=document.getElementById('ficha-produto');
   const optsProdutos=state.produtos.map(p=>`<option value="p_${p.id}">${escapeHtml(p.nome)}</option>`).join('');
-  const optsSemi=(state.semiacabados||[]).map(s=>`<option value="s_${s.id}">🧪 ${escapeHtml(s.nome)}</option>`).join('');
+  const optsSemi=(state.semiacabados||[]).map(s=>`<option value="s_${s.id}">${escapeHtml(s.nome)}</option>`).join('');
   let html='<option value="">Selecione...</option>';
   html+='<option value="__new_p">➕ Criar novo Produto Acabado</option>';
   html+='<option value="__new_s">➕ Criar novo Semiacabado</option>';
@@ -264,7 +264,7 @@ function opcoesIngredientesFicha(){
   const {tipo,prodId}=fichaKeyAtual();
   const optsMp=materiasOrdenadas().map(m=>`<option value="mp_${m.id}">${escapeHtml(m.nome)} (${m.unidade})</option>`).join('');
   const semis=(state.semiacabados||[]).filter(s=>!(tipo==='s'&&s.id===prodId));
-  const optsSemi=semis.map(s=>`<option value="semi_${s.id}">🧪 ${escapeHtml(s.nome)} (${s.unidade})</option>`).join('');
+  const optsSemi=semis.map(s=>`<option value="semi_${s.id}">${escapeHtml(s.nome)} (${s.unidade})</option>`).join('');
   let html='';
   html+=optsMp?`<optgroup label="Matérias-Primas">${optsMp}</optgroup>`:'';
   html+=optsSemi?`<optgroup label="Semiacabados">${optsSemi}</optgroup>`:'';

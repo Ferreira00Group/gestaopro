@@ -173,7 +173,7 @@ function renderPlanejamento(){
   const wrap = document.getElementById('plan-sugestoes-lista');
   const chaves = Object.keys(grupos);
   if(chaves.length===0){
-    wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--muted);font-size:13px;background:var(--card);border-radius:12px;box-shadow:var(--shadow)">🎉 Nenhuma compra necessária no momento!</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--muted);font-size:13px;background:var(--card);border-radius:12px;box-shadow:var(--shadow)">Nenhuma compra necessária no momento!</div>';
   } else {
     wrap.innerHTML = chaves.map(key=>{
       const itens = grupos[key];
@@ -186,7 +186,7 @@ function renderPlanejamento(){
         </div>
         <div style="display:flex;align-items:center;gap:12px">
           <span style="font-weight:700;color:var(--green)">${fmt(total)}</span>
-          <button class="btn btn-primary btn-sm" onclick="gerarCompraSugerida('${key}')">🛒 Gerar Compra</button>
+          <button class="btn btn-primary btn-sm" onclick="gerarCompraSugerida('${key}')">Gerar Compra</button>
         </div>
       </div>`;
     }).join('');

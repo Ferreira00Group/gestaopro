@@ -129,13 +129,13 @@ function processarNotaColada(){
     const parecida = !isExato ? encontrarMpParecida(i.nome) : null;
     let badge='';
     if(isExato){badge='';}
-    else if(parecida){badge=`<span style="font-size:10px;background:var(--gold-soft);color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-left:6px">⚠️ PARECIDO</span>`;}
+    else if(parecida){badge=`<span style="font-size:10px;background:var(--gold-soft);color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-left:6px">PARECIDO</span>`;}
     else{badge='<span style="font-size:10px;background:var(--yellow);color:#000;border-radius:4px;padding:1px 5px;margin-left:6px">NOVA MP</span>';}
     html += `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:6px 0">${escapeHtml(i.nome)}${badge}
         ${parecida?`<div style="margin-top:6px">
           <select class="form-control" id="nota-resolucao-${idx}" style="font-size:12px;padding:5px 8px">
-            <option value="usar_${parecida.mp.id}">🔗 É o mesmo que "${escapeHtml(parecida.mp.nome)}" (usar existente)</option>
+            <option value="usar_${parecida.mp.id}">É o mesmo que "${escapeHtml(parecida.mp.nome)}" (usar existente)</option>
             <option value="novo">➕ É diferente, criar matéria-prima nova</option>
           </select>
         </div>`:''}
@@ -641,12 +641,12 @@ function renderPagar(){
     // próximo vencimento em aberto, pra dar destaque visual (mesma ideia do vencBadge em Vendas)
     const proximaPendente=comprasPrazo.map(c=>situacaoCompra(c,mapaPagar)).filter(s=>s.vencimentoPendente).sort((a,b)=>(a.vencimentoPendente||'').localeCompare(b.vencimentoPendente||''))[0];
     return`<div class="client-debt-hero" style="background:var(--card-2)">
-      <div><div class="name">🚚 ${escapeHtml(f.nome)}</div><div class="phone">📞 ${escapeHtml(f.tel||'—')}</div></div>
+      <div><div class="name">${escapeHtml(f.nome)}</div><div class="phone">${escapeHtml(f.tel||'—')}</div></div>
       <div style="text-align:right">
         <div class="amount">${fmt(f.saldo)}</div>
         <div class="amount-label">saldo em aberto${proximaPendente?' · '+vencBadge(proximaPendente.vencimentoPendente,hoje):''}</div>
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button class="btn btn-sm" style="background:var(--card);color:var(--gold-2);font-weight:700" onclick="abrirPagamentoFornecedor(${f.id})">💰 Pagar</button>
+          <button class="btn btn-sm" style="background:var(--card);color:var(--gold-2);font-weight:700" onclick="abrirPagamentoFornecedor(${f.id})">Pagar</button>
         </div>
       </div>
     </div>
@@ -732,8 +732,8 @@ function renderHistoricoCompras(){
       <td data-label="Custo/un" style="font-size:12px;color:var(--muted)">${fmt(c.custoUn)}/${mp.unidade}</td>
       <td data-label="Obs" style="font-size:12px;color:var(--muted)">${escapeHtml(c.obs||'—')}</td>
       <td><div class="actions-cell">
-        <button class="icon-btn edit" onclick="editarCompra(${c.id})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="excluirCompra(${c.id})" title="Excluir">🗑️</button>
+        <button class="icon-btn edit" onclick="editarCompra(${c.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirCompra(${c.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>
       </div></td>
     </tr>`;
   }).join('');
@@ -761,9 +761,9 @@ function renderFornecedores(){
       <td data-label="Compras" style="white-space:nowrap">${(()=>{const comprasForn=state.compras.filter(c=>c.fornecedorId===f.id);const totalGasto=comprasForn.reduce((s,c)=>s+c.total,0);return comprasForn.length?`<span style="font-size:12px"><strong>${comprasForn.length}</strong> compra(s)<br><span style="color:var(--muted)">${fmt(totalGasto)}</span></span>`:`<span style="color:var(--muted);font-size:12px">—</span>`;})()}</td>
       <td data-label="Status"><span class="badge ${f.status==='ativo'?'badge-green':'badge-red'}">${f.status==='ativo'?'Ativo':'Inativo'}</span></td>
       <td><div class="actions-cell">
-        <button class="icon-btn" onclick="abrirRegistrarCompra(${f.id})" title="Registrar Compra" style="color:var(--green)">🛒</button>
-        <button class="icon-btn edit" onclick="editarFornecedor(${f.id})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="excluirFornecedor(${f.id})" title="Excluir">🗑️</button>
+        <button class="icon-btn" onclick="abrirRegistrarCompra(${f.id})" title="Registrar Compra" style="color:var(--green)"><i data-lucide="shopping-cart" class="ic"></i></button>
+        <button class="icon-btn edit" onclick="editarFornecedor(${f.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirFornecedor(${f.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>
       </div></td>
     </tr>`;
   }).join('');

@@ -549,7 +549,7 @@ nav a .icon{stroke-width:1.75}
 .progress-bar{background:var(--card-2)}
 .progress-fill{background:linear-gradient(90deg,var(--gold),var(--gold-2))}
 .progress-fill.red{background:var(--red)}
-tbody tr:hover td{background:rgba(201,162,75,.06)}
+@media(hover:hover) and (min-width:640px){tbody tr:hover td{background:rgba(201,162,75,.06)}}
 .badge-red{color:var(--red)}.badge-green{color:var(--green)}
 .badge-yellow,.badge-blue,.badge-orange{background:var(--gold-soft);color:var(--gold-2)}
 .badge-gray{background:var(--card-2);color:var(--muted)}
@@ -585,6 +585,20 @@ tbody tr:hover td{background:rgba(201,162,75,.06)}
 
 .empty-inline{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .empty-inline svg{width:26px;height:26px;stroke-width:1.5;color:var(--gold);opacity:.75}
+
+/* ajustes após conferência visual */
+.card-compacto .info .value,.card-compacto .info .sub{display:block}
+.ic-sm{width:14px;height:14px}
+.badge .ic{width:12px;height:12px;vertical-align:-2px;margin-right:2px}
+.icon-btn .ic,.btn-sm .ic{width:16px;height:16px;margin:0}
+.icon-btn.del{color:#E5897E}
+.alert-banner .ic{vertical-align:-3px}
+.dash-tab-content table{min-width:0;width:100%}
+.dash-tab-content th,.dash-tab-content td{padding-left:8px;padding-right:8px}
+@media(max-width:639px){
+  .table-cards td.td-block{max-width:none!important}
+  .table-cards .rota-mini,.table-cards .td-sub{display:none}
+}
 
 /* impressão sempre em claro */
 @media print{

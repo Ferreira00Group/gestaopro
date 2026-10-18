@@ -67,7 +67,7 @@ function renderDashboard(){
   // esse número ficar errado (mostrava menos dinheiro disponível do que realmente havia).
   const caixaAtual=state.financeiro.reduce((s,f)=>s+(f.tipo==='entrada'?f.valor:-f.valor),0);
   document.getElementById('dash-caixa-atual').textContent=fmt(Math.abs(caixaAtual));
-  document.getElementById('dash-caixa-sub').textContent=caixaAtual>=0?'dinheiro disponível':'⚠️ caixa negativo';
+  document.getElementById('dash-caixa-sub').textContent=caixaAtual>=0?'dinheiro disponível':'caixa negativo';
 
   // Contas Vencidas e Vencem Hoje (por parcela/unidade de dívida, não por venda —
   // uma venda parcelada de 3x pode ter 2 parcelas atrasadas e 1 em dia)
@@ -92,7 +92,7 @@ function renderDashboard(){
     tbTopDev.innerHTML=devedores.slice(0,5).map(c=>`<tr>
       <td><strong>${escapeHtml(c.nome)}</strong></td>
       <td class="debt-amount">${fmt(c.saldo)}</td>
-      <td>${c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})">📲</button>`:'—'}</td>
+      <td>${c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:'—'}</td>
     </tr>`).join('');
   }
 
@@ -141,7 +141,7 @@ function renderDashboard(){
         <td><strong>${escapeHtml(c.nome)}</strong></td>
         <td><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(u.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${statusVenc}</span></td>
         <td class="debt-amount">${fmt(saldo>0?saldo:u.valor)}</td>
-        <td><button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})">📲</button></td>
+        <td><button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button></td>
       </tr>`;
     }).join('');
   }
@@ -208,7 +208,7 @@ function renderMetaVendas(realizado){
   if(sub){
     if(meta<=0){sub.textContent='Digite uma meta acima para acompanhar o progresso';return;}
     const faltam=meta-realizado;
-    if(faltam<=0){sub.textContent='✅ Meta atingida! Parabéns!';}
+    if(faltam<=0){sub.textContent='Meta atingida! Parabéns!';}
     else{
       const diasMes=new Date(parseInt(y),parseInt(m),0).getDate();
       const diaAtual=new Date().getDate();

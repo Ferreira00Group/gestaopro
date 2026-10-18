@@ -1,7 +1,7 @@
 // ============ VENDAS (multi-item) ============
 let vendaItensTemp=[];
 function formaLabel(forma){
-  return forma==='fiado'?'📝 Fiado':forma==='dinheiro'?'💵 Dinheiro':forma==='pix'?'⚡ PIX':forma==='cartao'?'💳 Cartão':forma==='misto'?'🔀 Misto':forma;
+  return forma==='fiado'?'Fiado':forma==='dinheiro'?'Dinheiro':forma==='pix'?'PIX':forma==='cartao'?'Cartão':forma==='misto'?'Misto':forma;
 }
 function statusLabel(status){
   if(status==='pago')return{cls:'badge-green',txt:'Pago'};
@@ -11,8 +11,8 @@ function statusLabel(status){
 let vendasSelecionadas=new Set();
 let vendasExpandidas=new Set();
 function statusPedidoLabel(sp){
-  if(sp==='entregue') return {cls:'badge-green',txt:'✅ Entregue'};
-  return {cls:'badge-orange',txt:'⏳ Em Preparação'};
+  if(sp==='entregue') return {cls:'badge-green',txt:'Entregue'};
+  return {cls:'badge-orange',txt:'Em Preparação'};
 }
 function toggleExpandirParcelas(id){
   if(vendasExpandidas.has(id)) vendasExpandidas.delete(id);
@@ -65,7 +65,7 @@ function renderVendas(){
     ).join('')}</div>`:'—';
     const expandido=vendasExpandidas.has(v.id);
     const formaTxt=isOrc?'—':(v.parcelado
-      ? `📝 Fiado parcelado <button class="icon-btn" style="width:auto;height:auto;padding:1px 6px;font-size:11px;vertical-align:middle" onclick="toggleExpandirParcelas(${v.id})">${sit.pagas}/${sit.totalParcelas} pagas ${expandido?'▾':'▸'}</button>`
+      ? `Fiado parcelado <button class="icon-btn" style="width:auto;height:auto;padding:1px 6px;font-size:11px;vertical-align:middle" onclick="toggleExpandirParcelas(${v.id})">${sit.pagas}/${sit.totalParcelas} pagas ${expandido?'▾':'▸'}</button>`
       : (v.pagamentos&&v.pagamentos.length>1?v.pagamentos.map(p=>formaLabel(p.forma)+' '+fmt(p.valor)).join(' + '):formaLabel(v.forma)));
     const st=isOrc?null:statusLabel(sit.status);
     const sp=statusPedidoLabel(v.statusPedido);
@@ -73,19 +73,19 @@ function renderVendas(){
       ? vencBadge(sit.vencimentoPendente,hoje2)
       : (sit.status==='pago'?'<span style="font-size:12px;color:var(--green)">✓ Pago</span>':'<span style="color:var(--muted);font-size:12px">—</span>'));
     const sel=vendasSelecionadas.has(v.id);
-    const orcBadge=v.statusOrc==='aprovado'?{cls:'badge-green',txt:'✅ Aprovado'}:{cls:'badge-yellow',txt:'📝 Rascunho'};
-    const seloImp=(isOrc&&v.origem==='importacao')?' <span class="badge badge-blue" title="Importado por Importar Pedidos">📥</span>':'';
+    const orcBadge=v.statusOrc==='aprovado'?{cls:'badge-green',txt:'Aprovado'}:{cls:'badge-yellow',txt:'Rascunho'};
+    const seloImp=(isOrc&&v.origem==='importacao')?' <span class="badge badge-blue" title="Importado por Importar Pedidos"><i data-lucide="download" class="ic ic-sm"></i></span>':'';
     const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>${seloImp}`:`<span class="badge ${st.cls}">${st.txt}</span>`;
     const pedidoCell=isOrc?'<span style="color:var(--muted);font-size:12px">—</span>':`<span class="badge ${sp.cls}">${sp.txt}</span>`;
     const acoes=isOrc
-      ? `<button class="icon-btn" onclick="exportarOrcamentoWhatsapp(${v.id})" title="Enviar Proposta">📲</button>
-         <button class="icon-btn edit" onclick="editarVenda(${v.id})" title="Editar">✏️</button>
-         ${v.statusOrc!=='aprovado'?`<button class="icon-btn" onclick="aprovarOrcamento(${v.id})" title="Aprovar">✅</button>`:`<button class="icon-btn" style="color:var(--green)" onclick="converterOrcamentoEmVenda(${v.id})" title="Confirmar Venda">🛒</button>`}
-         <button class="icon-btn del" onclick="excluirVenda(${v.id})" title="Excluir">🗑️</button>`
-      : `<button class="icon-btn" onclick="abrirRecibo(${v.id})" title="Recibo">🧾</button>
-         <button class="icon-btn" onclick="duplicarVenda(${v.id})" title="Duplicar">📑</button>
-         <button class="icon-btn edit" onclick="editarVenda(${v.id})" title="Editar">✏️</button>
-         <button class="icon-btn del" onclick="excluirVenda(${v.id})" title="Excluir">🗑️</button>`;
+      ? `<button class="icon-btn" onclick="exportarOrcamentoWhatsapp(${v.id})" title="Enviar Proposta"><i data-lucide="send" class="ic"></i></button>
+         <button class="icon-btn edit" onclick="editarVenda(${v.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+         ${v.statusOrc!=='aprovado'?`<button class="icon-btn" onclick="aprovarOrcamento(${v.id})" title="Aprovar"><i data-lucide="check" class="ic"></i></button>`:`<button class="icon-btn" style="color:var(--green)" onclick="converterOrcamentoEmVenda(${v.id})" title="Confirmar Venda"><i data-lucide="shopping-cart" class="ic"></i></button>`}
+         <button class="icon-btn del" onclick="excluirVenda(${v.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>`
+      : `<button class="icon-btn" onclick="abrirRecibo(${v.id})" title="Recibo"><i data-lucide="receipt" class="ic"></i></button>
+         <button class="icon-btn" onclick="duplicarVenda(${v.id})" title="Duplicar"><i data-lucide="copy" class="ic"></i></button>
+         <button class="icon-btn edit" onclick="editarVenda(${v.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+         <button class="icon-btn del" onclick="excluirVenda(${v.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>`;
     const linhaPrincipal=`<tr style="${sel?'background:var(--gold-soft);':''}" id="venda-row-${v.id}">
     <td><input type="checkbox" class="venda-check" data-id="${v.id}" ${sel?'checked':''} onchange="toggleSelecaoVenda(${v.id},this.checked)" style="cursor:pointer;width:15px;height:15px"></td>
     <td data-label="Código" style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">${isOrc?'OR':'VD'}${String(v.id).padStart(4,'0')}</td>
@@ -241,7 +241,7 @@ function renderClienteComboResultados(termo){
     el.innerHTML=lista.map(c=>{
       const rota=getRota(c.rotaId);
       const arq=!estaAtivo(c)?' <span style="color:var(--muted);font-weight:400">(arquivado)</span>':'';
-      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${escapeHtml(c.nome)}${arq}</strong><span>${escapeHtml(c.tel||'sem telefone')}${rota?' · 🗺️ '+escapeHtml(rota.nome):''}</span></div>`;
+      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${escapeHtml(c.nome)}${arq}</strong><span>${escapeHtml(c.tel||'sem telefone')}${rota?' · <i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></div>`;
     }).join('');
     if(listaCompleta.length>8) el.innerHTML+=`<div style="padding:8px 14px;font-size:11px;color:var(--muted)">+${listaCompleta.length-8} outro(s) — refine a busca</div>`;
   }
@@ -439,17 +439,17 @@ function atualizarInfoEntrada(){
   el.style.display='block';
   if(restante>0.009){el.textContent=`Fica ${fmt(restante)} fiado`;el.style.color='var(--muted)';}
   else if(restante>=-0.009){el.textContent='Entrada cobre o total — nada fica fiado';el.style.color='var(--green)';}
-  else{el.textContent=`⚠️ Entrada maior que o total (${fmt(total)})`;el.style.color='var(--red)';}
+  else{el.textContent=`Entrada maior que o total (${fmt(total)})`;el.style.color='var(--red)';}
 }
 function renderPagamentosMistoLista(){
   const el=document.getElementById('venda-pag-misto-lista');
   el.innerHTML=vendaPagamentosTemp.map(pg=>`
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <select class="form-control" style="flex:1" onchange="atualizarPagamentoMisto('${pg.uid}','forma',this.value)">
-        <option value="dinheiro" ${pg.forma==='dinheiro'?'selected':''}>💵 Dinheiro</option>
-        <option value="pix" ${pg.forma==='pix'?'selected':''}>⚡ PIX</option>
-        <option value="cartao" ${pg.forma==='cartao'?'selected':''}>💳 Cartão</option>
-        <option value="fiado" ${pg.forma==='fiado'?'selected':''}>📝 Fiado</option>
+        <option value="dinheiro" ${pg.forma==='dinheiro'?'selected':''}>Dinheiro</option>
+        <option value="pix" ${pg.forma==='pix'?'selected':''}>PIX</option>
+        <option value="cartao" ${pg.forma==='cartao'?'selected':''}>Cartão</option>
+        <option value="fiado" ${pg.forma==='fiado'?'selected':''}>Fiado</option>
       </select>
       <input type="number" step="0.01" value="${pg.valor}" class="form-control" style="width:110px" oninput="atualizarPagamentoMisto('${pg.uid}','valor',this.value)" placeholder="0,00">
       <button class="icon-btn del" onclick="removerPagamentoMisto('${pg.uid}')">✕</button>
@@ -496,7 +496,7 @@ function setVendaTipo(tipo){
     btnV.className='btn btn-outline btn-sm';
     btnO.className='btn btn-sm';
     camposVenda.style.display='none';
-    btnSalvar.textContent='💾 Salvar Orçamento';
+    btnSalvar.textContent='Salvar Orçamento';
     btnSalvar.className='btn btn-primary';
   } else {
     btnV.className='btn btn-sm';
@@ -1002,7 +1002,7 @@ function abrirConfirmacaoConverterOrcamento(o){
         <p style="font-size:13px;color:var(--muted);margin:0 0 20px">Você poderá escolher a forma de pagamento antes de finalizar.</p>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn btn-outline" id="btn-cancelar-converter">Cancelar</button>
-          <button class="btn btn-green" id="btn-ok-converter">🛒 Confirmar</button>
+          <button class="btn btn-green" id="btn-ok-converter">Confirmar</button>
         </div>
       </div>
     </div>`;
@@ -1064,13 +1064,13 @@ function renderReceber(){
       ...pags.map(p=>({tipo:'pag',data:p.data,desc:'Pagou ('+p.forma+')',val:p.valor})),
     ].sort((a,b)=>b.data.localeCompare(a.data));
     return`<div class="client-debt-hero">
-      <div><div class="name">👤 ${escapeHtml(c.nome)} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div><div class="phone">📞 ${escapeHtml(c.tel)}</div>${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px">📍 ${escapeHtml(c.end||'')}${c.end&&c.referencia?' · ':''}${escapeHtml(c.referencia||'')}</div>`:''}</div>
+      <div><div class="name">${escapeHtml(c.nome)} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div><div class="phone">${escapeHtml(c.tel)}</div>${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px">${escapeHtml(c.end||'')}${c.end&&c.referencia?' · ':''}${escapeHtml(c.referencia||'')}</div>`:''}</div>
       <div style="text-align:right">
         <div class="amount">${fmt(c.saldo)}</div>
         <div class="amount-label">saldo devedor</div>
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="cobrarWhatsapp(${c.id})">📲 WhatsApp</button>
-          <button class="btn btn-sm" style="background:var(--card);color:var(--red);font-weight:700" onclick="abrirPagamento(${c.id})">💰 Receber</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="cobrarWhatsapp(${c.id})">WhatsApp</button>
+          <button class="btn btn-sm" style="background:var(--card);color:var(--red);font-weight:700" onclick="abrirPagamento(${c.id})">Receber</button>
         </div>
       </div>
     </div>
@@ -1323,8 +1323,8 @@ function impPedRenderPreview(){
         :`<strong>${escapeHtml(L.cliente.nome)}</strong> <span class="badge badge-blue" style="font-size:10.5px">🆕 novo</span>`;
     } else cliTxt='<span style="color:var(--muted)">(cliente não identificado)</span>';
     const itensTxt=L.itens.length?L.itens.map(it=>`${it.qtd}× ${escapeHtml(it.nome)} <span style="color:var(--muted)">(${escapeHtml(it.cod)})</span>`).join('<br>'):'';
-    const erros=L.erros.map(e=>`<div style="color:var(--red);font-size:12px">❌ ${escapeHtml(e)}</div>`).join('');
-    const avisos=L.avisos.map(a=>`<div style="color:var(--gold-2);font-size:12px">⚠️ ${escapeHtml(a)}</div>`).join('');
+    const erros=L.erros.map(e=>`<div style="color:var(--red);font-size:12px">${escapeHtml(e)}</div>`).join('');
+    const avisos=L.avisos.map(a=>`<div style="color:var(--gold-2);font-size:12px">${escapeHtml(a)}</div>`).join('');
     let novoBox='';
     if(L.cliente&&L.cliente.tipo==='novo'&&ok){
       if(!mostrouNovo[L.cliente.key]){
@@ -1332,7 +1332,7 @@ function impPedRenderPreview(){
         const idx=impPed.novoKeys.indexOf(L.cliente.key);
         novoBox=`<div style="margin-top:6px;padding:8px;background:var(--gold-soft);border-radius:8px;font-size:12px">
           <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer"><input type="checkbox" ${nv.cadastrar?'checked':''} onchange="impPedNovoToggle(${idx},this.checked)" style="width:auto;margin:0"> Cadastrar como novo cliente</label>
-          ${L.cliente.arquivadoIgual?'<div style="color:var(--gold-2);margin-top:4px">⚠️ Existe um cliente arquivado com esse nome. Reative-o em Clientes se for o mesmo.</div>':''}
+          ${L.cliente.arquivadoIgual?'<div style="color:var(--gold-2);margin-top:4px">Existe um cliente arquivado com esse nome. Reative-o em Clientes se for o mesmo.</div>':''}
           ${nv.cadastrar?`<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
             <input class="form-control" placeholder="Telefone (opcional)" value="${escapeHtml(nv.tel)}" oninput="impPedNovoCampo(${idx},'tel',this.value)" style="flex:1;min-width:130px;font-size:12.5px;padding:6px 8px">
             <select class="form-control" onchange="impPedNovoCampo(${idx},'rotaId',this.value)" style="flex:1;min-width:110px;font-size:12.5px;padding:6px 8px">${rotasOpts(nv.rotaId)}</select>
@@ -1392,7 +1392,7 @@ function impPedAtualizarResumo(){
   const r=document.getElementById('importar-pedidos-resumo');
   if(r) r.innerHTML=`✅ <strong>${sel.length}</strong> selecionado${sel.length!==1?'s':''} (${fmt(total)})${erros?` · ❌ ${erros} com erro`:''}${avisos?` · ⚠️ ${avisos} repetido${avisos!==1?'s':''} (desmarcado${avisos!==1?'s':''})`:''}`;
   const a=document.getElementById('importar-pedidos-aviso-plan');
-  if(a) a.innerHTML=sel.length?'ℹ️ Rascunhos importados entram na conta do <strong>Planejamento de Materiais</strong> (como qualquer orçamento). Lá, marque <em>"só aprovados"</em> se não quiser contá-los.':'';
+  if(a) a.innerHTML=sel.length?'Rascunhos importados entram na conta do <strong>Planejamento de Materiais</strong> (como qualquer orçamento). Lá, marque <em>"só aprovados"</em> se não quiser contá-los.':'';
 }
 
 // Grava os orçamentos RASCUNHO das linhas marcadas. Não mexe em estoque, financeiro nem fiado:
@@ -1439,6 +1439,6 @@ function copiarCodigosParaIA(){
     '- PRODUTO: só códigos da lista. Nunca invente.\n'+
     '- Se faltar informação, escreva "?" em vez de adivinhar.\n\n'+
     'CLIENTES\n'+(cli||'(nenhum)')+'\n\nPRODUTOS\n'+(prod||'(nenhum)');
-  copiarTexto(txt,'📋 Instruções + códigos copiados. Cole no chat da IA');
+  copiarTexto(txt,'Instruções + códigos copiados. Cole no chat da IA');
 }
 const prevImportarPedidosDebounced=debounce(prevImportarPedidos);

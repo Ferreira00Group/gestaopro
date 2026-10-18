@@ -7,7 +7,7 @@ function listaClientesTexto(){
 function copiarListaClientes(){
   const txt=listaClientesTexto();
   if(!txt){showToast('Nenhum cliente ativo para copiar','red');return;}
-  copiarTexto('CLIENTES\n'+txt,'📋 '+txt.split('\n').length+' clientes copiados');
+  copiarTexto('CLIENTES\n'+txt,''+txt.split('\n').length+' clientes copiados');
 }
 function renderClientes(){
   let list=state.clientes;
@@ -39,21 +39,21 @@ function renderClientes(){
     const arquivado=!estaAtivo(c);
     return`<tr id="cliente-row-${c.id}" style="${arquivado?'opacity:.6':''}">
       <td data-label="Nº"><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtClienteNum(c.id)}</span></td>
-      <td data-label="Nome"><strong>${escapeHtml(c.nome)}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}<br><span style="font-size:11px;color:var(--muted)">${rota?'🗺️ '+escapeHtml(rota.nome):''}</span></td>
+      <td data-label="Nome"><strong>${escapeHtml(c.nome)}</strong>${arquivado?' <span class="badge badge-gray">Arquivado</span>':''}<br><span class="rota-mini" style="font-size:11px;color:var(--muted)">${rota?'<i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></td>
       <td data-label="Telefone">${escapeHtml(c.tel)}</td>
-      <td data-label="Rota">${rota?`<span class="badge badge-blue">🗺️ ${escapeHtml(rota.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td data-label="Rota">${rota?`<span class="badge badge-blue"><i data-lucide="map-pin" class="ic ic-sm"></i> ${escapeHtml(rota.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td data-label="Saldo" class="${saldo>0?'debt-amount debt-pulse':'debt-zero'}">${saldo>0?fmt(saldo):'Em dia ✓'}</td>
       <td data-label="Última Compra">${ultimaCompra?fmtDate(ultimaCompra.data):'-'}</td>
-      <td data-label="Ticket Médio" style="font-size:13px"><strong>${ticketMedio>0?fmt(ticketMedio):'—'}</strong>${vendasCliente.length>0?`<div style="font-size:11px;color:var(--muted)">${vendasCliente.length} compra(s)</div>`:''}</td>
+      <td data-label="Ticket Médio" style="font-size:13px"><strong>${ticketMedio>0?fmt(ticketMedio):'—'}</strong>${vendasCliente.length>0?`<div class="td-sub" style="font-size:11px;color:var(--muted)">${vendasCliente.length} compra(s)</div>`:''}</td>
       <td data-label="Frequência" style="font-size:12px;color:var(--muted)">${freqTxt}</td>
       <td data-label="Status"><span class="badge ${saldo>0?'badge-red':'badge-green'}">${saldo>0?'Devendo':'Em dia'}</span></td>
       <td><div class="actions-cell">
-        ${saldo>0?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})">📲</button>`:''}
-        ${saldo>0?`<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})">💰</button>`:''}
+        ${saldo>0?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}
+        ${saldo>0?`<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})"><i data-lucide="banknote" class="ic"></i></button>`:''}
         ${arquivado
           ?`<button class="btn btn-outline btn-sm" onclick="reativarCliente(${c.id})">↩️ Reativar</button>`
-          :`<button class="icon-btn edit" onclick="editarCliente(${c.id})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="excluirCliente(${c.id})" title="Excluir/Arquivar">🗑️</button>`}
+          :`<button class="icon-btn edit" onclick="editarCliente(${c.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirCliente(${c.id})" title="Excluir/Arquivar"><i data-lucide="trash-2" class="ic"></i></button>`}
       </div></td>
     </tr>`;
   }).join('');
@@ -91,7 +91,7 @@ function renderListaRotas(){
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
       <input class="form-control" style="flex:1" value="${escapeHtml(r.nome)}" onchange="renomearRota(${r.id},this.value)">
       <span style="font-size:11px;color:var(--muted);white-space:nowrap">${qtd} cliente${qtd!==1?'s':''}</span>
-      <button class="icon-btn del" onclick="excluirRota(${r.id})" title="Excluir rota">🗑️</button>
+      <button class="icon-btn del" onclick="excluirRota(${r.id})" title="Excluir rota"><i data-lucide="trash-2" class="ic"></i></button>
     </div>`;
   }).join('');
 }
@@ -189,7 +189,7 @@ function prevImportarClientes(){
     <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
       ${itens.map(it=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12.5px">
         <strong>${escapeHtml(it.nome)}</strong>
-        <span style="color:var(--muted)">${escapeHtml(it.tel||'sem telefone')}${it.end?' · '+escapeHtml(it.end):''}${it.rota?' · 🗺️ '+escapeHtml(it.rota):''}</span>
+        <span style="color:var(--muted)">${escapeHtml(it.tel||'sem telefone')}${it.end?' · '+escapeHtml(it.end):''}${it.rota?' · <i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(it.rota):''}</span>
       </div>`).join('')}
     </div>`;
 }

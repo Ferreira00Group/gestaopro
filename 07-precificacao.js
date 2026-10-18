@@ -84,7 +84,7 @@ function renderPrecVisaoGeral(){
     <div style="margin-top:10px;padding:10px 12px;background:var(--gold-soft);border-radius:8px;font-size:13px">
       ${unidadesProduzidasMes>0
         ?`<strong>${fmt(totalCF)} ÷ ${unidadesProduzidasMes} un = <span style="color:var(--blue)">${fmt(cfPorUn)}/un</span></strong> adicionado ao custo de cada produto`
-        :`<span style="color:var(--muted)">⚠️ Sem produções registradas este mês — o custo fixo não está sendo rateado. Registre produções para ativar o rateio.</span>`}
+        :`<span style="color:var(--muted)">Sem produções registradas este mês — o custo fixo não está sendo rateado. Registre produções para ativar o rateio.</span>`}
     </div>`;
 
   // canais
@@ -227,8 +227,8 @@ function simRecalc(){
         <div style="font-size:12px;margin-top:4px">Lucro total: <strong style="color:${lucroTotal<0?'var(--red)':'var(--green)'}">${fmt(lucroTotal)}</strong></div>
       </div>
     </div>
-    ${margemRS<=0?`<div class="alert-banner danger" style="margin-top:12px">⚠️ Preço abaixo do custo total — você está vendendo no prejuízo neste cenário.</div>`:''}
-    ${margemPct>0&&margemPct<25?`<div class="alert-banner" style="margin-top:12px">⚠️ Margem abaixo de 25% — considere revisar o preço ou reduzir custos.</div>`:''}
+    ${margemRS<=0?`<div class="alert-banner danger" style="margin-top:12px">Preço abaixo do custo total — você está vendendo no prejuízo neste cenário.</div>`:''}
+    ${margemPct>0&&margemPct<25?`<div class="alert-banner" style="margin-top:12px">Margem abaixo de 25% — considere revisar o preço ou reduzir custos.</div>`:''}
   `;
 }
 
@@ -256,7 +256,7 @@ function renderCustosFixosLista(){
           oninput="cfTemp[${i}].valor=parseFloat(this.value)||0;atualizarTotalCF()">
         <span style="font-size:12px;color:var(--muted);flex-shrink:0">/mês</span>
       </div>
-      <button class="icon-btn del" onclick="cfTemp.splice(${i},1);renderCustosFixosLista()">🗑️</button>
+      <button class="icon-btn del" onclick="cfTemp.splice(${i},1);renderCustosFixosLista()"><i data-lucide="trash-2" class="ic"></i></button>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;flex:1 1 100%;margin-top:-2px">
         <input type="checkbox" ${c.isProLabore?'checked':''} onchange="cfTemp[${i}].isProLabore=this.checked;renderCustosFixosLista()" style="width:auto;margin:0">
         💰 É retirada do dono (pró-labore)? <span style="font-weight:400">— aparece separado na DRE</span>
@@ -304,7 +304,7 @@ function renderCanaisLista(){
       <input class="form-control" type="number" step="0.1" min="-100" max="100" value="${c.desconto||0}" style="flex:1"
         oninput="canaisTemp[${i}].desconto=parseFloat(this.value)||0" placeholder="0">
       <span style="font-size:12px;color:var(--muted);flex-shrink:0;min-width:80px">% desconto</span>
-      <button class="icon-btn del" onclick="canaisTemp.splice(${i},1);renderCanaisLista()">🗑️</button>
+      <button class="icon-btn del" onclick="canaisTemp.splice(${i},1);renderCanaisLista()"><i data-lucide="trash-2" class="ic"></i></button>
     </div>`).join('');
 }
 function salvarCanais(){

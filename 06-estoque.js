@@ -37,7 +37,7 @@ function listaProdutosTexto(){
 function copiarListaEstoque(){
   const txt=listaProdutosTexto();
   if(!txt){showToast('Nenhum produto ativo para copiar','red');return;}
-  copiarTexto('PRODUTOS\n'+txt,'📋 '+txt.split('\n').length+' itens de estoque copiados');
+  copiarTexto('PRODUTOS\n'+txt,''+txt.split('\n').length+' itens de estoque copiados');
 }
 function filterEstoque(v){state.estoque_filter=v.toLowerCase();renderEstoque();}
 const filterEstoqueDebounced=debounce(filterEstoque);
@@ -82,17 +82,17 @@ function renderEstoque(){
       const arquivado=!estaAtivo(p);
       return `<tr style="${arquivado?'opacity:.6':''}">
       <td data-label="Cód."><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtProdutoCod(p.id)}</span></td>
-      <td data-label="Produto"><strong>${escapeHtml(p.nome)}</strong>${arquivado?' <span class="badge badge-gray">🗄️ Arquivado</span>':''}${variantesTxt}</td>
+      <td data-label="Produto"><strong>${escapeHtml(p.nome)}</strong>${arquivado?' <span class="badge badge-gray">Arquivado</span>':''}${variantesTxt}</td>
       <td data-label="SKU" style="font-size:12px;color:var(--muted)">${escapeHtml(p.sku||'-')}</td>
       <td data-label="Categoria">${p.categoria?`<span class="cat-pill" style="cursor:default">${escapeHtml(p.categoria)}</span>`:'-'}</td>
       <td data-label="Preço Venda">${fmt(p.preco)}</td>
       <td data-label="Estoque"><strong style="color:${baixo?'var(--red)':'var(--text)'}">${estoqueTotal}</strong></td>
       <td data-label="Mínimo">${p.minimo}</td>
-      <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'⚠️ Baixo':'OK'}</span></td>
+      <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span></td>
       <td><div class="actions-cell">
         ${arquivado?`<button class="btn btn-outline btn-sm" onclick="reativarProduto(${p.id})">↩️ Reativar</button>`:`
-        <button class="icon-btn edit" onclick="editarProduto(${p.id})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="excluirProduto(${p.id})" title="Excluir/Arquivar">🗑️</button>`}
+        <button class="icon-btn edit" onclick="editarProduto(${p.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirProduto(${p.id})" title="Excluir/Arquivar"><i data-lucide="trash-2" class="ic"></i></button>`}
       </div></td>
     </tr>`;}).join('');
   } else if(state.estoque_tab==='semiacabados'){
@@ -116,11 +116,11 @@ function renderEstoque(){
       <td data-label="Custo/un">${fmt(m.custo)}</td>
       <td data-label="Mínimo">${m.minimo} ${m.unidade}</td>
       <td data-label="Fornecedor">${forn?`<span style="font-size:12px;cursor:pointer;color:var(--blue)" onclick="gotoFornecedores()">${escapeHtml(forn.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
-      <td data-label="Status"><span class="badge ${m.qtd<=m.minimo?'badge-red badge-alert':'badge-green'}">${m.qtd<=m.minimo?'⚠️ Baixo':'OK'}</span></td>
+      <td data-label="Status"><span class="badge ${m.qtd<=m.minimo?'badge-red badge-alert':'badge-green'}">${m.qtd<=m.minimo?'Baixo':'OK'}</span></td>
       <td data-label="Previsão">${prevHtml}</td>
       <td><div class="actions-cell">
-        <button class="icon-btn edit" onclick="editarMateria(${m.id})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="excluirMateria(${m.id})" title="Excluir">🗑️</button>
+        <button class="icon-btn edit" onclick="editarMateria(${m.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirMateria(${m.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>
       </div></td>
     </tr>`;}).join('');
   }
@@ -146,10 +146,10 @@ function renderSemiacabados(){
       <td data-label="Estoque"><strong style="color:${baixo?'var(--red)':'var(--text)'}">${s.estoque}</strong> ${s.unidade}</td>
       <td data-label="Mínimo">${s.minimo} ${s.unidade}</td>
       <td data-label="MP Utilizadas" class="td-block" style="font-size:12px">${mps||'<span style="color:var(--muted)">—</span>'}</td>
-      <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'⚠️ Baixo':'OK'}</span></td>
+      <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span></td>
       <td><div class="actions-cell">
-        <button class="icon-btn edit" onclick="editarSemiacabado(${s.id})">✏️</button>
-        <button class="icon-btn del" onclick="excluirSemiacabado(${s.id})">🗑️</button>
+        <button class="icon-btn edit" onclick="editarSemiacabado(${s.id})"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirSemiacabado(${s.id})"><i data-lucide="trash-2" class="ic"></i></button>
       </div></td>
     </tr>`;
   }).join('');
@@ -281,7 +281,7 @@ function atualizarEstoqueBaixa(){
   if(qtd > 0){
     const apos = estoqueAtual - qtd;
     if(apos < 0){
-      prev.innerHTML = `⚠️ Quantidade maior que o estoque atual (${estoqueAtual}). Revise.`;
+      prev.innerHTML = `Quantidade maior que o estoque atual (${estoqueAtual}). Revise.`;
       prev.style.background='#FDECEA';prev.style.borderColor='var(--red)';
     } else {
       prev.innerHTML = `Após a baixa: <strong>${estoqueAtual}</strong> → <strong style="color:${apos<=0?'var(--red)':'var(--navy)'}">${apos.toFixed(2).replace(/\.00$/,'')}</strong>`;

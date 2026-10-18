@@ -44,15 +44,15 @@ function renderFinanceiro(){
   const tb=document.getElementById('fin-table');
   if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação neste período</span></div></td></tr>';return;}
   tb.innerHTML=list.map(f=>{
-    const origemTxt=f.compraId?'🔗 gerado por compra':f.vendaId?'🔗 gerado por venda':f.pagamentoId?'🔗 gerado por pagamento':f.pagamentoFornecedorId?'🔗 gerado por pagamento a fornecedor':null;
+    const origemTxt=f.compraId?'gerado por compra':f.vendaId?'gerado por venda':f.pagamentoId?'gerado por pagamento':f.pagamentoFornecedorId?'gerado por pagamento a fornecedor':null;
     return `<tr>
     <td data-label="Data">${fmtDate(f.data)}</td>
     <td data-label="Descrição">${escapeHtml(f.desc)}${(f.tipo==='saida'&&f.categoria)?`<div style="margin-top:2px"><span class="cat-pill" style="cursor:default;font-size:10px">${escapeHtml(f.categoria)}</span></div>`:''}${origemTxt?`<div style="margin-top:2px;font-size:10.5px;color:var(--muted)">${origemTxt}</div>`:''}</td>
-    <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'📥 Entrada':'📤 Saída'}</span></td>
+    <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'Entrada':'Saída'}</span></td>
     <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
     <td><div class="actions-cell">
-      <button class="icon-btn edit" onclick="editarLancamento(${f.id})" title="${origemTxt?'Editar na origem':'Editar'}" style="${(f.compraId||f.vendaId||f.pagamentoId||f.pagamentoFornecedorId)?'opacity:.4':''}">✏️</button>
-      <button class="icon-btn del" onclick="excluirLancamento(${f.id})" title="${origemTxt?'Excluir na origem':'Excluir'}" style="${(f.compraId||f.vendaId)?'opacity:.4':''}">🗑️</button>
+      <button class="icon-btn edit" onclick="editarLancamento(${f.id})" title="${origemTxt?'Editar na origem':'Editar'}" style="${(f.compraId||f.vendaId||f.pagamentoId||f.pagamentoFornecedorId)?'opacity:.4':''}"><i data-lucide="pencil" class="ic"></i></button>
+      <button class="icon-btn del" onclick="excluirLancamento(${f.id})" title="${origemTxt?'Excluir na origem':'Excluir'}" style="${(f.compraId||f.vendaId)?'opacity:.4':''}"><i data-lucide="trash-2" class="ic"></i></button>
     </div></td>
   </tr>`;
   }).join('');
@@ -186,13 +186,13 @@ function gerarRelatorio(){
     <td data-label="Cliente">${escapeHtml(getCliente(v.clienteId).nome)}</td>
     <td data-label="Itens" class="td-block">${escapeHtml(v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ×'+it.qtd).join(', '))}</td>
     <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
-    <td data-label="Forma">${v.forma==='fiado'?'📝 Fiado':v.forma==='dinheiro'?'💵 Dinheiro':v.forma==='pix'?'⚡ PIX':'💳 Cartão'}</td>
+    <td data-label="Forma">${v.forma==='fiado'?'Fiado':v.forma==='dinheiro'?'Dinheiro':v.forma==='pix'?'PIX':'Cartão'}</td>
   </tr>`).join('');
   const tff=document.getElementById('rel-fin-table');
   if(finPeriodo.length===0) tff.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação no período</span></div></td></tr>';
   else tff.innerHTML=[...finPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(f=>`<tr>
     <td data-label="Data">${fmtDate(f.data)}</td><td data-label="Descrição">${escapeHtml(f.desc)}</td>
-    <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'📥 Entrada':'📤 Saída'}</span></td>
+    <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'Entrada':'Saída'}</span></td>
     <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
   </tr>`).join('');
   destroyChart(chartRel);
@@ -338,7 +338,7 @@ function gerarDRE(){
     </div>
     <div class="table-card" style="margin-bottom:20px">
       <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <strong style="font-size:15px">📈 DRE — ${label}</strong>
+        <strong style="font-size:15px">DRE — ${label}</strong>
         <span style="font-size:12px;color:var(--muted)">Demonstrativo de Resultado do Exercício</span>
       </div>
       <div style="padding:8px 0">
@@ -355,7 +355,7 @@ function gerarDRE(){
       <div class="stat-card"><div class="label">Pró-labore do Mês</div><div class="value">${fmt(totalProLabore)}</div><div class="sub">${totalProLabore>0?'retirada do dono':'nenhum item marcado em Custos Fixos'}</div></div>
     </div>
     <div class="detail-panel" style="font-size:12px;color:var(--muted)">
-      <strong style="color:var(--text)">ℹ️ Como interpretar</strong><br>
+      <strong style="color:var(--text)">Como interpretar</strong><br>
       <strong>Receita Bruta</strong> = total de vendas registradas no mês. <strong>Custo de MP</strong> = compras de matéria-prima registradas. <strong>Custos Fixos</strong> = valores cadastrados em Precificação → Custos Fixos. <strong>Outras Despesas</strong> = lançamentos de saída no Financeiro. <strong>Entradas Extras</strong> = lançamentos de entrada no Financeiro (exceto vendas). <strong>Pró-labore</strong> = itens de Custos Fixos marcados como retirada do dono (já incluso no total de Custos Fixos, só exibido separado). <strong>ROI Operacional</strong> = retorno sobre tudo que saiu pra rodar o negócio no mês — não é ROI de capital investido. <strong>Alavancagem Operacional</strong> = a receita está crescendo mais rápido que o custo total? Custos Fixos não variam por mês nesta conta, então o número é aproximado.
     </div>`;
 }
@@ -427,15 +427,15 @@ function gerarFluxo(){
       <div class="stat-card"><div class="label">Saldo Atual</div><div class="value">${fmt(saldoInicial)}</div><div class="sub">informado</div></div>
       <div class="stat-card green"><div class="label">Entradas Projetadas</div><div class="value">${fmt(totalEntradas)}</div><div class="sub">próx. ${dias} dias</div></div>
       <div class="stat-card red"><div class="label">Saídas Projetadas</div><div class="value">${fmt(totalSaidas)}</div><div class="sub">próx. ${dias} dias</div></div>
-      <div class="stat-card ${saldoFinal>=0?'green':'red'}"><div class="label">Saldo Final</div><div class="value">${fmt(saldoFinal)}</div><div class="sub">${diasNegativo>0?`⚠️ ${diasNegativo} dia(s) negativo(s)`:'✅ Sem dias negativos'}</div></div>
+      <div class="stat-card ${saldoFinal>=0?'green':'red'}"><div class="label">Saldo Final</div><div class="value">${fmt(saldoFinal)}</div><div class="sub">${diasNegativo>0?`${diasNegativo} dia(s) negativo(s)`:'Sem dias negativos'}</div></div>
     </div>
-    ${diasNegativo>0?`<div class="alert-banner danger" style="margin-bottom:16px">⚠️ Em ${diasNegativo} dia(s) o saldo fica negativo. Considere adiantar cobranças ou adiar despesas.</div>`:''}
+    ${diasNegativo>0?`<div class="alert-banner danger" style="margin-bottom:16px">Em ${diasNegativo} dia(s) o saldo fica negativo. Considere adiantar cobranças ou adiar despesas.</div>`:''}
     <div class="chart-card" style="margin-bottom:20px">
-      <h3>💸 Saldo Projetado — Próximos ${dias} dias</h3>
+      <h3>Saldo Projetado — Próximos ${dias} dias</h3>
       <div class="chart-wrap"><canvas id="chart-fluxo"></canvas></div>
     </div>
     <div class="table-card">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong>📋 Eventos Projetados</strong></div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong>Eventos Projetados</strong></div>
       <div class="table-scroll"><table>
         <thead><tr><th>Data</th><th>Descrição</th><th>Entradas</th><th>Saídas</th><th>Saldo do Dia</th></tr></thead>
         <tbody>
@@ -511,7 +511,7 @@ function gerarInadimplencia(){
     </div>
     <div class="table-card">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <strong>⚠️ Relatório de Inadimplência${diasAtraso>0?` — vencido há +${diasAtraso} dias`:''}</strong>
+        <strong>Relatório de Inadimplência${diasAtraso>0?` — vencido há +${diasAtraso} dias`:''}</strong>
         <span style="font-size:12px;color:var(--muted)">Gerado em ${fmtDate(hoje)}</span>
       </div>
       <div class="table-scroll"><table>
@@ -566,7 +566,7 @@ function renderHistoricoPreco(){
   const precoMedio=precos.reduce((a,b)=>a+b,0)/precos.length;
   const mediaArr=precos.map(()=>precoMedio);
   const ctx=document.getElementById('chart-hist-preco');
-  document.getElementById('hist-preco-chart-titulo').textContent=`📈 Evolução do custo/un — ${mp.nome} (${mp.unidade})`;
+  document.getElementById('hist-preco-chart-titulo').textContent=`Evolução do custo/un — ${mp.nome} (${mp.unidade})`;
   chartHistPreco=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[
@@ -693,12 +693,12 @@ function gerarBalanco(){
     <div class="cards-grid cards-grid-4" style="margin-bottom:16px">
       <div class="stat-card blue"><div class="label">Ativo Total</div><div class="value">${fmt(b.ativoTotal)}</div><div class="sub">caixa + receber + estoque</div></div>
       <div class="stat-card red"><div class="label">Passivo Total</div><div class="value">${fmt(b.passivoTotal)}</div><div class="sub">contas a pagar</div></div>
-      <div class="stat-card ${b.patrimonioLiquido>=0?'green':'red'}"><div class="label">Patrimônio Líquido</div><div class="value">${fmt(Math.abs(b.patrimonioLiquido))}</div><div class="sub">${b.patrimonioLiquido>=0?'= Capital de Giro Líquido':'⚠️ passivo > ativo'}</div></div>
-      <div class="stat-card ${b.capitalGiroImediato>=0?'green':'red'}"><div class="label">Capital de Giro Imediato</div><div class="value">${fmt(Math.abs(b.capitalGiroImediato))}</div><div class="sub">${b.capitalGiroImediato>=0?'caixa − contas a pagar':'⚠️ caixa não cobre contas a pagar'}</div></div>
+      <div class="stat-card ${b.patrimonioLiquido>=0?'green':'red'}"><div class="label">Patrimônio Líquido</div><div class="value">${fmt(Math.abs(b.patrimonioLiquido))}</div><div class="sub">${b.patrimonioLiquido>=0?'= Capital de Giro Líquido':'passivo > ativo'}</div></div>
+      <div class="stat-card ${b.capitalGiroImediato>=0?'green':'red'}"><div class="label">Capital de Giro Imediato</div><div class="value">${fmt(Math.abs(b.capitalGiroImediato))}</div><div class="sub">${b.capitalGiroImediato>=0?'caixa − contas a pagar':'caixa não cobre contas a pagar'}</div></div>
     </div>
-    ${b.estoqueProdutosSemFicha>0?`<div class="alert-banner" style="margin-bottom:16px">⚠️ ${b.estoqueProdutosSemFicha} produto(s)/variante(s) com estoque mas sem ficha técnica — entraram no Ativo com custo R$ 0,00.</div>`:''}
+    ${b.estoqueProdutosSemFicha>0?`<div class="alert-banner" style="margin-bottom:16px">${b.estoqueProdutosSemFicha} produto(s)/variante(s) com estoque mas sem ficha técnica — entraram no Ativo com custo R$ 0,00.</div>`:''}
     <div class="table-card" style="margin-bottom:16px">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong style="font-size:15px">🏛️ Balanço Patrimonial — posição em ${fmtDate(b.data)}</strong></div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong style="font-size:15px">Balanço Patrimonial — posição em ${fmtDate(b.data)}</strong></div>
       <div style="padding:8px 0">
         <div style="padding:9px 20px"><strong style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy)">ATIVO</strong></div>
         ${linha('Caixa', b.caixa, {indent:1})}
@@ -714,7 +714,7 @@ function gerarBalanco(){
       </div>
     </div>
     <div class="detail-panel" style="font-size:12px;color:var(--muted)">
-      <strong style="color:var(--text)">ℹ️ Metodologia</strong><br>
+      <strong style="color:var(--text)">Metodologia</strong><br>
       Estoque valorizado pelo <strong>custo de matéria-prima da ficha técnica</strong>, sem rateio de custo fixo. Patrimônio Líquido é sempre <strong>apurado</strong> (Ativo − Passivo), já que o sistema não rastreia capital social investido separadamente — esse mesmo número é o <strong>Capital de Giro Líquido</strong>. Já o <strong>Capital de Giro Imediato</strong> (caixa − contas a pagar) é mais conservador: ignora estoque parado e contas a receber ainda não convertidas em dinheiro. Reflete a posição de <strong>hoje</strong>; não há dados para reconstruir datas passadas.
     </div>`;
 }

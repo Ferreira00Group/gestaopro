@@ -167,7 +167,7 @@ function renderDropEstoque(){
     }
   });
   // matérias-primas abaixo do mínimo
-  state.materias.forEach(m=>{if(m.qtd<=m.minimo)baixos.push({nome:`🌿 ${m.nome}`,estoque:m.qtd,minimo:m.minimo,unidade:m.unidade});});
+  state.materias.forEach(m=>{if(m.qtd<=m.minimo)baixos.push({nome:`${m.nome}`,estoque:m.qtd,minimo:m.minimo,unidade:m.unidade});});
 
   const body=document.getElementById('drop-estoque-body');
   if(baixos.length===0){body.innerHTML='<div class="alert-empty"><i data-lucide="check" class="ic"></i> Todos os itens com estoque OK!</div>';return;}
@@ -189,7 +189,7 @@ function renderDropCobranca(){
   // Vencimentos próximos (até 3 dias), não vencidos ainda
   const proximosVenc=getUnidadesFiadoFlat().filter(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)>=0&&diasParaVencimento(u.vencimento,hj)<=3);
   if(proximosVenc.length>0){
-    html+=`<div class="busca-grupo-titulo">⏰ Vencendo em breve</div>`;
+    html+=`<div class="busca-grupo-titulo">Vencendo em breve</div>`;
     html+=proximosVenc.map(u=>{
       const c=getCliente(u.clienteId);
       const dias=diasParaVencimento(u.vencimento,hj);
@@ -200,7 +200,7 @@ function renderDropCobranca(){
           <span><b style="color:var(--gold-2)">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
         </div>
         <div class="alert-item-action">
-          <button class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:5px 9px" onclick="closeAlertDrop('drop-cobranca');cobrarWhatsapp(${c.id})">📲</button>
+          <button class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:5px 9px" onclick="closeAlertDrop('drop-cobranca');cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>
         </div>
       </div>`;
     }).join('');
@@ -212,7 +212,7 @@ function renderDropCobranca(){
     .sort((a,b)=>b.saldo-a.saldo);
 
   if(devedores.length>0){
-    html+=`<div class="busca-grupo-titulo">💸 Saldo em aberto</div>`;
+    html+=`<div class="busca-grupo-titulo">Saldo em aberto</div>`;
     html+=devedores.map(c=>`
       <div class="alert-item">
         <div class="alert-item-info">
@@ -220,7 +220,7 @@ function renderDropCobranca(){
           <span>Deve: <b style="color:var(--red)">${fmt(c.saldo)}</b></span>
         </div>
         <div class="alert-item-action">
-          <button class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:5px 9px" onclick="closeAlertDrop('drop-cobranca');cobrarWhatsapp(${c.id})">📲</button>
+          <button class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:5px 9px" onclick="closeAlertDrop('drop-cobranca');cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>
         </div>
       </div>`).join('');
   }
@@ -237,7 +237,7 @@ function renderDropPagar(){
 
   const proximosVenc=getUnidadesPagarFlat().filter(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)>=0&&diasParaVencimento(u.vencimento,hj)<=3);
   if(proximosVenc.length>0){
-    html+=`<div class="busca-grupo-titulo">⏰ Vencendo em breve</div>`;
+    html+=`<div class="busca-grupo-titulo">Vencendo em breve</div>`;
     html+=proximosVenc.map(u=>{
       const f=getFornecedor(u.fornecedorId);
       const dias=diasParaVencimento(u.vencimento,hj);
@@ -248,7 +248,7 @@ function renderDropPagar(){
           <span><b style="color:var(--gold-2)">${label} · ${fmtDate(u.vencimento)}</b> · ${fmt(u.valorRestante)}</span>
         </div>
         <div class="alert-item-action">
-          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:var(--gold);color:#17120A" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${u.fornecedorId})">💰</button>
+          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:var(--gold);color:#17120A" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${u.fornecedorId})"><i data-lucide="banknote" class="ic"></i></button>
         </div>
       </div>`;
     }).join('');
@@ -260,7 +260,7 @@ function renderDropPagar(){
     .sort((a,b)=>b.saldo-a.saldo);
 
   if(devedores.length>0){
-    html+=`<div class="busca-grupo-titulo">💸 Saldo em aberto</div>`;
+    html+=`<div class="busca-grupo-titulo">Saldo em aberto</div>`;
     html+=devedores.map(f=>`
       <div class="alert-item">
         <div class="alert-item-info">
@@ -268,7 +268,7 @@ function renderDropPagar(){
           <span>Deve: <b style="color:var(--gold-2)">${fmt(f.saldo)}</b></span>
         </div>
         <div class="alert-item-action">
-          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:var(--gold);color:#17120A" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${f.id})">💰</button>
+          <button class="btn btn-sm" style="font-size:11px;padding:5px 9px;background:var(--gold);color:#17120A" onclick="closeAlertDrop('drop-pagar');abrirPagamentoFornecedor(${f.id})"><i data-lucide="banknote" class="ic"></i></button>
         </div>
       </div>`).join('');
   }

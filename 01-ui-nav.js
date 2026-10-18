@@ -55,10 +55,10 @@ function renderChart30Dias(){
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,displayColors:false,titleFont:{weight:'600'},callbacks:{title:c=>`📅 ${c[0].label}`,label:c=>` ${fmt(c.parsed.y)}`}}
+        tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,displayColors:false,titleFont:{weight:'600'},callbacks:{title:c=>`${c[0].label}`,label:c=>` ${fmt(c.parsed.y)}`}}
       },
       scales:{
-        y:{border:{display:false},ticks:{callback:v=>fmt(v),font:{size:10.5}},grid:{color:'rgba(255,255,255,.06)'}},
+        y:{beginAtZero:true,suggestedMax:10,border:{display:false},ticks:{callback:v=>fmt(v),font:{size:10.5}},grid:{color:'rgba(255,255,255,.06)'}},
         x:{border:{display:false},grid:{display:false},ticks:{font:{size:9.5},maxRotation:0,autoSkip:true,maxTicksLimit:8}}
       }
     }
@@ -144,7 +144,7 @@ function renderChartDash(){
         tooltip:{
           backgroundColor:'#232326',padding:12,cornerRadius:10,
           callbacks:{
-            title:c=>`📅 ${c[0].label}`,
+            title:c=>`${c[0].label}`,
             label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`
           }
         }
@@ -276,7 +276,7 @@ function renderDespesasCategoria(){
     if(totalOutros>0){
       const porCategoria=agruparDespesasPorCategoria(finSaidas);
       let detHtml=`<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🔎 Outras Saídas — por categoria</div>`;
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">Outras Saídas — por categoria</div>`;
       porCategoria.forEach(({label,total})=>{
         const pct=totalOutros>0?(total/totalOutros*100).toFixed(1):0;
         detHtml+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
@@ -329,7 +329,7 @@ function renderDespesasCategoria(){
     </div>
     ${finSaidas.length>0?`
     <div class="table-card">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong>📋 Saídas Registradas — ${nomes[parseInt(m)-1]}</strong></div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong>Saídas Registradas — ${nomes[parseInt(m)-1]}</strong></div>
       <div class="table-scroll"><table>
         <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>% do Total</th></tr></thead>
         <tbody>
@@ -403,8 +403,8 @@ function renderSnapshotFechamento(snap, el, mostrarComparativo){
 
   el.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <h3 style="font-size:16px;font-weight:800">📅 Fechamento — ${label}</h3>
-      ${snap.lucroLiquido>=0?'<span class="badge badge-green" style="font-size:13px;padding:6px 14px">✅ Lucro</span>':'<span class="badge badge-red" style="font-size:13px;padding:6px 14px">⚠️ Prejuízo</span>'}
+      <h3 style="font-size:16px;font-weight:800">Fechamento — ${label}</h3>
+      ${snap.lucroLiquido>=0?'<span class="badge badge-green" style="font-size:13px;padding:6px 14px">Lucro</span>':'<span class="badge badge-red" style="font-size:13px;padding:6px 14px">Prejuízo</span>'}
     </div>
     <div class="cards-grid cards-grid-4" style="margin-bottom:16px">
       <div class="stat-card green"><div class="label">Receita Bruta</div><div class="value">${fmt(snap.receita)}${snapAnt?varPct(snap.receita,snapAnt.receita):''}</div><div class="sub">${snap.vendasCount} vendas</div></div>
@@ -457,7 +457,7 @@ function renderFechamentoHistorico(){
     el.innerHTML='<div class="detail-panel" style="text-align:center;color:var(--muted);font-size:13px">Nenhum snapshot salvo ainda. Gere um fechamento e clique em "Salvar Snapshot" para guardar o histórico.</div>';
     return;
   }
-  el.innerHTML='<h3 style="font-size:15px;font-weight:700;margin-bottom:12px">📚 Histórico de Fechamentos</h3>'+
+  el.innerHTML='<h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Histórico de Fechamentos</h3>'+
     fechamentos.map(snap=>{
       const wrapper=document.createElement('div');
       wrapper.className='detail-panel';wrapper.style.marginBottom='16px';
@@ -465,7 +465,7 @@ function renderFechamentoHistorico(){
       return wrapper.outerHTML;
     }).join('');
   // since we can't use outerHTML on a freshly created element with innerHTML, render directly
-  el.innerHTML='<h3 style="font-size:15px;font-weight:700;margin-bottom:12px">📚 Histórico de Fechamentos</h3>';
+  el.innerHTML='<h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Histórico de Fechamentos</h3>';
   fechamentos.forEach(snap=>{
     const div=document.createElement('div');
     div.className='detail-panel';div.style.marginBottom='16px';
@@ -505,7 +505,7 @@ function renderChartFinanceiro(){
         tooltip:{
           backgroundColor:'#232326',padding:12,cornerRadius:10,
           callbacks:{
-            title:ctx=>`📅 ${ctx[0].label}`,
+            title:ctx=>`${ctx[0].label}`,
             label:ctx=>` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
           }
         }
@@ -545,9 +545,9 @@ function tocarVersao(){
     _toquesVersao=0;
     if(!unico) return;
     closeSidebar();
-    abrirAvisoDados('🛠️ Manutenção','Versão '+APP_VERSION+'. Use depois de subir uma versão nova ou se o app parecer desatualizado. Seus dados não são apagados.',
-      [{texto:'🔄 Verificar atualização',classe:'btn-primary',acao:verificarAtualizacao},
-       {texto:'🧹 Limpar cache e recarregar',classe:'btn-outline',acao:forcarLimpezaCache},
+    abrirAvisoDados('Manutenção','Versão '+APP_VERSION+'. Use depois de subir uma versão nova ou se o app parecer desatualizado. Seus dados não são apagados.',
+      [{texto:'Verificar atualização',classe:'btn-primary',acao:verificarAtualizacao},
+       {texto:'Limpar cache e recarregar',classe:'btn-outline',acao:forcarLimpezaCache},
        {texto:'Fechar',classe:'btn-outline'}]);
   },600);
 }

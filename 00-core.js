@@ -380,7 +380,7 @@ function abrirModalAtualizacao(novaVersao,html){
     modal.id='modal-update';
     modal.className='modal-overlay';
     modal.innerHTML=`<div class="modal" style="max-width:360px">
-      <div class="modal-header"><h3>🔄 Atualização Disponível</h3></div>
+      <div class="modal-header"><h3>Atualização Disponível</h3></div>
       <div class="modal-body">
         <p style="margin:0 0 10px">Nova versão disponível!</p>
         <div style="display:flex;justify-content:space-between;margin-bottom:18px;background:var(--card-2);padding:12px;border-radius:8px">
@@ -388,7 +388,7 @@ function abrirModalAtualizacao(novaVersao,html){
           <span>→</span>
           <span>Nova: <strong id="upd-nova" style="color:var(--green)"></strong></span>
         </div>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 20px">✅ Seus dados serão preservados.</p>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 20px">Seus dados serão preservados.</p>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn btn-outline" onclick="document.getElementById('modal-update').classList.remove('open')">Agora não</button>
           <button class="btn btn-primary" id="btn-aplicar-update">⬇ Atualizar agora</button>
@@ -525,11 +525,11 @@ function diasParaVencimento(venc,hoje){
 }
 function vencBadge(venc,hoje){
   const dias=diasParaVencimento(venc,hoje);
-  if(dias<0) return `<span class="badge badge-red" title="Venceu em ${fmtDate(venc)}">⚠️ ${Math.abs(dias)}d atraso</span>`;
-  if(dias===0) return `<span class="badge badge-red">🔴 Vence hoje</span>`;
-  if(dias===1) return `<span class="badge badge-orange">🟠 Vence amanhã</span>`;
-  if(dias<=3) return `<span class="badge badge-yellow">🟡 ${dias}d p/ vencer</span>`;
-  if(dias<=7) return `<span class="badge badge-yellow" style="opacity:.85">⏳ ${dias}d p/ vencer</span>`;
+  if(dias<0) return `<span class="badge badge-red" title="Venceu em ${fmtDate(venc)}">${Math.abs(dias)}d atraso</span>`;
+  if(dias===0) return `<span class="badge badge-red">Vence hoje</span>`;
+  if(dias===1) return `<span class="badge badge-orange">Vence amanhã</span>`;
+  if(dias<=3) return `<span class="badge badge-yellow">${dias}d p/ vencer</span>`;
+  if(dias<=7) return `<span class="badge badge-yellow" style="opacity:.85">${dias}d p/ vencer</span>`;
   return `<span style="font-size:12px;color:var(--muted)">${fmtDate(venc)}</span>`;
 }
 // Convenção: campo "ativo" ausente = ativo (evita precisar migrar registros antigos).
@@ -876,7 +876,7 @@ function exportarBackup(){
   state.ultimoBackup=Date.now();
   state.snoozeBackupAte=null;
   salvarDados();
-  document.getElementById('backup-exportado-nome').textContent='📄 '+nomeArquivo;
+  document.getElementById('backup-exportado-nome').textContent=''+nomeArquivo;
   openModal('modal-backup-exportado');
   window.open('https://github.com/Ferreira00Group/gestaopro','_blank');
 }
@@ -918,7 +918,7 @@ function importarBackup(input){
           rerenderAposTrocaDeDados();
           atualizarLinksProtecao();
           if(comSnapshot){
-            abrirAvisoDados('✅ Backup importado',
+            abrirAvisoDados('Backup importado',
               'Seus dados foram substituídos pelos do backup.<br><br>Se foi engano, abra ⚙️ Backup e manutenção e toque em <strong>↩️ Restaurar estado anterior</strong> para voltar ao que você tinha antes.',
               [{texto:'Entendi',classe:'btn-primary'}]);
           } else {
@@ -1021,11 +1021,11 @@ function protegerDadosIlegiveis(bruto, erro){
 }
 function abrirAvisoDadosIlegiveis(guardou){
   if(guardou){
-    abrirAvisoDados('⚠️ Dados não puderam ser lidos',
+    abrirAvisoDados('Dados não puderam ser lidos',
       'Não consegui ler os dados salvos neste aparelho, então o app abriu com <strong>dados de exemplo</strong>. Guardei uma cópia do que estava salvo para nada se perder.<br><br><strong>Não comece a lançar vendas ainda.</strong> Se você tem um backup, use ⚙️ Backup e manutenção → Importar backup. Se não, baixe a cópia abaixo e guarde o arquivo.',
       [{texto:'⬇ Baixar cópia',classe:'btn-primary',acao:baixarCopiaRecuperacao},{texto:'Fechar',classe:'btn-outline'}]);
   } else {
-    abrirAvisoDados('⚠️ Dados não puderam ser lidos',
+    abrirAvisoDados('Dados não puderam ser lidos',
       'Não consegui ler os dados salvos neste aparelho e <strong>também não consegui guardar uma cópia</strong> (sem espaço). Por segurança, a gravação está <strong>pausada</strong> para não apagar o que ainda está salvo.<br><br>Importe um backup em ⚙️ Backup e manutenção → Importar backup. Ou escolha "Continuar com dados vazios" (isso descarta os dados ilegíveis).',
       [{texto:'Continuar com dados vazios',classe:'btn-outline',acao:()=>{_bloquearGravacao=false;}},{texto:'Fechar (manter pausado)',classe:'btn-primary'}]);
   }
@@ -1158,7 +1158,7 @@ function parseCodigoCliente(txt){
 }
 // Copia texto pro clipboard, com fallback (execCommand) pra navegador antigo / contexto sem HTTPS.
 function copiarTexto(txt,msgOk){
-  const ok=()=>{if(typeof showToast==='function')showToast(msgOk||'📋 Copiado!','green');};
+  const ok=()=>{if(typeof showToast==='function')showToast(msgOk||'Copiado!','green');};
   const falha=()=>{if(typeof showToast==='function')showToast('Não foi possível copiar','red');};
   const fallback=()=>{
     try{
@@ -1196,9 +1196,9 @@ function buscaGlobal(termo){
     el.style.display='block';return;
   }
   let html='';
-  if(resClientes.length){html+=`<div class="busca-grupo-titulo">👥 Clientes</div>`+resClientes.map(c=>`<div class="busca-item" onclick="irParaCliente(${c.id})"><strong>${escapeHtml(c.nome)}</strong><span>${escapeHtml(c.tel||'')}</span></div>`).join('');}
-  if(resProdutos.length){html+=`<div class="busca-grupo-titulo">📦 Produtos</div>`+resProdutos.map(p=>`<div class="busca-item" onclick="goto('estoque');fecharBuscaGlobal()"><strong>${escapeHtml(p.nome)}</strong><span><b style="font-family:monospace">${fmtProdutoCod(p.id)}</b> ${escapeHtml(p.sku||'')} ${p.categoria?'· '+escapeHtml(p.categoria):''}</span></div>`).join('');}
-  if(resVendas.length){html+=`<div class="busca-grupo-titulo">🛒 Vendas</div>`+resVendas.map(v=>`<div class="busca-item" onclick="goto('vendas');fecharBuscaGlobal()"><strong>${escapeHtml(getCliente(v.clienteId).nome)}</strong><span>${fmtDate(v.data)} · ${fmt(v.total)}</span></div>`).join('');}
+  if(resClientes.length){html+=`<div class="busca-grupo-titulo">Clientes</div>`+resClientes.map(c=>`<div class="busca-item" onclick="irParaCliente(${c.id})"><strong>${escapeHtml(c.nome)}</strong><span>${escapeHtml(c.tel||'')}</span></div>`).join('');}
+  if(resProdutos.length){html+=`<div class="busca-grupo-titulo">Produtos</div>`+resProdutos.map(p=>`<div class="busca-item" onclick="goto('estoque');fecharBuscaGlobal()"><strong>${escapeHtml(p.nome)}</strong><span><b style="font-family:monospace">${fmtProdutoCod(p.id)}</b> ${escapeHtml(p.sku||'')} ${p.categoria?'· '+escapeHtml(p.categoria):''}</span></div>`).join('');}
+  if(resVendas.length){html+=`<div class="busca-grupo-titulo">Vendas</div>`+resVendas.map(v=>`<div class="busca-item" onclick="goto('vendas');fecharBuscaGlobal()"><strong>${escapeHtml(getCliente(v.clienteId).nome)}</strong><span>${fmtDate(v.data)} · ${fmt(v.total)}</span></div>`).join('');}
   el.innerHTML=html;
   el.style.display='block';
 }
@@ -1257,12 +1257,12 @@ function renderAlertaEstoquePage(){
   const el = document.getElementById('alerta-estoque-banner');
   if(!el) return;
   if(alertas.total===0){el.innerHTML='';return;}
-  const itens = [...alertas.baixoProdutos.map(p=>`📦 ${escapeHtml(p.nome)}: ${p.estoque} un (mín: ${p.minimo})`),
-    ...alertas.baixoMaterias.map(m=>`🧂 ${escapeHtml(m.nome)}: ${m.qtd}${m.unidade} (mín: ${m.minimo}${m.unidade})`)];
+  const itens = [...alertas.baixoProdutos.map(p=>`${escapeHtml(p.nome)}: ${p.estoque} un (mín: ${p.minimo})`),
+    ...alertas.baixoMaterias.map(m=>`${escapeHtml(m.nome)}: ${m.qtd}${m.unidade} (mín: ${m.minimo}${m.unidade})`)];
   const aberto = state.alerta_estoque_aberto?true:false;
   el.innerHTML=`<div class="alert-banner danger" style="flex-direction:column;align-items:stretch;gap:0;cursor:pointer;padding:0" onclick="toggleAlertaEstoque()">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px">
-      <strong>⚠️ ${alertas.total} iten(s) com estoque abaixo do mínimo</strong>
+      <strong><i data-lucide="triangle-alert" class="ic ic-sm"></i> ${alertas.total} iten(s) com estoque abaixo do mínimo</strong>
       <span style="font-size:11px;transition:transform .2s;transform:rotate(${aberto?180:0}deg)">▾</span>
     </div>
     ${aberto?`<div style="font-size:12px;font-weight:500;opacity:.85;padding:0 16px 12px">${itens.join('  ·  ')}</div>`:''}
