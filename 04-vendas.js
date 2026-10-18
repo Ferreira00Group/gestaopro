@@ -1064,13 +1064,13 @@ function renderReceber(){
       ...pags.map(p=>({tipo:'pag',data:p.data,desc:'Pagou ('+p.forma+')',val:p.valor})),
     ].sort((a,b)=>b.data.localeCompare(a.data));
     return`<div class="client-debt-hero">
-      <div><div class="name">${escapeHtml(c.nome)} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div><div class="phone">${escapeHtml(c.tel)}</div>${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px">${escapeHtml(c.end||'')}${c.end&&c.referencia?' · ':''}${escapeHtml(c.referencia||'')}</div>`:''}</div>
+      <div><div class="name"><i data-lucide="user" class="ic ic-sm"></i> ${escapeHtml(c.nome)} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div>${c.tel?`<div class="phone"><i data-lucide="phone" class="ic ic-sm"></i> ${escapeHtml(c.tel)}</div>`:''}${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px"><i data-lucide="map-pin" class="ic ic-sm"></i> ${escapeHtml(c.end||'')}${c.end&&c.referencia?' · ':''}${escapeHtml(c.referencia||'')}</div>`:''}</div>
       <div style="text-align:right">
         <div class="amount">${fmt(c.saldo)}</div>
         <div class="amount-label">saldo devedor</div>
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="cobrarWhatsapp(${c.id})">WhatsApp</button>
-          <button class="btn btn-sm" style="background:var(--card);color:var(--red);font-weight:700" onclick="abrirPagamento(${c.id})">Receber</button>
+          <button class="btn btn-outline btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i> WhatsApp</button>
+          <button class="btn btn-primary btn-sm" onclick="abrirPagamento(${c.id})"><i data-lucide="banknote" class="ic"></i> Receber</button>
         </div>
       </div>
     </div>

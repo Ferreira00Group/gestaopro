@@ -311,6 +311,18 @@ function validarShapeBackup(obj){
   return true;
 }
 
+// Filtros e buscas das telas são temporários. Antes eles voltavam do armazenamento com a caixa de busca
+// vazia e a lista ficava filtrada "no escuro" (ex.: Clientes mostrando só um nome).
+function limparFiltrosDeTela(s){ Object.keys(s).forEach(k=>{ if(/_filter$/.test(k)) s[k]=''; }); return s; }
+// Busca tolerante: ignora maiúsculas, acentos e a pontuação do telefone
+function normBusca(s){ return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function clienteCombinaBusca(c,q){
+  const t=normBusca(q); if(!t) return true;
+  if(normBusca(c.nome).includes(t)) return true;
+  if(typeof fmtClienteNum==='function' && normBusca(fmtClienteNum(c.id)).includes(t.replace(/^#/,''))) return true;
+  const d=String(q).replace(/\D/g,'');
+  return d.length>=2 && String(c.tel||'').replace(/\D/g,'').includes(d);
+}
 function carregarDados(){
   let saved = null, carregouOk = false;
   try{
@@ -321,6 +333,7 @@ function carregarDados(){
       const parsed = migrarDados(raw);
       // merge com defaults para garantir novas chaves futuras
       state = { ...DEFAULT_STATE, ...parsed };
+      limparFiltrosDeTela(state);
       state.nextId      = { ...DEFAULT_STATE.nextId, ...parsed.nextId };
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
@@ -945,6 +958,7 @@ function importarBackup(input){
 function aplicarDadosNoState(raw){
   const parsed=migrarDados(raw);
   state={...DEFAULT_STATE,...parsed};
+  limparFiltrosDeTela(state);
   state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
   state._version=SCHEMA_VERSION;
   _bloquearGravacao=false;
@@ -1186,11 +1200,11 @@ function buscaGlobal(termo){
   if(!el)return;
   if(!termo||termo.trim().length<2){el.style.display='none';el.innerHTML='';return;}
   const t=termo.toLowerCase();
-  const resClientes=state.clientes.filter(c=>c.nome.toLowerCase().includes(t)||(c.tel||'').includes(t)||(typeof fmtClienteNum==='function'&&fmtClienteNum(c.id).toLowerCase().includes(t))).slice(0,4);
+  const resClientes=state.clientes.filter(c=>clienteCombinaBusca(c,termo)).slice(0,8);
   const tCod=t.replace(/\s+/g,'');
   const resProdutos=state.produtos.filter(p=>p.nome.toLowerCase().includes(t)||(p.sku||'').toLowerCase().includes(t)||(p.categoria||'').toLowerCase().includes(t)||
     (/^p\d/.test(tCod)&&(fmtProdutoCod(p.id).toLowerCase().includes(tCod)||(p.variantes||[]).some(v=>fmtProdutoCod(p.id,v.id).toLowerCase().includes(tCod))))).slice(0,4);
-  const resVendas=state.vendas.filter(v=>getCliente(v.clienteId).nome.toLowerCase().includes(t)).slice(0,4);
+  const resVendas=state.vendas.filter(v=>normBusca(getCliente(v.clienteId).nome).includes(normBusca(termo))).slice(0,4);
   if(resClientes.length===0&&resProdutos.length===0&&resVendas.length===0){
     el.innerHTML='<div style="padding:14px;color:var(--muted);font-size:13px">Nenhum resultado encontrado</div>';
     el.style.display='block';return;
@@ -1202,7 +1216,13 @@ function buscaGlobal(termo){
   el.innerHTML=html;
   el.style.display='block';
 }
-function irParaCliente(id){goto('clientes');fecharBuscaGlobal();setTimeout(()=>filterClientes(getCliente(id).nome),50);document.querySelector('#page-clientes .search-input').value=getCliente(id).nome;}
+function irParaCliente(id){
+  const c=getCliente(id);
+  goto('clientes');fecharBuscaGlobal();
+  if(!estaAtivo(c)) state.cliente_mostrar_arquivados=true; // cliente arquivado também precisa aparecer na lista
+  const inp=document.getElementById('cliente-busca-input'); if(inp) inp.value=c.nome;
+  setTimeout(()=>filterClientes(c.nome),50);
+}
 function mostrarResultadosBusca(){
   const inp=document.getElementById('busca-global-input');
   if(inp&&inp.value.trim().length>=2) buscaGlobal(inp.value);

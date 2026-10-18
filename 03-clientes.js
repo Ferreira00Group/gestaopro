@@ -12,7 +12,7 @@ function copiarListaClientes(){
 function renderClientes(){
   let list=state.clientes;
   if(!state.cliente_mostrar_arquivados)list=list.filter(c=>estaAtivo(c));
-  if(state.cliente_filter)list=list.filter(c=>c.nome.toLowerCase().includes(state.cliente_filter)||c.tel.includes(state.cliente_filter)||fmtClienteNum(c.id).toLowerCase().includes(state.cliente_filter));
+  if(state.cliente_filter)list=list.filter(c=>clienteCombinaBusca(c,state.cliente_filter));
   if(state.cliente_status_filter==='devendo')list=list.filter(c=>getSaldoCliente(c.id)>0);
   if(state.cliente_status_filter==='em-dia')list=list.filter(c=>getSaldoCliente(c.id)===0);
   if(state.cliente_rota_filter==='none')list=list.filter(c=>!c.rotaId);
@@ -66,6 +66,11 @@ function populateRotaFiltro(){
   sel.value=atual;
 }
 function filterClienteArquivados(checked){state.cliente_mostrar_arquivados=checked;renderClientes();}
+// Ao abrir Clientes pelo menu, a lista começa completa (sem busca/filtro de uma visita anterior)
+function limparFiltrosClientes(){
+  state.cliente_filter='';state.cliente_status_filter='';state.cliente_rota_filter='';
+  ['cliente-busca-input','cliente-status-filter','clientes-rota-filter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
 function filterClientes(v){state.cliente_filter=v.toLowerCase();renderClientes();}
 const filterClientesDebounced=debounce(filterClientes);
 function filterClienteStatus(v){state.cliente_status_filter=v;renderClientes();}

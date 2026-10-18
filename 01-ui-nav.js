@@ -563,6 +563,7 @@ function goto(page){
   const navLink=document.querySelector(`nav a[data-page="${page}"]`);
   if(navLink) navLink.classList.add('active');
   closeSidebar();
+  if(page==='clientes'&&typeof limparFiltrosClientes==='function') limparFiltrosClientes();
   render(page);
   requestAnimationFrame(ajustarStickyTabela);
 }
@@ -592,6 +593,7 @@ function gotoCliente(clienteId){
   state.cliente_rota_filter='';
   document.getElementById('cliente-busca-input').value=c.nome;
   state.cliente_filter=c.nome.toLowerCase();
+  if(typeof estaAtivo==='function'&&!estaAtivo(c)) state.cliente_mostrar_arquivados=true;
   renderClientes();
   setTimeout(()=>{
     const row=document.getElementById(`cliente-row-${clienteId}`);

@@ -558,6 +558,8 @@ nav a .icon{stroke-width:1.75}
 .empty-state:not(:has(.icon))::before{content:'';display:block;width:30px;height:30px;margin:0 auto 10px;opacity:.6;background:var(--gold);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 12 16 12 14 15 10 15 8 12 2 12'/%3E%3Cpath d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 12 16 12 14 15 10 15 8 12 2 12'/%3E%3Cpath d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E") center/contain no-repeat}
 .client-debt-hero{background:linear-gradient(135deg,#1D1514,#141415);border:1px solid rgba(229,96,79,.35)}
 .client-debt-hero .amount{color:var(--red)}
+.client-debt-hero .ic{color:var(--gold);opacity:.9}
+.client-debt-hero .btn .ic{color:inherit;opacity:1}
 .client-debt-hero.client-debt-zero{background:linear-gradient(135deg,#121A15,#141415);border-color:rgba(76,195,138,.35)}
 .client-debt-hero.client-debt-zero .amount{color:var(--green)}
 .alert-banner{background:var(--gold-soft);border-color:rgba(201,162,75,.5);color:var(--gold-2)}
