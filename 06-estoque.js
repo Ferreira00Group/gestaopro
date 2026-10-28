@@ -57,6 +57,61 @@ function renderCategoriaPills(){
   wrap.innerHTML=`<span class="cat-pill ${!state.estoque_categoria_filter?'active':''}" data-cat="">Todas</span>`+
     cats.map(c=>`<span class="cat-pill ${state.estoque_categoria_filter===c?'active':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</span>`).join('');
 }
+// ============ STEPPER (− n +) DE ESTOQUE ============
+// tipo: 'p' produto (vid = id da variante ou null) · 'm' matéria-prima · 's' semiacabado.
+// Ajuste direto, sem registro de histórico (igual a editar o estoque no cadastro). Em matéria-prima
+// passa por registrarEntradaMateria/registrarSaidaMateria para manter o custo médio (CMP) coerente:
+// a entrada entra ao custo médio atual (neutra) e a saída sai ao custo médio atual.
+const _STP_SVG_MENOS='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>';
+const _STP_SVG_MAIS='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12"/></svg>';
+function stepperHtml(tipo,id,vid,valor,baixo,sufixo){
+  const v=parseFloat((parseFloat(valor)||0).toFixed(4));
+  const txt=String(v).replace('.',',');
+  const args=`'${tipo}',${id},${vid==null?'null':vid}`;
+  return `<div class="stp-wrap"><div class="stepper${baixo?' low':''}">`+
+    `<button type="button" class="stp-btn stp-minus" onclick="stepperClick(${args},-1)" ${v<=0?'disabled':''} aria-label="Diminuir">${_STP_SVG_MENOS}</button>`+
+    `<input type="text" class="stp-val" inputmode="decimal" value="${txt}" style="width:${Math.max(3,txt.length+1)}ch" onfocus="this.select()" onkeydown="if(event.key==='Enter')this.blur()" onchange="stepperDigitado(this,${args})" aria-label="Quantidade em estoque">`+
+    `<button type="button" class="stp-btn stp-plus" onclick="stepperClick(${args},1)" aria-label="Aumentar">${_STP_SVG_MAIS}</button>`+
+    `</div>${sufixo?`<span class="stp-un">${escapeHtml(sufixo)}</span>`:''}</div>`;
+}
+function estoqueProdutoHtml(p,temVariantes,estoqueTotal,baixo){
+  if(!temVariantes) return stepperHtml('p',p.id,null,p.estoque,baixo);
+  return `<div class="stp-list">${p.variantes.map(v=>`<div class="stp-row"><span class="stp-lbl">${escapeHtml(v.nome)}</span>${stepperHtml('p',p.id,v.id,v.estoque,v.estoque<=p.minimo)}</div>`).join('')}<div class="stp-total">Total: <strong>${estoqueTotal}</strong></div></div>`;
+}
+function stepperItem(tipo,id,vid){
+  if(tipo==='m'){const m=state.materias.find(x=>x.id===id);return m?{obj:m,campo:'qtd',mp:true}:null;}
+  if(tipo==='s'){const s=(state.semiacabados||[]).find(x=>x.id===id);return s?{obj:s,campo:'estoque'}:null;}
+  const p=state.produtos.find(x=>x.id===id);
+  if(!p) return null;
+  if(vid!=null){const v=(p.variantes||[]).find(x=>x.id===vid);return v?{obj:v,campo:'estoque'}:null;}
+  return {obj:p,campo:'estoque'};
+}
+function stepperAplicar(tipo,id,vid,novo){
+  const it=stepperItem(tipo,id,vid);
+  if(!it) return;
+  novo=Math.max(0,parseFloat(novo.toFixed(4)));
+  const atual=it.obj[it.campo]||0;
+  const delta=parseFloat((novo-atual).toFixed(4));
+  if(delta===0){renderEstoque();return;}
+  if(it.mp){
+    if(delta>0) registrarEntradaMateria(it.obj,delta,it.obj.custo||0);
+    else registrarSaidaMateria(it.obj,-delta);
+  } else {
+    it.obj[it.campo]=novo;
+  }
+  marcarAlterado();
+  renderEstoque();renderAlertaEstoquePage();atualizarAlertBells();
+}
+function stepperClick(tipo,id,vid,delta){
+  const it=stepperItem(tipo,id,vid);
+  if(!it) return;
+  stepperAplicar(tipo,id,vid,(it.obj[it.campo]||0)+delta);
+}
+function stepperDigitado(el,tipo,id,vid){
+  const n=parseFloat(String(el.value).replace(',','.'));
+  if(isNaN(n)||n<0){showToast('Quantidade inválida','red');renderEstoque();return;}
+  stepperAplicar(tipo,id,vid,n);
+}
 function renderEstoque(){
   const head=document.getElementById('estoque-head');
   const tb=document.getElementById('estoque-table');
@@ -86,7 +141,7 @@ function renderEstoque(){
       <td data-label="SKU" style="font-size:12px;color:var(--muted)">${escapeHtml(p.sku||'-')}</td>
       <td data-label="Categoria">${p.categoria?`<span class="cat-pill" style="cursor:default">${escapeHtml(p.categoria)}</span>`:'-'}</td>
       <td data-label="Preço Venda">${fmt(p.preco)}</td>
-      <td data-label="Estoque"><strong style="color:${baixo?'var(--red)':'var(--text)'}">${estoqueTotal}</strong></td>
+      <td data-label="Estoque"${temVariantes&&!arquivado?' class="td-block"':''}>${arquivado?`<strong>${estoqueTotal}</strong>`:estoqueProdutoHtml(p,temVariantes,estoqueTotal,baixo)}</td>
       <td data-label="Mínimo">${p.minimo}</td>
       <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span></td>
       <td><div class="actions-cell">
@@ -111,7 +166,7 @@ function renderEstoque(){
       const forn=m.fornecedorId?getFornecedor(m.fornecedorId):null;
       return `<tr>
       <td data-label="Matéria-Prima"><strong>${escapeHtml(m.nome)}</strong></td>
-      <td data-label="Estoque"><strong style="color:${m.qtd<=m.minimo?'var(--red)':'var(--text)'}">${m.qtd}</strong></td>
+      <td data-label="Estoque">${stepperHtml('m',m.id,null,m.qtd,m.qtd<=m.minimo)}</td>
       <td data-label="Unidade">${m.unidade}</td>
       <td data-label="Custo/un">${fmt(m.custo)}</td>
       <td data-label="Mínimo">${m.minimo} ${m.unidade}</td>
@@ -143,7 +198,7 @@ function renderSemiacabados(){
     }).join('');
     return `<tr>
       <td data-label="Nome"><strong>${escapeHtml(s.nome)}</strong><div style="font-size:11px;color:var(--muted)">${s.unidade}</div></td>
-      <td data-label="Estoque"><strong style="color:${baixo?'var(--red)':'var(--text)'}">${s.estoque}</strong> ${s.unidade}</td>
+      <td data-label="Estoque">${stepperHtml('s',s.id,null,s.estoque,baixo,s.unidade)}</td>
       <td data-label="Mínimo">${s.minimo} ${s.unidade}</td>
       <td data-label="MP Utilizadas" class="td-block" style="font-size:12px">${mps||'<span style="color:var(--muted)">—</span>'}</td>
       <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span></td>
