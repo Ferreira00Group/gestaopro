@@ -1,7 +1,8 @@
 // ============ VENDAS (multi-item) ============
 let vendaItensTemp=[];
 // Item avulso (v5.34.6): valor digitado na calculadora, sem produto cadastrado. Fica em
-// itens[] com produtoId:null, avulso:true e nome. Não baixa estoque e tem custo 0.
+// itens[] com produtoId:null, avulso:true e nome. Não baixa estoque. Custo opcional (v5.35.0):
+// se informado, entra no cálculo de margem do Relatório; senão fica 0 (margem 100%).
 function nomeItemVenda(it){
   if(it&&it.avulso) return String(it.nome||'').trim()||'Item avulso';
   return getNomeCompletoItem(it.produtoId,it.varianteId);
@@ -9,7 +10,12 @@ function nomeItemVenda(it){
 function itemVendaGravar(it,comCusto){
   const base={produtoId:it.avulso?null:it.produtoId,varianteId:it.avulso?null:(it.varianteId||null),qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco};
   if(it.avulso){base.avulso=true;base.nome=nomeItemVenda(it);}
-  if(comCusto) base.custoFichaUn=it.avulso?0:calcularCustoFicha(it.produtoId,it.varianteId,1);
+  // Avulso não tem ficha técnica: o custo é o que o usuário informou (opcional, 0 = não informado).
+  // Mesmo no orçamento (comCusto=false) guarda o custo informado, pra não perder ao converter em venda.
+  if(it.avulso){
+    const c=Math.max(0,Number(it.custo)||0);
+    if(comCusto||c>0) base.custoFichaUn=c;
+  } else if(comCusto) base.custoFichaUn=calcularCustoFicha(it.produtoId,it.varianteId,1);
   return base;
 }
 function formaLabel(forma){
@@ -372,6 +378,7 @@ function renderVendaItensLista(){
       <div class="vc-info"><p class="vc-nome">${escapeHtml(nomeItemVenda(it))}<span class="vc-tag">avulso</span></p></div>
       ${vcStepper(key,it.qtd,false)}
       <label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>
+      <label class="vc-preco">Custo un. <input type="number" step="0.01" min="0" class="form-control" value="${it.custo||''}" placeholder="opcional" oninput="vcCustoAvulso('${key}',this.value)"></label>
     </div>`;
   });
   const termo=vendaCatBusca;
@@ -424,6 +431,11 @@ function vcPreco(key,valor){
   it.preco=Math.max(0,parseFloat(valor)||0);
   calcTotalVendaGeral();
 }
+function vcCustoAvulso(key,valor){
+  const it=vcItemPorChave(key);
+  if(!it||!it.avulso) return;
+  it.custo=Math.max(0,parseFloat(String(valor).replace(',','.'))||0);
+}
 // ── Calculadora (valor avulso) ──
 let avulsoCents=0,avulsoQtd=1;
 function avulsoDesenhar(){
@@ -433,6 +445,7 @@ function avulsoDesenhar(){
 function abrirAvulso(){
   avulsoCents=0;avulsoQtd=1;
   const d=document.getElementById('avulso-desc'); if(d) d.value='';
+  const c=document.getElementById('avulso-custo'); if(c) c.value='';
   avulsoDesenhar();
   document.getElementById('modal-avulso').classList.add('open');
 }
@@ -446,11 +459,13 @@ function avulsoQtdAjustar(d){avulsoQtd=Math.max(1,Math.min(9999,avulsoQtd+d));av
 function avulsoAdicionar(){
   if(avulsoCents<=0){showToast('Digite um valor','red');return;}
   const nome=String(document.getElementById('avulso-desc').value||'').trim().slice(0,40)||'Item avulso';
-  vendaItensTemp.push(criarLinhaItemVenda({produtoId:null,varianteId:null,avulso:true,nome,qtd:avulsoQtd,preco:avulsoCents/100}));
+  const custo=Math.max(0,parseFloat(String(document.getElementById('avulso-custo')?.value||'').replace(',','.'))||0);
+  vendaItensTemp.push(criarLinhaItemVenda({produtoId:null,varianteId:null,avulso:true,nome,qtd:avulsoQtd,preco:avulsoCents/100,custo}));
   renderVendaItensLista();
   showToast(`${fmt(avulsoCents/100)} ×${avulsoQtd} adicionado à venda`,'green');
   avulsoCents=0;avulsoQtd=1;
   document.getElementById('avulso-desc').value='';
+  const cEl=document.getElementById('avulso-custo'); if(cEl) cEl.value='';
   avulsoDesenhar();
 }
 function calcTotalVendaGeral(){
@@ -681,7 +696,7 @@ function duplicarVenda(id){
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
   vendaPagamentosTemp=[];
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||''}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
@@ -764,9 +779,9 @@ function somarNecessidadeItens(itens){
   return n;
 }
 // Devolve ao estoque o que a venda baixou. Orçamento não baixou nada, então não devolve.
-function devolverEstoqueVenda(v){
+function devolverEstoqueVenda(v,origem){
   if(!v||v.tipo==='orcamento') return;
-  (v.itens||[]).forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd));
+  (v.itens||[]).forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,it.qtd,origem||'exclusao_venda'));
 }
 // Primeira falta de estoque (ou null). Se está editando uma VENDA, o que ela já baixou não conta de novo.
 function checarEstoqueVenda(itens,vendaAnterior){
@@ -859,7 +874,9 @@ function salvarVenda(){
   if(eid){
     const v=state.vendas.find(v=>v.id==eid);
     if(v.parcelado && forma!=='fiado'){showToast('Uma venda parcelada precisa continuar como Fiado','red');return;}
-    devolverEstoqueVenda(v); // orçamento (conversão) não devolve: nunca baixou
+    // edição de venda devolve e baixa de novo (rótulo "edicao_venda"); conversão de orçamento só baixa ("venda")
+    const origemBaixa=(vendaAnterior&&vendaAnterior.tipo!=='orcamento')?'edicao_venda':'venda';
+    devolverEstoqueVenda(v,'edicao_venda'); // orçamento (conversão) não devolve: nunca baixou
     v.clienteId=clienteId;v.itens=itensFinal;v.total=total;v.forma=forma;v.pagamentos=pagamentos;v.obs=obs;v.data=dataVenda;v.statusPedido=statusPedido;v.canalId=canalId;v.descontoExtra=descontoExtra;v.tipo='venda';delete v.statusOrc;
     state.pagamentos.forEach(p=>{if(p.entradaVendaId===v.id)p.clienteId=clienteId;}); // entrada acompanha o cliente da venda
     if(v.parcelado && Array.isArray(v.parcelas) && v.parcelas.length>0){
@@ -872,7 +889,7 @@ function salvarVenda(){
       v.vencimento=vencimento;
     }
     v.status=status; // baseline; para fiado a situação real é sempre recalculada (getMapaSituacaoFiado)
-    itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
+    itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd,origemBaixa));
     const valorNaoFiadoEdit=total-valorFiado;
     const descEdit=itensFinal.map(it=>nomeItemVenda(it)).join(', ');
     sincronizarFinanceiroVenda(v.id,valorNaoFiadoEdit,dataVenda,`Venda ${descEdit} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
@@ -894,12 +911,12 @@ function salvarVenda(){
       data:dataVenda,obs,vencimento:parcelas[0].vencimento,statusPedido,canalId,descontoExtra,tipo:'venda',
       parcelado:true,parcelas
     });
-    itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
+    itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd,'venda'));
     showToast(`Venda parcelada em ${numParcelas}x criada! ✓`,'green');
   } else {
     const novoVendaId=nextId('vendas');
     state.vendas.push({id:novoVendaId,clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento,statusPedido,canalId,descontoExtra,tipo:'venda'});
-    itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
+    itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd,'venda'));
     const valorNaoFiado=total-valorFiado;
     const desc=itensFinal.map(it=>nomeItemVenda(it)).join(', ');
     sincronizarFinanceiroVenda(novoVendaId,valorNaoFiado,dataVenda,`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
@@ -949,7 +966,7 @@ function editarVenda(id){
   document.getElementById('venda-entrada-valor').value='';
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||''}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();

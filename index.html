@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.34.6">
+<link rel="stylesheet" href="styles.css?v=5.35.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -391,6 +391,7 @@
     <button class="tab active" onclick="showEstoqueTab('produtos',this)">Produtos Acabados</button>
     <button class="tab" onclick="showEstoqueTab('semiacabados',this)">Semiacabados</button>
     <button class="tab" onclick="showEstoqueTab('materias',this)">Matérias-Primas</button>
+    <button class="tab" onclick="showEstoqueTab('movimentos',this)">Movimentações</button>
     <button class="tab" onclick="showEstoqueTab('fornecedores',this)">Fornecedores</button>
   </div>
 
@@ -407,6 +408,27 @@
       <div class="table-scroll"><table>
         <thead id="estoque-head"></thead>
         <tbody id="estoque-table"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- MOVIMENTAÇÕES (histórico de estoque, v5.35.0) -->
+  <div id="estoque-mov-wrap" style="display:none">
+    <div class="search-bar">
+      <input class="search-input" placeholder="Buscar item..." oninput="filterMovEstoqueDebounced(this.value)">
+      <select class="filter" onchange="filterMovTipo(this.value)">
+        <option value="">Todos os itens</option><option value="p">Produtos</option><option value="s">Semiacabados</option><option value="m">Matérias-primas</option>
+      </select>
+      <select class="filter" id="mov-origem-sel" onchange="filterMovOrigem(this.value)"><option value="">Todas origens</option></select>
+      <select class="filter" onchange="filterMovPeriodo(this.value)">
+        <option value="7">Últimos 7 dias</option><option value="30" selected>Últimos 30 dias</option><option value="">Todo o histórico</option>
+      </select>
+    </div>
+    <div id="mov-resumo" style="font-size:12px;color:var(--muted);margin:-6px 0 10px"></div>
+    <div class="table-card table-cards">
+      <div class="table-scroll"><table>
+        <thead><tr><th>Data/hora</th><th>Item</th><th>Origem</th><th>Variação</th><th>Saldo após</th></tr></thead>
+        <tbody id="mov-table"></tbody>
       </table></div>
     </div>
   </div>
@@ -1120,7 +1142,8 @@
     <div class="modal-header"><h3>Valor avulso</h3><button class="modal-close" onclick="closeModal('modal-avulso')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <div class="avulso-display" id="avulso-display">R$ 0,00</div>
-      <input class="form-control" id="avulso-desc" maxlength="40" placeholder="Descrição (opcional) — ex.: Frete" autocomplete="off" style="margin-bottom:12px">
+      <input class="form-control" id="avulso-desc" maxlength="40" placeholder="Descrição (opcional) — ex.: Frete" autocomplete="off" style="margin-bottom:8px">
+      <input class="form-control" id="avulso-custo" type="text" inputmode="decimal" placeholder="Custo unitário (opcional) — ex.: 12,50" autocomplete="off" style="margin-bottom:12px">
       <div class="avulso-keys">
         <button type="button" class="avulso-key" onclick="avulsoDigito(1)">1</button>
         <button type="button" class="avulso-key" onclick="avulsoDigito(2)">2</button>
@@ -1821,21 +1844,21 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.34.6"></script>
-<script src="00-core.js?v=5.34.6"></script>
-<script src="01-ui-nav.js?v=5.34.6"></script>
-<script src="02-dashboard.js?v=5.34.6"></script>
-<script src="03-clientes.js?v=5.34.6"></script>
-<script src="04-vendas.js?v=5.34.6"></script>
-<script src="05-producao.js?v=5.34.6"></script>
-<script src="06-estoque.js?v=5.34.6"></script>
-<script src="07-precificacao.js?v=5.34.6"></script>
-<script src="08-compras-fornecedores.js?v=5.34.6"></script>
-<script src="09-financeiro-relatorios.js?v=5.34.6"></script>
-<script src="10-fab-inline.js?v=5.34.6"></script>
-<script src="10b-planejamento.js?v=5.34.6"></script>
-<script src="12-drive-backup.js?v=5.34.6"></script>
-<script src="11-app-init.js?v=5.34.6"></script>
+<script src="00a-config.js?v=5.35.0"></script>
+<script src="00-core.js?v=5.35.0"></script>
+<script src="01-ui-nav.js?v=5.35.0"></script>
+<script src="02-dashboard.js?v=5.35.0"></script>
+<script src="03-clientes.js?v=5.35.0"></script>
+<script src="04-vendas.js?v=5.35.0"></script>
+<script src="05-producao.js?v=5.35.0"></script>
+<script src="06-estoque.js?v=5.35.0"></script>
+<script src="07-precificacao.js?v=5.35.0"></script>
+<script src="08-compras-fornecedores.js?v=5.35.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.35.0"></script>
+<script src="10-fab-inline.js?v=5.35.0"></script>
+<script src="10b-planejamento.js?v=5.35.0"></script>
+<script src="12-drive-backup.js?v=5.35.0"></script>
+<script src="11-app-init.js?v=5.35.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

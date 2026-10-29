@@ -80,8 +80,9 @@ const DEFAULT_STATE = {
   compras:[],
   baixasEstoque:[],
   entradasEstoque:[],
+  movEstoque:[],
   semiacabados:[],
-  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1},
+  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1},
   metas:{},
   fechamentos:[],
   custosFixos:[
@@ -177,14 +178,19 @@ let _avisouFalhaGravacao = false;
 //        Sem migração de dados: toda compra já existente não tem "formaPagamento", e o código
 //        trata ausência/qualquer valor ≠ 'prazo' como 'avista' — o que é historicamente correto
 //        (elas já geraram a saída imediata de verdade), não uma aproximação.
-//   13 → (versão atual) cada item de venda (state.vendas[].itens[]) ganha "custoFichaUn": um
+//   14 → (versão atual) novo array state.movEstoque: histórico de TODA movimentação de estoque
+//        (venda, produção, compra, baixa/entrada manual, ajuste rápido − n +, cadastro), com
+//        data/hora, variação e saldo após. Só passa a existir daqui pra frente: não dá pra
+//        reconstruir o que aconteceu antes. Item avulso de venda ganha custo opcional, gravado
+//        em "custoFichaUn" (mesmo campo dos produtos), pra margem dele não aparecer como 100%.
+//   13 →  cada item de venda (state.vendas[].itens[]) ganha "custoFichaUn": um
 //        retrato do custo da ficha técnica por unidade NO MOMENTO da venda. Sem isso, o
 //        ranking de produtos em Relatório recalculava a margem de vendas antigas usando a
 //        ficha técnica de HOJE — se o preço de uma matéria-prima mudasse, a margem de uma
 //        venda de meses atrás mudava sozinha. Sem migração de dados: vendas antigas não têm
 //        esse campo, e o relatório cai de volta pro cálculo pela ficha atual nesse caso (única
 //        opção quando não sabemos o custo real da época — ver 09-financeiro-relatorios.js).
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -278,6 +284,13 @@ const MIGRATIONS = {
   },
   // v12 → v13: nenhuma transformação de dados — ver comentário no histórico acima (item 13).
   12: (d) => d,
+  // v13 → v14: cria o histórico de movimentação de estoque (vazio — não há como reconstruir o passado)
+  13: (d) => {
+    d.movEstoque = d.movEstoque || [];
+    d.nextId = { ...(d.nextId||{}) };
+    if(!(d.nextId.movEstoque>0)) d.nextId.movEstoque = 1;
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -298,7 +311,7 @@ function migrarDados(parsed) {
 // já cobre isso, mesma lógica de todas as migrações); campo PRESENTE com tipo errado é o sinal
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
-  financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',
+  financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
   fichas:'object',nextId:'object'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
@@ -338,6 +351,9 @@ function carregarDados(){
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
       if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
+      if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
+      // a aba "Movimentações" não é restaurada ao reabrir o app (a tela volta em Produtos Acabados)
+      if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
       state._version    = SCHEMA_VERSION;
       carregouOk = true;
     } else {
@@ -566,22 +582,25 @@ function valorEstoqueMateria(mp){
   return mp.valorEstoque!=null ? mp.valorEstoque : (mp.qtd||0)*(mp.custo||0);
 }
 // Toda ENTRADA de matéria-prima (compra, entrada manual de estoque) deve passar por aqui.
-function registrarEntradaMateria(mp, qtd, custoUnitario){
+function registrarEntradaMateria(mp, qtd, custoUnitario, origem){
   if(!mp || qtd<=0) return;
   const valorAntes=valorEstoqueMateria(mp);
   mp.valorEstoque=parseFloat((valorAntes + qtd*custoUnitario).toFixed(4));
   mp.qtd=parseFloat(((mp.qtd||0) + qtd).toFixed(4));
   mp.custo=mp.qtd>0.0001 ? parseFloat((mp.valorEstoque/mp.qtd).toFixed(4)) : custoUnitario;
+  registrarMovEstoque('m',mp.id,null,mp.nome,qtd,mp.qtd,origem,mp.unidade);
 }
 // Toda SAÍDA de matéria-prima (consumo em produção, baixa manual) deve passar por aqui.
 // Sai sempre ao custo médio ATUAL — é a própria definição do método: o custo por unidade não
 // muda numa saída, só a quantidade e o valor total.
-function registrarSaidaMateria(mp, qtd){
+function registrarSaidaMateria(mp, qtd, origem){
   if(!mp || qtd<=0) return;
+  const qtdAntes=mp.qtd||0;
   const custoAtual=mp.custo||0;
   mp.valorEstoque=parseFloat((valorEstoqueMateria(mp) - qtd*custoAtual).toFixed(4));
   mp.qtd=parseFloat(((mp.qtd||0) - qtd).toFixed(4));
   if(mp.qtd<=0.0001){mp.qtd=Math.max(0,mp.qtd);mp.valorEstoque=0;} // evita ficar com resto negativo/sujo por arredondamento
+  registrarMovEstoque('m',mp.id,null,mp.nome,mp.qtd-qtdAntes,mp.qtd,origem,mp.unidade);
 }
 // Usado ao excluir uma compra: desfaz exatamente a entrada que ela tinha causado.
 // Limitação honesta: se já houve consumo (produção/baixa) DEPOIS dessa compra, o custo médio
@@ -589,12 +608,14 @@ function registrarSaidaMateria(mp, qtd){
 // saída no meio do caminho (a saída já "gastou" ao custo médio de então, que incluía esta
 // compra). É a mesma limitação que existe em praticamente qualquer ERP com custo médio; a
 // prática usual lá também é evitar excluir compras de períodos já com movimento.
-function reverterEntradaMateria(mp, qtd, custoUnitario){
+function reverterEntradaMateria(mp, qtd, custoUnitario, origem){
   if(!mp || qtd<=0) return;
+  const qtdAntes=mp.qtd||0;
   mp.valorEstoque=parseFloat((valorEstoqueMateria(mp) - qtd*custoUnitario).toFixed(4));
   mp.qtd=parseFloat(Math.max(0,(mp.qtd||0) - qtd).toFixed(4));
   mp.custo=mp.qtd>0.0001 ? parseFloat((mp.valorEstoque/mp.qtd).toFixed(4)) : 0;
   if(mp.valorEstoque<0) mp.valorEstoque=0;
+  registrarMovEstoque('m',mp.id,null,mp.nome,mp.qtd-qtdAntes,mp.qtd,origem||'estorno_compra',mp.unidade);
 }
 // true se já existe produção usando esta matéria-prima registrada depois da data informada —
 // usado só pra avisar o usuário que excluir uma compra antiga pode deixar o CMP aproximado.
@@ -623,15 +644,41 @@ function getEstoqueAtual(produtoId,varianteId){
   if(varianteId){const v=getVariante(produtoId,varianteId);return v?v.estoque:0;}
   return getProduto(produtoId).estoque;
 }
-function ajustarEstoque(produtoId,varianteId,delta){
+function ajustarEstoque(produtoId,varianteId,delta,origem){
   const p=state.produtos.find(p=>p.id==produtoId);
-  if(!p)return;
+  if(!p)return; // item avulso de venda (sem produto) cai aqui: não mexe em estoque nem registra
   if(varianteId){
     const v=(p.variantes||[]).find(v=>v.id==varianteId);
-    if(v) v.estoque+=delta;
+    if(v){
+      v.estoque+=delta;
+      registrarMovEstoque('p',p.id,v.id,getNomeCompletoItem(p.id,v.id),delta,v.estoque,origem);
+    }
   } else {
     p.estoque+=delta;
+    registrarMovEstoque('p',p.id,null,getNomeCompletoItem(p.id,null),delta,p.estoque,origem);
   }
+}
+// Semiacabado: mesma ideia do ajustarEstoque (um lugar só para mexer no estoque, que já registra o histórico)
+function ajustarSemiacabado(s,delta,origem){
+  if(!s||!delta) return;
+  s.estoque=parseFloat(((s.estoque||0)+delta).toFixed(4));
+  registrarMovEstoque('s',s.id,null,s.nome,delta,s.estoque,origem,s.unidade);
+}
+// ═══ HISTÓRICO DE MOVIMENTAÇÃO DE ESTOQUE (v5.35.0) ═══
+// Cada linha: quando, qual item, quanto variou (+/−), saldo depois e de onde veio ("origem").
+// tipo: 'p' produto acabado (varId = variante) · 's' semiacabado · 'm' matéria-prima.
+// O nome é gravado junto: se o item for renomeado/excluído depois, o histórico continua legível.
+// Guarda só as últimas MOV_ESTOQUE_MAX linhas pra não encher o armazenamento do aparelho.
+const MOV_ESTOQUE_MAX = 5000;
+function registrarMovEstoque(tipo,itemId,varId,nome,delta,saldo,origem,unidade){
+  delta=parseFloat((Number(delta)||0).toFixed(4));
+  if(!delta) return;
+  if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
+  if(!(state.nextId.movEstoque>0)) state.nextId.movEstoque=1;
+  const agora=Date.now();
+  state.movEstoque.push({id:nextId('movEstoque'),ts:agora,data:today(),tipo,itemId,varId:varId||null,
+    nome:nome||'?',delta,saldo:parseFloat((Number(saldo)||0).toFixed(4)),origem:origem||'outro',...(unidade?{un:unidade}:{})});
+  if(state.movEstoque.length>MOV_ESTOQUE_MAX) state.movEstoque.splice(0,state.movEstoque.length-MOV_ESTOQUE_MAX);
 }
 function getFichaProdutoVariante(produtoId,varianteId){
   if(varianteId){
@@ -960,6 +1007,8 @@ function aplicarDadosNoState(raw){
   state={...DEFAULT_STATE,...parsed};
   limparFiltrosDeTela(state);
   state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
+  if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
+  if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
   state._version=SCHEMA_VERSION;
   _bloquearGravacao=false;
   _estadoNaoConfiavel=false;

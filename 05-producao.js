@@ -51,17 +51,17 @@ function excluirProducao(id){
   confirmarAcao(`Excluir este lote? O estoque de "${nome}" diminui em ${pr.qtd} un.`+(consumos.length?` e o que ele consumiu volta ao estoque (${consumos.join(', ')}).`:'.'),()=>{
     const lote=state.producoes.find(x=>x.id===id);
     if(!lote) return;
-    ajustarEstoque(lote.produtoId,lote.varianteId,-lote.qtd);
+    ajustarEstoque(lote.produtoId,lote.varianteId,-lote.qtd,'exclusao_producao');
     (lote.consumo||[]).forEach(c=>{
       const q=c.qtdConsumida;
       if(!(q>0)) return;
       if((c.tipo||'mp')==='semi'){
         const s=(state.semiacabados||[]).find(x=>x.id===c.mpId);
-        if(s) s.estoque=parseFloat((s.estoque+q).toFixed(4));
+        if(s) ajustarSemiacabado(s,q,'exclusao_producao');
       } else {
         const mp=state.materias.find(m=>m.id===c.mpId);
         // volta ao custo médio ATUAL: não altera o CMP (mesma regra da entrada manual de estoque)
-        if(mp) registrarEntradaMateria(mp,q,mp.custo||0);
+        if(mp) registrarEntradaMateria(mp,q,mp.custo||0,'exclusao_producao');
       }
     });
     state.producoes=state.producoes.filter(x=>x.id!==id);
@@ -144,14 +144,14 @@ function registrarProducao(){
     const qtdNec=(f.qtd/rendimento)*qtd;
     custo+=qtdNec*custoItemFicha(tipo,f.mpId);
     if(tipo==='semi'){
-      getSemiacabado(f.mpId).estoque-=qtdNec;
+      ajustarSemiacabado(getSemiacabado(f.mpId),-qtdNec,'producao');
     } else {
-      registrarSaidaMateria(state.materias.find(m=>m.id===f.mpId), qtdNec);
+      registrarSaidaMateria(state.materias.find(m=>m.id===f.mpId), qtdNec,'producao');
     }
     consumo.push({tipo,mpId:f.mpId,qtdConsumida:qtdNec});
   }
   state.producoes.push({id:nextId('producoes'),produtoId:prodId,varianteId,qtd,custo,data:today(),consumo,validade});
-  ajustarEstoque(prodId,varianteId,qtd);
+  ajustarEstoque(prodId,varianteId,qtd,'producao');
   // Não lança mais uma "saída" financeira aqui: o custo da matéria-prima consumida já virou
   // despesa quando ela foi COMPRADA (state.compras/financeiro em 08-compras-fornecedores.js).
   // Lançar de novo aqui contaria o mesmo gasto duas vezes. O campo "custo" acima fica só como

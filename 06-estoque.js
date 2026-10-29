@@ -3,11 +3,16 @@ function showEstoqueTab(tab,btn){
   state.estoque_tab=tab;
   document.querySelectorAll('#page-estoque .tabs .tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  const isForn=tab==='fornecedores';
-  document.getElementById('estoque-produtos-wrap').style.display=isForn?'none':'';
+  const isForn=tab==='fornecedores', isMov=tab==='movimentos';
+  document.getElementById('estoque-produtos-wrap').style.display=(isForn||isMov)?'none':'';
+  document.getElementById('estoque-mov-wrap').style.display=isMov?'':'none';
   document.getElementById('estoque-fornecedores-wrap').style.display=isForn?'':'none';
   document.getElementById('eq-actions-estoque').style.display=isForn?'none':'flex';
   document.getElementById('eq-actions-fornecedores').style.display=isForn?'flex':'none';
+  if(isMov){
+    renderMovEstoque();
+    return;
+  }
   if(isForn){
     renderFornecedores();renderHistoricoCompras();renderHistoricoPreco();
     return;
@@ -59,7 +64,7 @@ function renderCategoriaPills(){
 }
 // ============ STEPPER (− n +) DE ESTOQUE ============
 // tipo: 'p' produto (vid = id da variante ou null) · 'm' matéria-prima · 's' semiacabado.
-// Ajuste direto, sem registro de histórico (igual a editar o estoque no cadastro). Em matéria-prima
+// Cada ajuste vira uma linha em Movimentações (origem "ajuste_rapido"). Em matéria-prima
 // passa por registrarEntradaMateria/registrarSaidaMateria para manter o custo médio (CMP) coerente:
 // a entrada entra ao custo médio atual (neutra) e a saída sai ao custo médio atual.
 const _STP_SVG_MENOS='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>';
@@ -94,10 +99,12 @@ function stepperAplicar(tipo,id,vid,novo){
   const delta=parseFloat((novo-atual).toFixed(4));
   if(delta===0){renderEstoque();return;}
   if(it.mp){
-    if(delta>0) registrarEntradaMateria(it.obj,delta,it.obj.custo||0);
-    else registrarSaidaMateria(it.obj,-delta);
+    if(delta>0) registrarEntradaMateria(it.obj,delta,it.obj.custo||0,'ajuste_rapido');
+    else registrarSaidaMateria(it.obj,-delta,'ajuste_rapido');
+  } else if(tipo==='s'){
+    ajustarSemiacabado(it.obj,delta,'ajuste_rapido');
   } else {
-    it.obj[it.campo]=novo;
+    ajustarEstoque(id,vid,delta,'ajuste_rapido');
   }
   marcarAlterado();
   renderEstoque();renderAlertaEstoquePage();atualizarAlertBells();
@@ -113,6 +120,7 @@ function stepperDigitado(el,tipo,id,vid){
   stepperAplicar(tipo,id,vid,n);
 }
 function renderEstoque(){
+  if(state.estoque_tab==='movimentos'){renderMovEstoque();return;}
   const head=document.getElementById('estoque-head');
   const tb=document.getElementById('estoque-table');
   renderCategoriaPills();
@@ -209,6 +217,76 @@ function renderSemiacabados(){
     </tr>`;
   }).join('');
 }
+// ============ MOVIMENTAÇÕES DE ESTOQUE (histórico) ============
+// Lê state.movEstoque (gravado por registrarMovEstoque em 00-core.js). Só existe a partir da v5.35.0.
+const MOV_ORIGENS={
+  venda:['Venda','badge-red'],
+  edicao_venda:['Venda editada','badge-yellow'],
+  exclusao_venda:['Venda excluída','badge-green'],
+  producao:['Produção','badge-blue'],
+  exclusao_producao:['Produção excluída','badge-gray'],
+  compra:['Compra','badge-green'],
+  estorno_compra:['Compra estornada','badge-gray'],
+  entrada_manual:['Entrada manual','badge-green'],
+  baixa_manual:['Baixa manual','badge-red'],
+  ajuste_rapido:['Ajuste − n +','badge-yellow'],
+  ajuste_cadastro:['Ajuste no cadastro','badge-yellow'],
+  cadastro:['Cadastro','badge-gray'],
+  outro:['Outro','badge-gray']
+};
+const MOV_LINHAS_MAX=300;
+let movFiltro={q:'',tipo:'',origem:'',dias:'30'};
+function filterMovEstoque(v){movFiltro.q=v;renderMovEstoque();}
+const filterMovEstoqueDebounced=debounce(filterMovEstoque);
+function filterMovTipo(v){movFiltro.tipo=v;renderMovEstoque();}
+function filterMovOrigem(v){movFiltro.origem=v;renderMovEstoque();}
+function filterMovPeriodo(v){movFiltro.dias=v;renderMovEstoque();}
+function fmtMovQtd(n,un,comSinal){
+  const abs=String(parseFloat(Math.abs(n).toFixed(4))).replace('.',',');
+  const sinal=comSinal?(n>0?'+':n<0?'−':''):'';
+  return sinal+abs+(un?' '+un:'');
+}
+function renderMovEstoque(){
+  const tb=document.getElementById('mov-table');
+  if(!tb) return;
+  const selOrig=document.getElementById('mov-origem-sel');
+  if(selOrig && selOrig.options.length<=1){
+    selOrig.innerHTML='<option value="">Todas origens</option>'+Object.keys(MOV_ORIGENS).filter(k=>k!=='outro').map(k=>`<option value="${k}">${MOV_ORIGENS[k][0]}</option>`).join('');
+  }
+  let lista=Array.isArray(state.movEstoque)?state.movEstoque:[];
+  if(movFiltro.dias){
+    const d=new Date();d.setDate(d.getDate()-(parseInt(movFiltro.dias)-1));
+    const limite=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    lista=lista.filter(m=>m.data>=limite);
+  }
+  if(movFiltro.tipo) lista=lista.filter(m=>m.tipo===movFiltro.tipo);
+  if(movFiltro.origem) lista=lista.filter(m=>m.origem===movFiltro.origem);
+  const q=normBusca(movFiltro.q);
+  if(q) lista=lista.filter(m=>normBusca(m.nome).includes(q));
+  const total=lista.length;
+  const resumo=document.getElementById('mov-resumo');
+  if(total===0){
+    if(resumo) resumo.textContent='';
+    const semNada=!(state.movEstoque&&state.movEstoque.length);
+    tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px"><div class="empty-inline"><i data-lucide="inbox"></i><span>${semNada?'Nenhuma movimentação registrada ainda. A partir desta versão, toda venda, produção, compra, baixa, entrada e ajuste − n + aparece aqui.':'Nenhuma movimentação com esses filtros.'}</span></div></td></tr>`;
+    return;
+  }
+  const mostrar=lista.slice(-MOV_LINHAS_MAX).reverse(); // mais recentes primeiro
+  if(resumo) resumo.textContent=total>MOV_LINHAS_MAX?`Mostrando as ${MOV_LINHAS_MAX} mais recentes de ${total} movimentações — use os filtros para refinar.`:`${total} movimentaç${total===1?'ão':'ões'}`;
+  tb.innerHTML=mostrar.map(m=>{
+    const [rot,cls]=MOV_ORIGENS[m.origem]||MOV_ORIGENS.outro;
+    const quando=new Date(m.ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const cor=m.delta>0?'var(--green)':'var(--red)';
+    return `<tr>
+      <td data-label="Data/hora" style="font-size:12px;color:var(--muted)">${quando}</td>
+      <td data-label="Item"><strong>${escapeHtml(m.nome)}</strong></td>
+      <td data-label="Origem"><span class="badge ${cls}">${rot}</span></td>
+      <td data-label="Variação"><strong style="color:${cor}">${fmtMovQtd(m.delta,m.un,true)}</strong></td>
+      <td data-label="Saldo após">${fmtMovQtd(m.saldo,m.un,false)}</td>
+    </tr>`;
+  }).join('');
+}
+
 let semiMPsTemp=[];
 function adicionarSemiMP(){
   const id=Date.now();
@@ -251,10 +329,15 @@ function salvarSemiacabado(){
   if(!state.semiacabados) state.semiacabados=[];
   if(eid){
     const s=state.semiacabados.find(s=>s.id==eid);
+    const estoqueAntes=s.estoque||0;
     s.nome=nome;s.unidade=unidade;s.estoque=estoque;s.minimo=minimo;s.mps=mps;
+    // se o estoque foi corrigido no cadastro, a diferença entra no histórico
+    registrarMovEstoque('s',s.id,null,s.nome,estoque-estoqueAntes,estoque,'ajuste_cadastro',s.unidade);
     showToast('Semiacabado atualizado','green');
   } else {
-    state.semiacabados.push({id:nextId('semiacabados'),nome,unidade,estoque,minimo,mps});
+    const novoId=nextId('semiacabados');
+    state.semiacabados.push({id:novoId,nome,unidade,estoque,minimo,mps});
+    registrarMovEstoque('s',novoId,null,nome,estoque,estoque,'cadastro',unidade);
     showToast('Semiacabado cadastrado','green');
   }
   marcarAlterado();
@@ -364,12 +447,12 @@ function confirmarBaixaEstoque(){
       if(!v){showToast('Variante não encontrada','red');return;}
       estoqueAtual = v.estoque;
       if(qtd > estoqueAtual){showToast(`Estoque insuficiente (${estoqueAtual} disponíveis)`,'red');return;}
-      v.estoque -= qtd;
+      ajustarEstoque(p.id, v.id, -qtd, 'baixa_manual');
       nomeItem = `${p.nome} — ${v.nome}`;
     } else {
       estoqueAtual = p.estoque;
       if(qtd > estoqueAtual){showToast(`Estoque insuficiente (${estoqueAtual} disponíveis)`,'red');return;}
-      p.estoque -= qtd;
+      ajustarEstoque(p.id, null, -qtd, 'baixa_manual');
       nomeItem = p.nome;
     }
   } else {
@@ -378,7 +461,7 @@ function confirmarBaixaEstoque(){
     if(!m){showToast('Matéria-prima não encontrada','red');return;}
     estoqueAtual = m.qtd;
     if(qtd > estoqueAtual){showToast(`Estoque insuficiente (${estoqueAtual} ${m.unidade} disponíveis)`,'red');return;}
-    registrarSaidaMateria(m, qtd);
+    registrarSaidaMateria(m, qtd, 'baixa_manual');
     nomeItem = `${m.nome}`;
   }
   const motivoLabel = {quebra:'Quebra/Dano',amostra:'Amostra/Brinde',perda:'Perda/Vencimento',uso_interno:'Uso interno',outro:'Outro'}[motivo]||motivo;
@@ -446,7 +529,7 @@ function confirmarEntradaEstoque(){
   if(val.startsWith('s:')){
     const s = getSemiacabado(parseInt(val.split(':')[1]));
     if(!s||!s.nome||s.nome==='?'){showToast('Semiacabado não encontrado','red');return;}
-    s.estoque = parseFloat((s.estoque + qtd).toFixed(4));
+    ajustarSemiacabado(s, qtd, 'entrada_manual');
     nomeItem = s.nome;
   } else {
     const m = state.materias.find(x=>x.id===parseInt(val.split(':')[1]));
@@ -454,7 +537,7 @@ function confirmarEntradaEstoque(){
     // este formulário não pergunta custo unitário, então a entrada é tratada como se custasse
     // o custo médio ATUAL — matematicamente isso não muda o CMP (é neutro), em vez de diluir
     // o custo médio pra baixo como aconteceria se somássemos quantidade sem valor
-    registrarEntradaMateria(m, qtd, m.custo||0);
+    registrarEntradaMateria(m, qtd, m.custo||0, 'entrada_manual');
     nomeItem = m.nome;
   }
   state.entradasEstoque.push({id:nextId('entradasEstoque'),item:val,nomeItem,qtd,obs,data:today()});

@@ -210,7 +210,7 @@ function registrarCompraDaNota(){
     // não tem efeito nesse caso — mp.custo já é item.custoUn no momento da criação, acima); se
     // já existia, pondera com o que já estava em estoque (ver registrarEntradaMateria em
     // 00-core.js), a menos que o usuário tenha pedido pra manter o custo atual.
-    registrarEntradaMateria(mp, item.qtd, atualizaCusto?item.custoUn:mp.custo);
+    registrarEntradaMateria(mp, item.qtd, atualizaCusto?item.custoUn:mp.custo, 'compra');
 
     let parcelasItem = null;
     if(parcelar && numParcelas>=2){
@@ -484,7 +484,7 @@ function registrarCompra(){
         if(materiaTeveConsumoApos(original.materiaId, original.data)){
           avisoImprecisaoEdicao = ' ⚠️ Custo médio recalculado de forma aproximada — já houve produção com esta matéria-prima depois da compra original.';
         }
-        reverterEntradaMateria(mpOriginal, original.qtd, original.custoUn);
+        reverterEntradaMateria(mpOriginal, original.qtd, original.custoUn, 'estorno_compra');
       }
       state.financeiro = state.financeiro.filter(f=>f.compraId!==editId);
       state.compras = state.compras.filter(c=>c.id!==editId);
@@ -526,7 +526,7 @@ function registrarCompra(){
     // estiver desmarcado, ela entra ao custo médio ATUAL (não muda o CMP) em vez de ser
     // ignorada por completo — senão a quantidade cresceria sem o valor correspondente,
     // distorcendo o custo médio pra baixo.
-    registrarEntradaMateria(mp, item.qtd, atualizaCusto?item.custoUn:mp.custo);
+    registrarEntradaMateria(mp, item.qtd, atualizaCusto?item.custoUn:mp.custo, 'compra');
     // só lança saída no Financeiro na hora se for À VISTA — "a prazo" só lança quando o
     // pagamento ao fornecedor for de fato registrado (ver registrarPagamentoFornecedor)
     if(formaPagamento!=='prazo'){
@@ -603,7 +603,7 @@ function excluirCompra(id){
     : '';
   confirmarAcao(`Excluir esta compra? O estoque de "${mp?mp.nome:'MP'}" será revertido.${avisoImprecisao}`,()=>{
     // Reverter estoque da MP (quantidade e custo médio — ver reverterEntradaMateria em 00-core.js)
-    if(mp) reverterEntradaMateria(mp, c.qtd, c.custoUn);
+    if(mp) reverterEntradaMateria(mp, c.qtd, c.custoUn, 'estorno_compra');
     // Remover do financeiro (só existe se a compra era à vista — "a prazo" nunca lançou nada aqui)
     state.financeiro=state.financeiro.filter(f=>f.compraId!==id);
     // Remover a compra (se era "a prazo", isso também reduz o saldo devedor do fornecedor —
@@ -889,6 +889,7 @@ function salvarNovoProduto(){
     };
     if(!state.semiacabados)state.semiacabados=[];
     state.semiacabados.push(novo);
+    registrarMovEstoque('s',novo.id,null,novo.nome,novo.estoque,novo.estoque,'cadastro',novo.unidade);
     showToast('Semiacabado cadastrado ✓','green');
   } else {
     const novo={
@@ -903,6 +904,7 @@ function salvarNovoProduto(){
       ativo:true
     };
     state.produtos.push(novo);
+    registrarMovEstoque('p',novo.id,null,novo.nome,novo.estoque,novo.estoque,'cadastro');
     showToast('Produto cadastrado ✓','green');
   }
   marcarAlterado();salvarDados();

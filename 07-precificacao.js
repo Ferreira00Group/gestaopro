@@ -341,7 +341,9 @@ function salvarMateria(){
   // passava direto e criava duas linhas de estoque pro mesmo insumo.
   const criarMateria=()=>{
     const estoqueInicial=parseFloat(document.getElementById('mp-estoque').value)||0;
-    state.materias.push({id:nextId('materias'),nome,qtd:estoqueInicial,unidade,custo,minimo,fornecedorId,valorEstoque:parseFloat((estoqueInicial*custo).toFixed(4))});
+    const novaMpId=nextId('materias');
+    state.materias.push({id:novaMpId,nome,qtd:estoqueInicial,unidade,custo,minimo,fornecedorId,valorEstoque:parseFloat((estoqueInicial*custo).toFixed(4))});
+    registrarMovEstoque('m',novaMpId,null,nome,estoqueInicial,estoqueInicial,'cadastro',unidade);
     showToast('Matéria-prima cadastrada','green');
     closeModal('modal-materia');marcarAlterado();renderEstoque();renderAlertaEstoquePage();
   };
