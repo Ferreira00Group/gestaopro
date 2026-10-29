@@ -92,7 +92,7 @@ function renderDashboard(){
     tbTopDev.innerHTML=devedores.slice(0,5).map(c=>`<tr>
       <td><strong>${escapeHtml(c.nome)}</strong></td>
       <td class="debt-amount">${fmt(c.saldo)}</td>
-      <td>${c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:'—'}</td>
+      <td><div class="actions-cell"><button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button>${c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}</div></td>
     </tr>`).join('');
   }
 
@@ -141,7 +141,7 @@ function renderDashboard(){
         <td><strong>${escapeHtml(c.nome)}</strong></td>
         <td><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(u.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${statusVenc}</span></td>
         <td class="debt-amount">${fmt(saldo>0?saldo:u.valor)}</td>
-        <td><button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button></td>
+        <td><div class="actions-cell">${saldo>0?`<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button>`:''}<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button></div></td>
       </tr>`;
     }).join('');
   }
