@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.35.0">
+<link rel="stylesheet" href="styles.css?v=5.37.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -130,6 +130,8 @@
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
         </label>
+        <a onclick="closeSidebar();abrirConfigPix()" class="footer-action-link"><i data-lucide="qr-code" class="ic"></i>Configurar Pix</a>
+        <a onclick="closeSidebar();abrirConfigEncargos()" class="footer-action-link"><i data-lucide="percent" class="ic"></i>Configurar encargos</a>
         <a id="link-restaurar-anterior" onclick="closeSidebar();restaurarEstadoAnterior()" class="footer-action-link" style="display:none"><i data-lucide="undo-2" class="ic"></i>Restaurar estado anterior</a>
         <a id="link-baixar-recuperacao" onclick="baixarCopiaRecuperacao()" class="footer-action-link" style="color:var(--red);display:none"><i data-lucide="life-buoy" class="ic"></i>Baixar cópia de recuperação</a>
         <a id="drive-status-btn" onclick="cliqueBotaoDrive()" class="footer-action-link" style="display:none"></a>
@@ -969,6 +971,52 @@
   </div>
 </div>
 
+<!-- CONFIGURAR PIX -->
+<div class="modal-overlay" id="modal-config-pix">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>Configurar Pix</h3><button class="modal-close" onclick="closeModal('modal-config-pix')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Celular (chave Pix)</label><input class="form-control" id="pix-celular" type="tel" placeholder="DDD + número"></div>
+      <div class="form-group"><label>Nome do titular</label><input class="form-control" id="pix-nome" maxlength="25" placeholder="Como aparece no banco"></div>
+      <div class="form-group"><label>Cidade</label><input class="form-control" id="pix-cidade" maxlength="15"></div>
+      <div style="font-size:11px;color:var(--muted)">Fica só neste aparelho e no backup. Deixe tudo vazio para remover.</div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-config-pix')">Cancelar</button><button class="btn btn-green" onclick="salvarConfigPix()">Salvar</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIGURAR ENCARGOS -->
+<div class="modal-overlay" id="modal-config-encargos">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>Encargos de atraso</h3><button class="modal-close" onclick="closeModal('modal-config-encargos')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><input type="checkbox" id="enc-ativo"> Ativar cálculo (informativo)</label>
+      <div class="form-row">
+        <div class="form-group"><label>Multa (%)</label><input class="form-control" id="enc-multa" type="number" step="0.01"></div>
+        <div class="form-group"><label>Juros (% ao mês)</label><input class="form-control" id="enc-juros" type="number" step="0.01"></div>
+      </div>
+      <div class="form-group"><label>Carência (dias)</label><input class="form-control" id="enc-carencia" type="number" step="1" min="0"></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" id="enc-pix-total"> Pix da cobrança leva o total com encargos</label>
+      <div style="font-size:11px;color:var(--muted)">Os encargos não alteram o saldo do cliente. Juros simples, proporcionais aos dias de atraso, contados desde o vencimento.</div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-config-encargos')">Cancelar</button><button class="btn btn-green" onclick="salvarConfigEncargos()">Salvar</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- EXTRATO DO CLIENTE -->
+<div class="modal-overlay" id="modal-extrato">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><h3>Extrato do cliente</h3><button class="modal-close" onclick="closeModal('modal-extrato')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <div id="extrato-conteudo"></div>
+      <div class="modal-footer" style="margin-top:14px">
+        <button class="btn btn-outline" id="extrato-btn-pix" onclick="copiarPixExtrato()">Copiar Pix</button>
+        <button class="btn btn-whatsapp" onclick="enviarExtratoWhatsapp()">Enviar por WhatsApp</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- VENDA (multi-item) -->
 <div class="modal-overlay" id="modal-venda">
   <div class="modal" style="max-width:600px">
@@ -1190,6 +1238,10 @@
         <div class="form-group"><label>Restante</label>
           <input class="form-control" id="pag-restante" readonly style="background:var(--card-2);font-weight:700;color:var(--red)">
         </div>
+      </div>
+      <div class="form-group" id="pag-encargo-wrap" style="display:none"><label>Juros/multa cobrados (R$)</label>
+        <input class="form-control" id="pag-encargo" type="number" step="0.01" placeholder="0,00">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="pag-encargo-info"></div>
       </div>
       <div class="form-group"><label>Forma</label>
         <select class="form-control" id="pag-forma"><option>Dinheiro</option><option>PIX</option><option>Cartão</option></select>
@@ -1844,21 +1896,22 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.35.0"></script>
-<script src="00-core.js?v=5.35.0"></script>
-<script src="01-ui-nav.js?v=5.35.0"></script>
-<script src="02-dashboard.js?v=5.35.0"></script>
-<script src="03-clientes.js?v=5.35.0"></script>
-<script src="04-vendas.js?v=5.35.0"></script>
-<script src="05-producao.js?v=5.35.0"></script>
-<script src="06-estoque.js?v=5.35.0"></script>
-<script src="07-precificacao.js?v=5.35.0"></script>
-<script src="08-compras-fornecedores.js?v=5.35.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.35.0"></script>
-<script src="10-fab-inline.js?v=5.35.0"></script>
-<script src="10b-planejamento.js?v=5.35.0"></script>
-<script src="12-drive-backup.js?v=5.35.0"></script>
-<script src="11-app-init.js?v=5.35.0"></script>
+<script src="00a-config.js?v=5.37.0"></script>
+<script src="00-core.js?v=5.37.0"></script>
+<script src="01-ui-nav.js?v=5.37.0"></script>
+<script src="02-dashboard.js?v=5.37.0"></script>
+<script src="03-clientes.js?v=5.37.0"></script>
+<script src="04-vendas.js?v=5.37.0"></script>
+<script src="04b-pix-extrato.js?v=5.37.0"></script>
+<script src="05-producao.js?v=5.37.0"></script>
+<script src="06-estoque.js?v=5.37.0"></script>
+<script src="07-precificacao.js?v=5.37.0"></script>
+<script src="08-compras-fornecedores.js?v=5.37.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.37.0"></script>
+<script src="10-fab-inline.js?v=5.37.0"></script>
+<script src="10b-planejamento.js?v=5.37.0"></script>
+<script src="12-drive-backup.js?v=5.37.0"></script>
+<script src="11-app-init.js?v=5.37.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

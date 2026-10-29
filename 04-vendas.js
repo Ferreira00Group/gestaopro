@@ -1074,11 +1074,14 @@ function abrirRecibo(id){
     ${parcelasTxt?`<div style="margin-top:6px;font-size:12px">${parcelasTxt}</div>`:''}
     <div style="margin-top:6px;font-size:12px"><strong>Pedido:</strong> ${statusPedidoLabel(v.statusPedido).txt}</div>
     ${v.obs?`<div style="margin-top:8px;font-size:12px;color:var(--muted)"><strong>Obs:</strong> ${escapeHtml(v.obs)}</div>`:''}
+    ${reciboPixHtml(v,sit)}
   `;
   document.getElementById('modal-recibo').classList.add('open');
 }
 function imprimirRecibo(){
-  const conteudo=document.getElementById('recibo-conteudo').innerHTML;
+  const tmp=document.createElement('div');tmp.innerHTML=document.getElementById('recibo-conteudo').innerHTML;
+  tmp.querySelectorAll('[data-noprint]').forEach(e=>e.remove());
+  const conteudo=tmp.innerHTML;
   const w=window.open('','_blank');
   w.document.write(`<html><head><title>Recibo</title><style>:root{--text:#111;--muted:#666;--border:#ccc;--red:#c0392b;--green:#1e8449}body{font-family:Arial,sans-serif;max-width:380px;margin:24px auto;font-size:13px;line-height:1.6}hr{border:none;border-top:1px dashed #ccc;margin:10px 0}</style></head><body>${conteudo}</body></html>`);
   w.document.close();w.print();
@@ -1093,7 +1096,7 @@ function enviarReciboWhatsapp(){
   const jurosLinha=v.jurosAto>0?`\n💲 Juros no ato: +${fmt(v.jurosAto)}`:'';
   const pedidoTxt=(v.statusPedido&&v.statusPedido!=='indefinido')?statusPedidoLabel(v.statusPedido).txt.replace(/^\S+\s/,''):'';
   const statusPedidoLinha=pedidoTxt?`\n📦 Pedido: ${pedidoTxt}`:'';
-  const msg=`🧾 *Recibo de Venda — GestãoPRO*\n\nNº: VD${String(v.id).padStart(4,'0')}\nCliente: ${c.nome}\nData: ${fmtDate(v.data)}\n\n${linhas.join('\n')}${descontoLinha}${jurosLinha}\n\n*Total: ${fmt(v.total)}*\nPagamento: ${pagTxt}${vencimentoLinha}${statusPedidoLinha}${v.obs?`\nObs: ${v.obs}`:''}\n\nObrigado pela compra! 😊`;
+  const msg=`🧾 *Recibo de Venda — GestãoPRO*\n\nNº: VD${String(v.id).padStart(4,'0')}\nCliente: ${c.nome}\nData: ${fmtDate(v.data)}\n\n${linhas.join('\n')}${descontoLinha}${jurosLinha}\n\n*Total: ${fmt(v.total)}*\nPagamento: ${pagTxt}${vencimentoLinha}${statusPedidoLinha}${v.obs?`\nObs: ${v.obs}`:''}${(()=>{const d=pixDadosRecibo(v,sit);return d?'\n\n'+d.texto:'';})()}\n\nObrigado pela compra! 😊`;
   const tel=(c.tel||'').replace(/\D/g,'');
   if(tel){
     window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
@@ -1226,7 +1229,9 @@ function renderReceber(){
       <div style="text-align:right">
         <div class="amount">${fmt(c.saldo)}</div>
         <div class="amount-label">saldo devedor</div>
+        ${(()=>{const e=calcEncargosCliente(c.id);return e.total>0?`<div style="font-size:12px;margin-top:6px;opacity:.9">Encargos de atraso: ${fmt(e.total)}</div>`:'';})()}
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button class="btn btn-outline btn-sm" onclick="abrirExtrato(${c.id})"><i data-lucide="file-text" class="ic"></i> Extrato</button>
           <button class="btn btn-outline btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i> WhatsApp</button>
           <button class="btn btn-primary btn-sm" onclick="abrirPagamento(${c.id})"><i data-lucide="banknote" class="ic"></i> Receber</button>
         </div>
@@ -1254,6 +1259,10 @@ function abrirPagamento(clienteId){
   document.getElementById('pag-valor').value='';
   document.getElementById('pag-restante').value='';
   document.getElementById('pag-data').value=today();
+  const encAtivo=encargosCfg().ativo, enc=calcEncargosCliente(clienteId);
+  document.getElementById('pag-encargo-wrap').style.display=encAtivo?'block':'none';
+  document.getElementById('pag-encargo').value=(encAtivo&&enc.total>0)?enc.total.toFixed(2):'';
+  document.getElementById('pag-encargo-info').textContent=(encAtivo&&enc.total>0)?`Calculado: multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)}. Pode editar ou zerar.`:'Sem encargos calculados para este cliente.';
   document.getElementById('modal-pagamento').classList.add('open');
 }
 function calcRestante(){
@@ -1270,14 +1279,19 @@ function registrarPagamento(){
   const saldo=getSaldoCliente(clienteId);
   if(!valor||valor<=0){showToast('Informe o valor pago','red');return;}
   if(valor>saldo){showToast('Valor maior que o saldo devedor','red');return;}
+  const encWrap=document.getElementById('pag-encargo-wrap');
+  const encCobrado=(encWrap&&encWrap.style.display!=='none')?round2(parseFloat(document.getElementById('pag-encargo').value)||0):0;
+  if(encCobrado<0){showToast('Juros/multa não pode ser negativo','red');return;}
   const pagId=nextId('pagamentos');
-  state.pagamentos.push({id:pagId,clienteId,valor,forma,obs,data});
+  // O pagamento reduz o saldo só pelo principal (valor). O encargo é guardado à parte.
+  state.pagamentos.push({id:pagId,clienteId,valor,forma,obs,data,...(encCobrado>0?{encargo:encCobrado}:{})});
   // pagamentoId liga este lançamento ao pagamento acima — se o lançamento for excluído no
   // Financeiro, o pagamento é desfeito junto (ver excluirLancamento em 09-financeiro-relatorios.js),
   // senão o saldo devedor do cliente ficaria divergente do Financeiro
   state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Pagamento fiado — ${getCliente(clienteId).nome}`,valor,data,pagamentoId:pagId});
+  if(encCobrado>0) state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Juros/multa de atraso — ${getCliente(clienteId).nome}`,valor:encCobrado,data,pagamentoId:pagId,encargo:true});
   marcarAlterado();
-  showToast(`Pagamento de ${fmt(valor)} registrado!`,'green');
+  showToast(`Pagamento de ${fmt(valor)} registrado!${encCobrado>0?' + '+fmt(encCobrado)+' de encargos':''}`,'green');
   closeModal('modal-pagamento');
   const pg=document.querySelector('.page.active');
   if(pg) render(pg.id.replace('page-',''));
@@ -1291,7 +1305,9 @@ function cobrarWhatsapp(clienteId){
   const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&situacaoVenda(v,mapaFiado).status!=='pago');
   const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n');
   const enderecoLinha=(c.end||c.referencia)?`\n📍 ${c.end||''}${c.end&&c.referencia?' — ':''}${c.referencia||''}`:'';
-  const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:${enderecoLinha}\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*\n\nQualquer dúvida estou à disposição! 😊`;
+  const enc=calcEncargosCliente(clienteId);
+  const encTxt=enc.total>0?`\n\n⚠️ *Encargos de atraso:* ${fmt(enc.total)}\n(multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)})\n*Total com encargos: ${fmt(saldo+enc.total)}*`:'';
+  const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:${enderecoLinha}\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*${encTxt}${pixBlocoCobranca(clienteId)}\n\nQualquer dúvida estou à disposição! 😊`;
   const tel=c.tel.replace(/\D/g,'');
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
 }

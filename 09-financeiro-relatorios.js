@@ -102,13 +102,14 @@ function excluirLancamento(id){
   if(f && f.compraId){showToast('Este lançamento vem de uma compra. Para excluir, vá em Estoque → Fornecedores → Histórico de Compras.','red');return;}
   if(f && f.vendaId){showToast('Este lançamento vem de uma venda. Para excluir, vá na tela de Vendas.','red');return;}
   const textoConfirmacao = (f && f.pagamentoId)
-    ? 'Excluir este lançamento também vai desfazer o pagamento recebido — o saldo devedor do cliente volta a subir. Continuar?'
+    ? 'Excluir este lançamento também vai desfazer o pagamento recebido (e o juros/multa lançado junto, se houver) — o saldo devedor do cliente volta a subir. Continuar?'
     : (f && f.pagamentoFornecedorId)
     ? 'Excluir este lançamento também vai desfazer o pagamento ao fornecedor — o saldo em aberto volta a subir. Continuar?'
     : 'Excluir este lançamento?';
   confirmarAcao(textoConfirmacao,()=>{
     if(f && f.pagamentoId){
       state.pagamentos=state.pagamentos.filter(p=>p.id!==f.pagamentoId);
+      state.financeiro=state.financeiro.filter(x=>x.pagamentoId!==f.pagamentoId); // inclui o encargo ligado ao pagamento
     }
     if(f && f.pagamentoFornecedorId){
       state.pagamentosFornecedor=state.pagamentosFornecedor.filter(p=>p.id!==f.pagamentoFornecedorId);
@@ -473,6 +474,7 @@ function gerarInadimplencia(){
   const diasAtraso=parseInt(document.getElementById('inadimp-dias').value)||0;
   const hoje=today();
   const hojeDate=new Date(hoje);
+  const encCfg=encargosCfg(), encAtivo=encCfg.ativo;
 
   // Clientes com fiado vencido (por parcela/unidade de dívida — uma venda parcelada
   // pode ter só parte das parcelas vencidas)
@@ -481,9 +483,10 @@ function gerarInadimplencia(){
     const vencDate=new Date(u.vencimento);
     const diffDias=Math.floor((hojeDate-vencDate)/(1000*60*60*24));
     if(diffDias<diasAtraso) return;
-    if(!clientesMap[u.clienteId]) clientesMap[u.clienteId]={vendas:[],totalAberto:0,maiorAtraso:0};
+    if(!clientesMap[u.clienteId]) clientesMap[u.clienteId]={vendas:[],totalAberto:0,maiorAtraso:0,encargos:0};
     clientesMap[u.clienteId].vendas.push({vencimento:u.vencimento,total:u.valorRestante,parcelaNum:u.parcelaNum,parcelaTotal:u.parcelaTotal,diasAtraso:diffDias});
     clientesMap[u.clienteId].totalAberto+=u.valorRestante;
+    if(encAtivo){const e=encargoDaUnidade(u,hoje,encCfg);if(e)clientesMap[u.clienteId].encargos+=e.total;}
     clientesMap[u.clienteId].maiorAtraso=Math.max(clientesMap[u.clienteId].maiorAtraso,diffDias);
   });
 
@@ -515,13 +518,14 @@ function gerarInadimplencia(){
         <span style="font-size:12px;color:var(--muted)">Gerado em ${fmtDate(hoje)}</span>
       </div>
       <div class="table-scroll"><table>
-        <thead><tr><th>Cliente</th><th>Telefone</th><th>Vendas em aberto</th><th>Total Devido</th><th>Maior Atraso</th><th>Último Pagto</th><th>Ação</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Telefone</th><th>Vendas em aberto</th><th>Total Devido</th>${encAtivo?'<th>Encargos est.</th>':''}<th>Maior Atraso</th><th>Último Pagto</th><th>Ação</th></tr></thead>
         <tbody>
           ${lista.map(l=>`<tr>
             <td><strong>${escapeHtml(l.cliente.nome)}</strong></td>
             <td style="font-size:12px">${escapeHtml(l.cliente.tel||'—')}</td>
             <td style="font-size:12px">${l.vendas.map(v=>`${fmtDate(v.vencimento)} · ${fmt(v.total)} (${v.diasAtraso}d)`).join('<br>')}</td>
             <td><strong style="color:var(--red)">${fmt(l.totalAberto)}</strong></td>
+            ${encAtivo?`<td>${l.encargos>0?fmt(l.encargos):'—'}</td>`:''}
             <td><span class="badge ${l.maiorAtraso>30?'badge-red':'badge-yellow'}">${l.maiorAtraso} dias</span></td>
             <td style="font-size:12px">${l.ultimoPagamento?fmtDate(l.ultimoPagamento.data)+' · '+fmt(l.ultimoPagamento.valor):'<span style="color:var(--muted)">Nunca</span>'}</td>
             <td>${l.cliente.tel?`<a href="https://wa.me/55${l.cliente.tel.replace(/\D/g,'')}" target="_blank" class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:4px 10px">WhatsApp</a>`:'—'}</td>
@@ -530,6 +534,7 @@ function gerarInadimplencia(){
         <tfoot><tr style="background:var(--card-2);border-top:2px solid var(--border)">
           <td colspan="3" style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--muted)">TOTAL INADIMPLENTE</td>
           <td style="padding:10px 14px;font-size:14px;font-weight:800;color:var(--red)">${fmt(totalInadimplente)}</td>
+          ${encAtivo?`<td style="padding:10px 14px;font-size:13px;font-weight:700">${fmt(lista.reduce((a,l)=>a+l.encargos,0))}</td>`:''}
           <td colspan="3"></td>
         </tr></tfoot>
       </table></div>

@@ -69,6 +69,8 @@ const DEFAULT_STATE = {
     {id:1,clienteId:1,valor:10,forma:'Dinheiro',obs:'parcial',data:'2026-06-19'},
   ],
   pagamentosFornecedor:[],
+  pix:{chave:'',tipo:'celular',nome:'',cidade:''},
+  encargos:{ativo:false,multa:5,juros:3,carencia:0,pixComEncargos:false},
   producoes:[
     {id:1,produtoId:1,varianteId:null,qtd:50,custo:93.50,data:'2026-06-17',consumo:[{mpId:1,qtdConsumida:4},{mpId:2,qtdConsumida:2.5},{mpId:13,qtdConsumida:50}]},
   ],
@@ -178,7 +180,7 @@ let _avisouFalhaGravacao = false;
 //        Sem migração de dados: toda compra já existente não tem "formaPagamento", e o código
 //        trata ausência/qualquer valor ≠ 'prazo' como 'avista' — o que é historicamente correto
 //        (elas já geraram a saída imediata de verdade), não uma aproximação.
-//   14 → (versão atual) novo array state.movEstoque: histórico de TODA movimentação de estoque
+//   14 → novo array state.movEstoque: histórico de TODA movimentação de estoque
 //        (venda, produção, compra, baixa/entrada manual, ajuste rápido − n +, cadastro), com
 //        data/hora, variação e saldo após. Só passa a existir daqui pra frente: não dá pra
 //        reconstruir o que aconteceu antes. Item avulso de venda ganha custo opcional, gravado
@@ -189,8 +191,10 @@ let _avisouFalhaGravacao = false;
 //        ficha técnica de HOJE — se o preço de uma matéria-prima mudasse, a margem de uma
 //        venda de meses atrás mudava sozinha. Sem migração de dados: vendas antigas não têm
 //        esse campo, e o relatório cai de volta pro cálculo pela ficha atual nesse caso (única
-//        opção quando não sabemos o custo real da época — ver 09-financeiro-relatorios.js).
-const SCHEMA_VERSION = 14;
+//        opção quando não sabemos o custo real da época — ver 09-financeiro-relatorios.js).//   15 → state.pix (Pix do celular: chave, tipo, nome, cidade) — v5.36. Chave digitada pelo
+//        usuário, fica só no aparelho e no backup.
+//   16 → (versão atual) state.encargos (multa/juros de atraso, desligado por padrão) — v5.37.
+const SCHEMA_VERSION = 16;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -289,6 +293,16 @@ const MIGRATIONS = {
     d.movEstoque = d.movEstoque || [];
     d.nextId = { ...(d.nextId||{}) };
     if(!(d.nextId.movEstoque>0)) d.nextId.movEstoque = 1;
+    return d;
+  },
+  // v14 → v15: Pix do celular (v5.36)
+  14: (d) => {
+    d.pix = { chave:'', tipo:'celular', nome:'', cidade:'', ...(d.pix||{}) };
+    return d;
+  },
+  // v15 → v16: encargos de atraso (v5.37) — nascem DESLIGADOS, carência 0
+  15: (d) => {
+    d.encargos = { ativo:false, multa:5, juros:3, carencia:0, pixComEncargos:false, ...(d.encargos||{}) };
     return d;
   },
 };
