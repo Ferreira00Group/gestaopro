@@ -35,6 +35,7 @@ function calcularNecessidadeProdutos(){
   const mapa = {};
   getOrcamentosAbertos().forEach(v=>{
     (v.itens||[]).forEach(it=>{
+      if(it.avulso||!it.produtoId) return; // item avulso não tem estoque nem produção
       const key = `${it.produtoId}::${it.varianteId||''}`;
       if(!mapa[key]) mapa[key] = {produtoId: it.produtoId, varianteId: it.varianteId||null, qtdNecessaria: 0};
       mapa[key].qtdNecessaria += it.qtd;

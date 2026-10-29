@@ -639,3 +639,32 @@ nav a .icon{stroke-width:1.75}
   .stepper{border:none;background:none;box-shadow:none;padding:0}
   .stepper .stp-val{color:#111!important}
 }
+
+/* catálogo de venda + avulso */
+.vc-top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.vc-top .form-control{flex:1;min-width:0}
+.vc-lista{border:1px solid var(--border);border-radius:10px;max-height:46vh;overflow-y:auto;background:var(--card)}
+.vc-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.vc-row:last-child{border-bottom:none}
+.vc-row.sel{background:var(--gold-soft)}
+.vc-info{min-width:0;flex:1}
+.vc-nome{font-size:14px;font-weight:600;margin:0}
+.vc-sub{font-size:12px;color:var(--muted);margin:2px 0 0}
+.vc-sub .aviso{color:var(--red);font-weight:600}
+.vc-tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:1px 7px;border-radius:999px;background:var(--card-2);color:var(--gold-2);margin-left:6px;vertical-align:middle}
+.vc-preco{display:flex;align-items:center;gap:8px;width:100%;font-size:12px;color:var(--muted);margin:0}
+.vc-preco input{width:100px;padding:6px 10px;font-size:13px}
+.vc-vazio{padding:18px;text-align:center;font-size:13px;color:var(--muted)}
+.vc-resumo{margin-top:6px;font-size:12px;color:var(--muted)}
+.avulso-display{text-align:center;font-size:34px;font-weight:800;color:var(--gold-2);padding:6px 0 12px}
+.avulso-keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.avulso-key{height:52px;border-radius:12px;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:20px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center}
+.avulso-key:active{background:var(--gold-soft)}
+.avulso-rodape{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.avulso-qtd{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.stepper .stp-qtd{min-width:3ch;text-align:center;font-weight:800;font-size:15px;color:var(--text)}
+.parcelas-resumo{margin:8px 0 12px;background:var(--card-2);border-radius:8px;padding:10px 12px;font-size:13px}
+.parcelas-resumo .lin{display:flex;justify-content:space-between;padding:2px 0}
+.parcelas-resumo .tot{font-weight:800;color:var(--green)}
+@media print{.vc-top,.avulso-keys{display:none!important}}
+

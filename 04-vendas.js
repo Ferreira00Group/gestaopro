@@ -1,5 +1,17 @@
 // ============ VENDAS (multi-item) ============
 let vendaItensTemp=[];
+// Item avulso (v5.34.6): valor digitado na calculadora, sem produto cadastrado. Fica em
+// itens[] com produtoId:null, avulso:true e nome. Não baixa estoque e tem custo 0.
+function nomeItemVenda(it){
+  if(it&&it.avulso) return String(it.nome||'').trim()||'Item avulso';
+  return getNomeCompletoItem(it.produtoId,it.varianteId);
+}
+function itemVendaGravar(it,comCusto){
+  const base={produtoId:it.avulso?null:it.produtoId,varianteId:it.avulso?null:(it.varianteId||null),qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco};
+  if(it.avulso){base.avulso=true;base.nome=nomeItemVenda(it);}
+  if(comCusto) base.custoFichaUn=it.avulso?0:calcularCustoFicha(it.produtoId,it.varianteId,1);
+  return base;
+}
 function formaLabel(forma){
   return forma==='fiado'?'Fiado':forma==='dinheiro'?'Dinheiro':forma==='pix'?'PIX':forma==='cartao'?'Cartão':forma==='misto'?'Misto':forma;
 }
@@ -40,7 +52,7 @@ function renderVendas(){
   const mapaFiado=getMapaSituacaoFiado();
   const sitCache=new Map();
   const sitDe=(v)=>{ if(!sitCache.has(v.id)) sitCache.set(v.id,situacaoVenda(v,mapaFiado)); return sitCache.get(v.id); };
-  if(state.venda_filter)list=list.filter(v=>getCliente(v.clienteId).nome.toLowerCase().includes(state.venda_filter)||v.itens.some(it=>getNomeCompletoItem(it.produtoId,it.varianteId).toLowerCase().includes(state.venda_filter)));
+  if(state.venda_filter)list=list.filter(v=>getCliente(v.clienteId).nome.toLowerCase().includes(state.venda_filter)||v.itens.some(it=>nomeItemVenda(it).toLowerCase().includes(state.venda_filter)));
   if(state.venda_tipo_filter==='orcamento')list=list.filter(v=>v.tipo==='orcamento');
   else if(state.venda_tipo_filter==='fiado')list=list.filter(v=>v.tipo!=='orcamento'&&sitDe(v).status!=='pago');
   else if(state.venda_tipo_filter==='pago')list=list.filter(v=>v.tipo!=='orcamento'&&sitDe(v).status==='pago');
@@ -59,7 +71,7 @@ function renderVendas(){
     const sit=isOrc?null:sitDe(v);
     const itensTxt=v.itens&&v.itens.length>0?`<div style="display:flex;flex-direction:column;gap:4px">${v.itens.map(it=>
       `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getNomeCompletoItem(it.produtoId,it.varianteId)}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nomeItemVenda(it)}</span>
         <span class="qtd-pill">${String(it.qtd).padStart(2,'0')} L</span>
       </div>`
     ).join('')}</div>`:'—';
@@ -299,54 +311,151 @@ function renderQtdItemVenda(it){
         ${livre?`<input type="number" min="1" value="${it.qtd}" class="form-control" style="width:52px" oninput="atualizarItemVenda('${it.uid}','qtd',this.value)">`:''}
       </span>`;
 }
+// ============ CATÁLOGO DE VENDA + AVULSO (v5.34.6) ============
+// A lista de itens da venda virou um catálogo: tocar no + soma 1, o stepper ajusta a quantidade
+// (ou toque no número para digitar). O botão "Avulso" abre a calculadora para valores sem cadastro.
+const _VC_MENOS='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>';
+const _VC_MAIS='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12"/></svg>';
+let vendaCatBusca='';
+function vendaResetCampos(){
+  vendaCatBusca='';
+  const b=document.getElementById('venda-cat-busca'); if(b) b.value='';
+  const jt=document.getElementById('venda-juros-tipo'); if(jt) jt.value='pct';
+  const jv=document.getElementById('venda-juros-valor'); if(jv) jv.value='';
+}
+function vcBuscar(v){vendaCatBusca=String(v||'').trim().toLowerCase();renderVendaItensLista();}
+function vcItemCatalogo(produtoId,varianteId){
+  return vendaItensTemp.find(it=>!it.avulso&&it.produtoId==produtoId&&(it.varianteId||null)==(varianteId||null));
+}
+function vcItemPorChave(key){
+  const [t,a,b]=key.split(':');
+  if(t==='a') return vendaItensTemp.find(x=>x.uid===a);
+  return vcItemCatalogo(parseInt(a),b?parseInt(b):null);
+}
+function vcPrecoCatalogo(produtoId){
+  const base=getProduto(produtoId)?.preco||0;
+  const canalId=parseInt(document.getElementById('venda-canal')?.value)||null;
+  const canal=canalId?(state.canais||[]).find(c=>c.id===canalId):null;
+  return canal?getPrecoCanal(base,canal):base;
+}
+function vcEntradasCatalogo(){
+  const out=[];
+  state.produtos.forEach(p=>{
+    const ativo=estaAtivo(p);
+    if(!ativo&&!vendaItensTemp.some(it=>!it.avulso&&it.produtoId==p.id)) return;
+    const tag=ativo?'':' (arquivado)';
+    if(p.variantes&&p.variantes.length>0){
+      p.variantes.forEach(v=>out.push({produtoId:p.id,varianteId:v.id,nome:getNomeCompletoItem(p.id,v.id)+tag,cod:fmtProdutoCod(p.id,v.id),preco:p.preco,estoque:v.estoque}));
+    } else {
+      out.push({produtoId:p.id,varianteId:null,nome:getNomeCompletoItem(p.id,null)+tag,cod:fmtProdutoCod(p.id),preco:p.preco,estoque:p.estoque});
+    }
+  });
+  return out;
+}
+function vcStepper(key,qtd,alerta){
+  const txt=String(qtd);
+  return `<div class="stepper${alerta?' low':''}">`+
+    `<button type="button" class="stp-btn stp-minus" onclick="vcAjustar('${key}',-1)" aria-label="Diminuir">${_VC_MENOS}</button>`+
+    `<input type="text" class="stp-val" inputmode="numeric" value="${txt}" style="width:${Math.max(3,txt.length+1)}ch" onfocus="this.select()" onkeydown="if(event.key==='Enter')this.blur()" onchange="vcDigitado('${key}',this.value)" aria-label="Quantidade">`+
+    `<button type="button" class="stp-btn stp-plus" onclick="vcAjustar('${key}',1)" aria-label="Aumentar">${_VC_MAIS}</button>`+
+    `</div>`;
+}
 function renderVendaItensLista(){
   const el=document.getElementById('venda-itens-lista');
-  el.innerHTML=vendaItensTemp.map((it,i)=>`
-    <div class="orcamento-item-linha" data-uid="${it.uid}">
-      <select class="form-control" style="flex:2" onchange="atualizarItemVenda('${it.uid}','produto',this.value)">
-        ${opcoesProdutosSelect(it.produtoId,it.varianteId)}
-      </select>
-      ${renderQtdItemVenda(it)}
-      <input type="number" step="0.01" value="${it.preco}" class="form-control" style="width:84px" oninput="atualizarItemVenda('${it.uid}','preco',this.value)">
-      <button class="icon-btn del" onclick="removerItemVenda('${it.uid}')">✕</button>
-    </div>
-  `).join('');
+  if(!el) return;
+  const editando=!!document.getElementById('venda-edit-id')?.value;
+  const verEstoque=!editando&&document.getElementById('venda-tipo')?.value!=='orcamento';
+  let html='';
+  vendaItensTemp.filter(it=>it.avulso).forEach(it=>{
+    const key='a:'+it.uid;
+    html+=`<div class="vc-row sel">
+      <div class="vc-info"><p class="vc-nome">${escapeHtml(nomeItemVenda(it))}<span class="vc-tag">avulso</span></p></div>
+      ${vcStepper(key,it.qtd,false)}
+      <label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>
+    </div>`;
+  });
+  const termo=vendaCatBusca;
+  const lista=vcEntradasCatalogo().filter(e=>!termo||(e.nome+' '+e.cod).toLowerCase().includes(termo));
+  lista.forEach(e=>{
+    const key=`p:${e.produtoId}:${e.varianteId||''}`;
+    const it=vcItemCatalogo(e.produtoId,e.varianteId);
+    const falta=!!it&&verEstoque&&it.qtd>e.estoque;
+    html+=`<div class="vc-row${it?' sel':''}">
+      <div class="vc-info"><p class="vc-nome">${escapeHtml(e.nome)}</p>
+        <p class="vc-sub">${escapeHtml(e.cod)} · ${fmt(e.preco)} · est: ${e.estoque}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
+      ${it?vcStepper(key,it.qtd,falta):`<button type="button" class="stp-btn stp-plus vc-add" onclick="vcAjustar('${key}',1)" aria-label="Adicionar">${_VC_MAIS}</button>`}
+      ${it?`<label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>`:''}
+    </div>`;
+  });
+  if(!html) html='<div class="vc-vazio">'+(termo?'Nenhum item encontrado':'Nenhum produto cadastrado')+'</div>';
+  el.innerHTML=html;
+  const n=vendaItensTemp.filter(it=>(it.produtoId||it.avulso)&&it.qtd>0).reduce((s,it)=>s+it.qtd,0);
+  const rs=document.getElementById('venda-itens-resumo');
+  if(rs) rs.textContent=n>0?`${n} ${n===1?'unidade selecionada':'unidades selecionadas'}`:'Toque em + para adicionar itens';
   calcTotalVendaGeral();
 }
-function atualizarItemVenda(uid,campo,valor){
-  const it=vendaItensTemp.find(x=>x.uid===uid);
-  if(!it)return;
-  if(campo==='produto'){
-    const [pid,vid]=valor.split('::');
-    it.produtoId=pid?parseInt(pid):'';
-    it.varianteId=vid?parseInt(vid):null;
-    const precoBase=getProduto(it.produtoId)?.preco||0;
-    const canalId=parseInt(document.getElementById('venda-canal')?.value)||null;
-    const canal=canalId?(state.canais||[]).find(c=>c.id===canalId):null;
-    it.preco=canal?getPrecoCanal(precoBase,canal):precoBase;
-    renderVendaItensLista();
-    return;
+function vcDefinir(key,qtd){
+  qtd=Math.floor(Number(qtd));
+  if(isNaN(qtd)) qtd=0;
+  qtd=Math.max(0,Math.min(qtd,99999));
+  const [t,a,b]=key.split(':');
+  const it=vcItemPorChave(key);
+  if(qtd<=0){
+    if(it) vendaItensTemp=vendaItensTemp.filter(x=>x!==it);
+  } else if(it){
+    it.qtd=qtd;
+  } else if(t==='p'){
+    const produtoId=parseInt(a),varianteId=b?parseInt(b):null;
+    vendaItensTemp.push(criarLinhaItemVenda({produtoId,varianteId,qtd,preco:vcPrecoCatalogo(produtoId)}));
   }
-  if(campo==='qtdSelect'){
-    if(valor==='livre'){ it.qtdLivre=true; }
-    else { it.qtd=parseInt(valor)||1; it.qtdLivre=false; }
-    renderVendaItensLista();
-    return;
-  }
-  if(campo==='qtd')it.qtd=parseInt(valor)||1;
-  if(campo==='preco')it.preco=parseFloat(valor)||0;
+  renderVendaItensLista();
+}
+function vcAjustar(key,delta){
+  const it=vcItemPorChave(key);
+  vcDefinir(key,(it?it.qtd:0)+delta);
+}
+function vcDigitado(key,valor){
+  const n=parseInt(String(valor).replace(/\D/g,''),10);
+  vcDefinir(key,isNaN(n)?0:n);
+}
+function vcPreco(key,valor){
+  const it=vcItemPorChave(key);
+  if(!it) return;
+  it.preco=Math.max(0,parseFloat(valor)||0);
   calcTotalVendaGeral();
 }
-function adicionarItemVenda(){
-  vendaItensTemp.push(criarLinhaItemVenda());
-  renderVendaItensLista();
+// ── Calculadora (valor avulso) ──
+let avulsoCents=0,avulsoQtd=1;
+function avulsoDesenhar(){
+  const d=document.getElementById('avulso-display'); if(d) d.textContent=fmt(avulsoCents/100);
+  const q=document.getElementById('avulso-qtd'); if(q) q.textContent=avulsoQtd;
 }
-function removerItemVenda(uid){
-  vendaItensTemp=vendaItensTemp.filter(x=>x.uid!==uid);
+function abrirAvulso(){
+  avulsoCents=0;avulsoQtd=1;
+  const d=document.getElementById('avulso-desc'); if(d) d.value='';
+  avulsoDesenhar();
+  document.getElementById('modal-avulso').classList.add('open');
+}
+function avulsoDigito(n){
+  if(avulsoCents>9999999) return;
+  avulsoCents=avulsoCents*10+n;
+  avulsoDesenhar();
+}
+function avulsoApagar(){avulsoCents=Math.floor(avulsoCents/10);avulsoDesenhar();}
+function avulsoQtdAjustar(d){avulsoQtd=Math.max(1,Math.min(9999,avulsoQtd+d));avulsoDesenhar();}
+function avulsoAdicionar(){
+  if(avulsoCents<=0){showToast('Digite um valor','red');return;}
+  const nome=String(document.getElementById('avulso-desc').value||'').trim().slice(0,40)||'Item avulso';
+  vendaItensTemp.push(criarLinhaItemVenda({produtoId:null,varianteId:null,avulso:true,nome,qtd:avulsoQtd,preco:avulsoCents/100}));
   renderVendaItensLista();
+  showToast(`${fmt(avulsoCents/100)} ×${avulsoQtd} adicionado à venda`,'green');
+  avulsoCents=0;avulsoQtd=1;
+  document.getElementById('avulso-desc').value='';
+  avulsoDesenhar();
 }
 function calcTotalVendaGeral(){
   const totalCheio=vendaItensTemp.reduce((s,it)=>{
+    if(it.avulso) return s+((it.qtd||0)*(it.preco||0));
     if(!it.produtoId)return s;
     const precoBase=getProduto(it.produtoId)?.preco||0;
     return s+((it.qtd||0)*precoBase);
@@ -360,7 +469,28 @@ function calcTotalVendaGeral(){
   if(elFinal)elFinal.textContent=fmt(totalFinal);
   atualizarRestantePagamentoMisto();
   atualizarInfoEntrada();
+  atualizarResumoParcelas();
   return totalFinal;
+}
+// ── Juros no ato (parcelamento) ──
+function calcJurosAto(base){
+  const tipo=document.getElementById('venda-juros-tipo')?.value||'pct';
+  const val=Math.max(0,parseFloat(document.getElementById('venda-juros-valor')?.value)||0);
+  return parseFloat((tipo==='pct'?base*val/100:val).toFixed(2));
+}
+function atualizarResumoParcelas(){
+  const wrap=document.getElementById('venda-parcelas-wrap');
+  const el=document.getElementById('venda-parcelas-resumo');
+  if(!wrap||!el||wrap.style.display==='none') return;
+  const n=Math.min(24,Math.max(2,parseInt(document.getElementById('venda-num-parcelas').value)||2));
+  const base=calcTotalVendaGeralSemRecursao();
+  const juros=calcJurosAto(base);
+  const total=parseFloat((base+juros).toFixed(2));
+  const parcela=parseFloat((total/n).toFixed(2));
+  el.innerHTML=`<div class="lin"><span>Valor original</span><span>${fmt(base)}</span></div>
+    <div class="lin"><span>Juros no ato</span><span>${juros>0?'+':''}${fmt(juros)}</span></div>
+    <div class="lin tot"><span>Total a receber</span><span>${fmt(total)}</span></div>
+    <div style="margin-top:4px;font-size:12px;color:var(--muted)">${n} parcelas de ${fmt(parcela)} · somado ao total na hora da venda. Use condições permitidas pela lei.</div>`;
 }
 function popularCanalVenda(){
   const sel=document.getElementById('venda-canal');
@@ -526,7 +656,8 @@ function abrirNovaVenda(){
   toggleVendaEntradaShortcut();
   vendaPagamentosTemp=[];
   document.getElementById('modal-venda-title').textContent='Nova Venda';
-  vendaItensTemp=[criarLinhaItemVenda()];
+  vendaItensTemp=[];
+  vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
   calcTotalVendaGeral();
@@ -550,7 +681,8 @@ function duplicarVenda(id){
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
   vendaPagamentosTemp=[];
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||''}));
+  vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
   document.getElementById('venda-canal').value=v.canalId||'';
@@ -567,6 +699,7 @@ function clearVendaForm(){
   document.getElementById('venda-parcelas-wrap').style.display='none';
   document.getElementById('venda-num-parcelas').value=2;
   document.getElementById('venda-parcelas-lista').innerHTML='';
+  vendaResetCampos();
   document.getElementById('venda-parcelado-edit-note').style.display='none';
   { const parcelarRow=document.getElementById('venda-parcelar-check').closest('span'); if(parcelarRow) parcelarRow.style.display='flex'; }
   popularCanalVenda();
@@ -584,7 +717,7 @@ function gerarParcelasVenda(){
   const n = parseInt(document.getElementById('venda-num-parcelas').value) || 2;
   const baseDate = document.getElementById('venda-vencimento').value || today();
   const el = document.getElementById('venda-parcelas-lista');
-  if(n < 2 || n > 24){el.innerHTML='<p style="color:var(--red);font-size:12px">Entre 2 e 24 parcelas</p>';return;}
+  if(n < 2 || n > 24){el.innerHTML='<p style="color:var(--red);font-size:12px">Entre 2 e 24 parcelas</p>';atualizarResumoParcelas();return;}
   // gera datas mensais a partir da data de vencimento
   const linhas = [];
   for(let i=0;i<n;i++){
@@ -598,6 +731,7 @@ function gerarParcelasVenda(){
     </div>`);
   }
   el.innerHTML = linhas.join('');
+  atualizarResumoParcelas();
 }
 
 // ============ RECONCILIAÇÃO VENDA ↔ FINANCEIRO ============
@@ -626,7 +760,7 @@ function sincronizarFinanceiroVenda(vendaId, valorNaoFiado, data, desc){
 //  - editar venda só exige estoque pelo AUMENTO de quantidade (antes nem checava e podia negativar).
 function somarNecessidadeItens(itens){
   const n={};
-  (itens||[]).forEach(it=>{const k=`${it.produtoId}::${it.varianteId||''}`;n[k]=(n[k]||0)+it.qtd;});
+  (itens||[]).forEach(it=>{if(it.avulso||!it.produtoId)return;const k=`${it.produtoId}::${it.varianteId||''}`;n[k]=(n[k]||0)+it.qtd;});
   return n;
 }
 // Devolve ao estoque o que a venda baixou. Orçamento não baixou nada, então não devolve.
@@ -653,7 +787,7 @@ function salvarVenda(){
   const clienteId=parseInt(document.getElementById('venda-cliente').value);
   const obs=document.getElementById('venda-obs').value;
   const dataVenda=document.getElementById('venda-data').value||today();
-  const itensValidos=vendaItensTemp.filter(it=>it.produtoId&&it.qtd>0);
+  const itensValidos=vendaItensTemp.filter(it=>(it.produtoId||it.avulso)&&it.qtd>0);
   if(!clienteId||itensValidos.length===0){showToast('Selecione o cliente e ao menos um item','red');return;}
 
   const tipo=document.getElementById('venda-tipo').value;
@@ -661,7 +795,7 @@ function salvarVenda(){
   const descontoExtra=parseFloat(document.getElementById('venda-desconto-extra').value)||0;
 
   if(tipo==='orcamento'){
-    const itensFinalOrc=itensValidos.map(it=>({produtoId:it.produtoId,varianteId:it.varianteId||null,qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco}));
+    const itensFinalOrc=itensValidos.map(it=>itemVendaGravar(it,false));
     const totalOrc=Math.max(0,itensFinalOrc.reduce((s,it)=>s+it.total,0)-descontoExtra);
     if(eid){
       const o=state.vendas.find(v=>v.id==eid);
@@ -712,9 +846,10 @@ function salvarVenda(){
   // meses atrás mudava sozinha toda vez que o relatório fosse reaberto. Vendas antigas (antes
   // desta versão) não têm esse campo; nesse caso o relatório volta a recalcular pela ficha
   // atual como fallback (ver getCustoVendaItem em 09-financeiro-relatorios.js).
-  const itensFinal=itensValidos.map(it=>({produtoId:it.produtoId,varianteId:it.varianteId||null,qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco,custoFichaUn:calcularCustoFicha(it.produtoId,it.varianteId,1)}));
+  const itensFinal=itensValidos.map(it=>itemVendaGravar(it,true));
   const totalBruto=itensFinal.reduce((s,it)=>s+it.total,0);
-  const total=Math.max(0,totalBruto-descontoExtra);
+  const jurosPrev=(vendaAnterior&&vendaAnterior.jurosAto)||0; // venda parcelada com juros no ato: o juros fica fixo na edição
+  const total=Math.max(0,totalBruto-descontoExtra)+jurosPrev;
   // se tem qualquer parcela fiado (puro ou dentro do misto), considera em_aberto a parte fiada
   const valorFiado=pagamentos?(pagamentos.find(p=>p.forma==='fiado')?.valor||0):(forma==='fiado'?total:0);
   const status=valorFiado>0?(valorFiado>=total-0.01?'em_aberto':'parcial'):'pago';
@@ -739,21 +874,23 @@ function salvarVenda(){
     v.status=status; // baseline; para fiado a situação real é sempre recalculada (getMapaSituacaoFiado)
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     const valorNaoFiadoEdit=total-valorFiado;
-    const descEdit=itensFinal.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', ');
+    const descEdit=itensFinal.map(it=>nomeItemVenda(it)).join(', ');
     sincronizarFinanceiroVenda(v.id,valorNaoFiadoEdit,dataVenda,`Venda ${descEdit} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
     showToast('Venda atualizada','green');
   } else if(parcelar && numParcelas >= 2){
     // uma única venda, com o cronograma de parcelas guardado dentro dela (não gera mais
     // um registro por parcela — isso é o que inflava ticket médio e contagem de vendas)
-    const totalParcela = parseFloat((total/numParcelas).toFixed(2));
+    const jurosAto=calcJurosAto(total);
+    const totalComJuros=parseFloat((total+jurosAto).toFixed(2));
+    const totalParcela = parseFloat((totalComJuros/numParcelas).toFixed(2));
     const parcelas=[];
     for(let i=0;i<numParcelas;i++){
       const dataParc = document.getElementById(`parcela-data-${i}`)?.value || vencimento;
-      const valParc = i===numParcelas-1 ? parseFloat((total-(totalParcela*(numParcelas-1))).toFixed(2)) : totalParcela;
+      const valParc = i===numParcelas-1 ? parseFloat((totalComJuros-(totalParcela*(numParcelas-1))).toFixed(2)) : totalParcela;
       parcelas.push({vencimento:dataParc,valor:valParc});
     }
     state.vendas.push({
-      id:nextId('vendas'),clienteId,itens:itensFinal,total,forma:'fiado',pagamentos:null,status:'em_aberto',
+      id:nextId('vendas'),clienteId,itens:itensFinal,total:totalComJuros,...(jurosAto>0?{jurosAto}:{}),forma:'fiado',pagamentos:null,status:'em_aberto',
       data:dataVenda,obs,vencimento:parcelas[0].vencimento,statusPedido,canalId,descontoExtra,tipo:'venda',
       parcelado:true,parcelas
     });
@@ -764,7 +901,7 @@ function salvarVenda(){
     state.vendas.push({id:novoVendaId,clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento,statusPedido,canalId,descontoExtra,tipo:'venda'});
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd));
     const valorNaoFiado=total-valorFiado;
-    const desc=itensFinal.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', ');
+    const desc=itensFinal.map(it=>nomeItemVenda(it)).join(', ');
     sincronizarFinanceiroVenda(novoVendaId,valorNaoFiado,dataVenda,`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
     // Atalho "Entrada": registra um pagamento normal (mesmo mecanismo de registrarPagamento em
     // Contas a Receber), na data da venda. Segue a mesma regra FIFO de todo pagamento deste
@@ -812,7 +949,8 @@ function editarVenda(id){
   document.getElementById('venda-entrada-valor').value='';
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||''}));
+  vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
   document.getElementById('venda-canal').value=v.canalId||'';
@@ -884,7 +1022,7 @@ function excluirVenda(id){
 let reciboVendaIdAtual=null;
 function gerarTextoRecibo(v){
   const c=getCliente(v.clienteId);
-  const linhas=v.itens.map(it=>`${getNomeCompletoItem(it.produtoId,it.varianteId)} — ${it.qtd}x ${fmt(it.preco)} = ${fmt(it.total)}`);
+  const linhas=v.itens.map(it=>`${nomeItemVenda(it)} — ${it.qtd}x ${fmt(it.preco)} = ${fmt(it.total)}`);
   const pagTxt=v.pagamentos&&v.pagamentos.length>1
     ? v.pagamentos.map(p=>`${formaLabel(p.forma)}: ${fmt(p.valor)}`).join(' | ')
     : formaLabel(v.forma);
@@ -911,6 +1049,7 @@ function abrirRecibo(id){
     <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
     ${linhas.map(l=>`<div>${l}</div>`).join('')}
     ${v.descontoExtra>0?`<div style="margin-top:6px;font-size:12px;color:var(--red)">Desconto: −${fmt(v.descontoExtra)}</div>`:''}
+    ${v.jurosAto>0?`<div style="margin-top:6px;font-size:12px;color:var(--muted)">Juros no ato: +${fmt(v.jurosAto)}</div>`:''}
     <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>TOTAL</span><span>${fmt(v.total)}</span></div>
     <div style="margin-top:6px;font-size:12px;color:var(--muted)"><strong>Pagamento:</strong> ${pagTxt}</div>
@@ -934,9 +1073,10 @@ function enviarReciboWhatsapp(){
   const sit=situacaoVenda(v);
   const vencimentoLinha=sit.vencimentoPendente?`\n📅 Vencimento: ${fmtDate(sit.vencimentoPendente)}${v.parcelado?` (parcela ${(sit.parcelas.find(p=>p.status!=='pago')||{}).parcelaNum||''}/${sit.totalParcelas})`:''}`:'';
   const descontoLinha=v.descontoExtra>0?`\n🏷️ Desconto: −${fmt(v.descontoExtra)}`:'';
+  const jurosLinha=v.jurosAto>0?`\n💲 Juros no ato: +${fmt(v.jurosAto)}`:'';
   const pedidoTxt=(v.statusPedido&&v.statusPedido!=='indefinido')?statusPedidoLabel(v.statusPedido).txt.replace(/^\S+\s/,''):'';
   const statusPedidoLinha=pedidoTxt?`\n📦 Pedido: ${pedidoTxt}`:'';
-  const msg=`🧾 *Recibo de Venda — GestãoPRO*\n\nNº: VD${String(v.id).padStart(4,'0')}\nCliente: ${c.nome}\nData: ${fmtDate(v.data)}\n\n${linhas.join('\n')}${descontoLinha}\n\n*Total: ${fmt(v.total)}*\nPagamento: ${pagTxt}${vencimentoLinha}${statusPedidoLinha}${v.obs?`\nObs: ${v.obs}`:''}\n\nObrigado pela compra! 😊`;
+  const msg=`🧾 *Recibo de Venda — GestãoPRO*\n\nNº: VD${String(v.id).padStart(4,'0')}\nCliente: ${c.nome}\nData: ${fmtDate(v.data)}\n\n${linhas.join('\n')}${descontoLinha}${jurosLinha}\n\n*Total: ${fmt(v.total)}*\nPagamento: ${pagTxt}${vencimentoLinha}${statusPedidoLinha}${v.obs?`\nObs: ${v.obs}`:''}\n\nObrigado pela compra! 😊`;
   const tel=(c.tel||'').replace(/\D/g,'');
   if(tel){
     window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
@@ -960,7 +1100,8 @@ function abrirNovoOrcamento(){
   document.getElementById('venda-parcelas-wrap').style.display='none';
   vendaPagamentosTemp=[];
   document.getElementById('modal-venda-title').textContent='Novo Orçamento';
-  vendaItensTemp=[criarLinhaItemVenda()];
+  vendaItensTemp=[];
+  vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
   document.getElementById('venda-canal').value='';
@@ -981,7 +1122,7 @@ function converterOrcamentoEmVenda(id){
   const o=state.vendas.find(v=>v.id===id);
   if(!o){showToast('Orçamento não encontrado','red');return;}
   const necessidade={};
-  o.itens.forEach(it=>{const k=`${it.produtoId}::${it.varianteId||''}`;necessidade[k]=(necessidade[k]||0)+it.qtd;});
+  o.itens.forEach(it=>{if(it.avulso||!it.produtoId)return;const k=`${it.produtoId}::${it.varianteId||''}`;necessidade[k]=(necessidade[k]||0)+it.qtd;});
   for(const k in necessidade){
     const [pid,vid]=k.split('::');
     const disp=getEstoqueAtual(parseInt(pid),vid?parseInt(vid):null);
@@ -1031,7 +1172,7 @@ function exportarOrcamentoWhatsapp(id){
   const totalFinal=Math.max(0,totalComCanal-descontoExtra);
   const descontoTotal=totalCheio-totalFinal;
   const linhas=o.itens.map(it=>{
-    const nome=getNomeCompletoItem(it.produtoId,it.varianteId);
+    const nome=nomeItemVenda(it);
     const prefixo=`${it.qtd}x ${nome} `;
     const valorTxt=fmt(it.qtd*it.preco);
     const pontos='.'.repeat(Math.max(3,28-prefixo.length));
@@ -1060,7 +1201,7 @@ function renderReceber(){
     const vendas=state.vendas.filter(v=>v.clienteId===c.id&&v.forma==='fiado').sort((a,b)=>b.data.localeCompare(a.data));
     const pags=state.pagamentos.filter(p=>p.clienteId===c.id).sort((a,b)=>b.data.localeCompare(a.data));
     const hist=[
-      ...vendas.map(v=>({tipo:'venda',data:v.data,desc:v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ×'+it.qtd).join(', '),val:v.total})),
+      ...vendas.map(v=>({tipo:'venda',data:v.data,desc:v.itens.map(it=>nomeItemVenda(it)+' ×'+it.qtd).join(', '),val:v.total})),
       ...pags.map(p=>({tipo:'pag',data:p.data,desc:'Pagou ('+p.forma+')',val:p.valor})),
     ].sort((a,b)=>b.data.localeCompare(a.data));
     return`<div class="client-debt-hero">
@@ -1131,7 +1272,7 @@ function cobrarWhatsapp(clienteId){
   const saldo=getSaldoCliente(clienteId);
   const mapaFiado=getMapaSituacaoFiado();
   const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&situacaoVenda(v,mapaFiado).status!=='pago');
-  const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n');
+  const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n');
   const enderecoLinha=(c.end||c.referencia)?`\n📍 ${c.end||''}${c.end&&c.referencia?' — ':''}${c.referencia||''}`:'';
   const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:${enderecoLinha}\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*\n\nQualquer dúvida estou à disposição! 😊`;
   const tel=c.tel.replace(/\D/g,'');
@@ -1217,7 +1358,7 @@ function impPedAnalisarLinha(raw,n){
     L.itens=[...mapa.values()].map(it=>{
       it.total=it.qtd*it.preco;
       it.cod=fmtProdutoCod(it.produtoId,it.varianteId);
-      it.nome=getNomeCompletoItem(it.produtoId,it.varianteId);
+      it.nome=nomeItemVenda(it);
       it.estoque=getEstoqueAtual(it.produtoId,it.varianteId);
       if(it.qtd>it.estoque) L.avisos.push(`Estoque menor que a qtd: ${it.nome} (pedido ${it.qtd}, disponível ${it.estoque}). Orçamento não abate estoque`);
       return it;

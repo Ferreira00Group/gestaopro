@@ -184,7 +184,7 @@ function gerarRelatorio(){
   else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>`<tr>
     <td data-label="Data">${fmtDate(v.data)}</td>
     <td data-label="Cliente">${escapeHtml(getCliente(v.clienteId).nome)}</td>
-    <td data-label="Itens" class="td-block">${escapeHtml(v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)+' ×'+it.qtd).join(', '))}</td>
+    <td data-label="Itens" class="td-block">${escapeHtml(v.itens.map(it=>nomeItemVenda(it)+' ×'+it.qtd).join(', '))}</td>
     <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
     <td data-label="Forma">${v.forma==='fiado'?'Fiado':v.forma==='dinheiro'?'Dinheiro':v.forma==='pix'?'PIX':'Cartão'}</td>
   </tr>`).join('');
@@ -198,7 +198,7 @@ function gerarRelatorio(){
   destroyChart(chartRel);
   if(!chartJsDisponivel())return;
   const prodMap={};
-  vendasPeriodo.forEach(v=>v.itens.forEach(it=>{const n=getNomeCompletoItem(it.produtoId,it.varianteId);prodMap[n]=(prodMap[n]||0)+it.total;}));
+  vendasPeriodo.forEach(v=>v.itens.forEach(it=>{const n=nomeItemVenda(it);prodMap[n]=(prodMap[n]||0)+it.total;}));
   const sortedEntries=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]);
   const labels=sortedEntries.map(e=>e[0]);const values=sortedEntries.map(e=>e[1]);
   const colors=['rgba(201,162,75,.9)','rgba(227,193,111,.85)','rgba(160,130,60,.85)','rgba(120,115,100,.85)','rgba(90,88,80,.85)','rgba(70,68,62,.85)'];
@@ -228,7 +228,7 @@ function gerarRelatorio(){
   // antigas sem esse campo caem no fallback de recalcular pela ficha técnica atual, única opção
   // quando não sabemos o custo real da época (ver comentário em salvarVenda, 04-vendas.js)
   vendasPeriodo.forEach(v=>v.itens.forEach(it=>{
-    const n=getNomeCompletoItem(it.produtoId,it.varianteId);
+    const n=nomeItemVenda(it);
     if(!rankMap[n])rankMap[n]={qtd:0,valor:0,custoTotal:0,produtoId:it.produtoId,varianteId:it.varianteId};
     rankMap[n].qtd+=it.qtd;
     rankMap[n].valor+=it.total;

@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.34.5">
+<link rel="stylesheet" href="styles.css?v=5.34.6">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -1001,8 +1001,12 @@
         </div>
       </div>
       <div class="form-group"><label>Itens da Venda</label>
-        <div id="venda-itens-lista"></div>
-        <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="adicionarItemVenda()">+ Adicionar item</button>
+        <div class="vc-top">
+          <input class="form-control" id="venda-cat-busca" type="search" placeholder="Buscar item" autocomplete="off" oninput="vcBuscar(this.value)">
+          <button type="button" class="btn btn-outline btn-sm" onclick="abrirAvulso()" aria-label="Valor avulso (calculadora)"><i data-lucide="calculator" class="ic"></i> Avulso</button>
+        </div>
+        <div id="venda-itens-lista" class="vc-lista"></div>
+        <div id="venda-itens-resumo" class="vc-resumo"></div>
       </div>
       <div class="form-group">
         <label>Canal de Venda <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
@@ -1076,7 +1080,18 @@
               <span style="font-size:12px;color:var(--muted)">parcelas mensais a partir do vencimento</span>
             </div>
           </div>
+          <div class="form-group" style="margin-bottom:6px">
+            <label>Juros no ato <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+            <div style="display:flex;gap:8px">
+              <select class="form-control" id="venda-juros-tipo" style="flex:1" onchange="atualizarResumoParcelas()">
+                <option value="pct">% sobre o valor</option>
+                <option value="fixo">Valor fixo (R$)</option>
+              </select>
+              <input class="form-control" type="number" step="0.01" min="0" id="venda-juros-valor" placeholder="0,00" style="flex:1" oninput="atualizarResumoParcelas()">
+            </div>
+          </div>
           <div class="parcelas-wrap" id="venda-parcelas-lista"></div>
+          <div class="parcelas-resumo" id="venda-parcelas-resumo"></div>
         </div>
         <div id="venda-parcelado-edit-note" style="display:none;margin-top:8px;background:var(--gold-soft);border:1px solid rgba(201,162,75,.5);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gold-2)">
           Esta venda já está parcelada. As datas de vencimento de cada parcela ficam como estão; se você mudar o total, ele será redistribuído proporcionalmente entre as parcelas existentes. Para mudar o número de parcelas, exclua e recrie a venda.
@@ -1100,6 +1115,41 @@
 
 
 <!-- PAGAMENTO -->
+<div class="modal-overlay" id="modal-avulso">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><h3>Valor avulso</h3><button class="modal-close" onclick="closeModal('modal-avulso')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <div class="avulso-display" id="avulso-display">R$ 0,00</div>
+      <input class="form-control" id="avulso-desc" maxlength="40" placeholder="Descrição (opcional) — ex.: Frete" autocomplete="off" style="margin-bottom:12px">
+      <div class="avulso-keys">
+        <button type="button" class="avulso-key" onclick="avulsoDigito(1)">1</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(2)">2</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(3)">3</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(4)">4</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(5)">5</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(6)">6</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(7)">7</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(8)">8</button>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(9)">9</button>
+        <span></span>
+        <button type="button" class="avulso-key" onclick="avulsoDigito(0)">0</button>
+        <button type="button" class="avulso-key" onclick="avulsoApagar()" aria-label="Apagar">⌫</button>
+      </div>
+      <div class="avulso-rodape">
+        <div class="avulso-qtd">Quantidade
+          <div class="stepper">
+            <button type="button" class="stp-btn stp-minus" onclick="avulsoQtdAjustar(-1)" aria-label="Diminuir"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+            <span class="stp-qtd" id="avulso-qtd">1</span>
+            <button type="button" class="stp-btn stp-plus" onclick="avulsoQtdAjustar(1)" aria-label="Aumentar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12"/></svg></button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="avulsoAdicionar()">Adicionar</button>
+      </div>
+      <div class="modal-footer" style="margin-top:12px"><button class="btn btn-outline" onclick="closeModal('modal-avulso')">Concluir</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-pagamento">
   <div class="modal">
     <div class="modal-header"><h3>Registrar Pagamento</h3><button class="modal-close" onclick="closeModal('modal-pagamento')"><i data-lucide="x" class="ic"></i></button></div>
@@ -1771,21 +1821,21 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.34.5"></script>
-<script src="00-core.js?v=5.34.5"></script>
-<script src="01-ui-nav.js?v=5.34.5"></script>
-<script src="02-dashboard.js?v=5.34.5"></script>
-<script src="03-clientes.js?v=5.34.5"></script>
-<script src="04-vendas.js?v=5.34.5"></script>
-<script src="05-producao.js?v=5.34.5"></script>
-<script src="06-estoque.js?v=5.34.5"></script>
-<script src="07-precificacao.js?v=5.34.5"></script>
-<script src="08-compras-fornecedores.js?v=5.34.5"></script>
-<script src="09-financeiro-relatorios.js?v=5.34.5"></script>
-<script src="10-fab-inline.js?v=5.34.5"></script>
-<script src="10b-planejamento.js?v=5.34.5"></script>
-<script src="12-drive-backup.js?v=5.34.5"></script>
-<script src="11-app-init.js?v=5.34.5"></script>
+<script src="00a-config.js?v=5.34.6"></script>
+<script src="00-core.js?v=5.34.6"></script>
+<script src="01-ui-nav.js?v=5.34.6"></script>
+<script src="02-dashboard.js?v=5.34.6"></script>
+<script src="03-clientes.js?v=5.34.6"></script>
+<script src="04-vendas.js?v=5.34.6"></script>
+<script src="05-producao.js?v=5.34.6"></script>
+<script src="06-estoque.js?v=5.34.6"></script>
+<script src="07-precificacao.js?v=5.34.6"></script>
+<script src="08-compras-fornecedores.js?v=5.34.6"></script>
+<script src="09-financeiro-relatorios.js?v=5.34.6"></script>
+<script src="10-fab-inline.js?v=5.34.6"></script>
+<script src="10b-planejamento.js?v=5.34.6"></script>
+<script src="12-drive-backup.js?v=5.34.6"></script>
+<script src="11-app-init.js?v=5.34.6"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

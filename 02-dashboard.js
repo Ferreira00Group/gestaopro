@@ -100,8 +100,8 @@ function renderDashboard(){
   const prodMap={};
   vendasMes.filter(v=>v.tipo!=='orcamento').forEach(v=>{
     (v.itens||[]).forEach(it=>{
-      const key=it.produtoId+'_'+(it.varianteId||0);
-      if(!prodMap[key]) prodMap[key]={nome:getNomeCompletoItem(it.produtoId,it.varianteId),qtd:0,valor:0};
+      const key=it.avulso?'av_'+nomeItemVenda(it):it.produtoId+'_'+(it.varianteId||0);
+      if(!prodMap[key]) prodMap[key]={nome:nomeItemVenda(it),qtd:0,valor:0};
       prodMap[key].qtd+=it.qtd;
       prodMap[key].valor+=(it.total!=null?it.total:it.qtd*(it.preco||0));
     });
@@ -147,7 +147,7 @@ function renderDashboard(){
   }
   const hist=document.getElementById('dash-historico');
   const items=[
-    ...state.vendas.map(v=>({type:'sale',data:v.data,title:'Venda — '+v.itens.map(it=>getNomeCompletoItem(it.produtoId,it.varianteId)).join(', '),sub:getCliente(v.clienteId).nome+' · '+v.itens.reduce((s,it)=>s+it.qtd,0)+' un.',val:v.total})),
+    ...state.vendas.map(v=>({type:'sale',data:v.data,title:'Venda — '+v.itens.map(it=>nomeItemVenda(it)).join(', '),sub:getCliente(v.clienteId).nome+' · '+v.itens.reduce((s,it)=>s+it.qtd,0)+' un.',val:v.total})),
     ...state.pagamentos.map(p=>({type:'pay',data:p.data,title:'Pagamento recebido',sub:getCliente(p.clienteId).nome+' · '+p.forma,val:p.valor})),
     ...state.producoes.map(p=>({type:'prod',data:p.data,title:'Produção — '+getNomeCompletoItem(p.produtoId,p.varianteId),sub:p.qtd+' unidades produzidas',val:null})),
   ].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8);
