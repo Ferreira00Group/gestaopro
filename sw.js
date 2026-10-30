@@ -40,6 +40,7 @@ const ASSETS = [
   './03-clientes.js' + v,
   './04-vendas.js' + v,
   './04b-pix-extrato.js' + v,
+  './11b-meu-dia.js' + v,
   './05-producao.js' + v,
   './06-estoque.js' + v,
   './07-precificacao.js' + v,
