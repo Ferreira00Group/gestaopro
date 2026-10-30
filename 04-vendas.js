@@ -1265,6 +1265,19 @@ function abrirPagamento(clienteId){
   document.getElementById('pag-encargo-info').textContent=(encAtivo&&enc.total>0)?`Calculado: multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)}. Pode editar ou zerar.`:'Sem encargos calculados para este cliente.';
   document.getElementById('modal-pagamento').classList.add('open');
 }
+// "Receber tudo": preenche o saldo todo (principal) e o encargo calculado, se estiver ligado
+function receberTudo(){
+  const id=document.getElementById('pag-cliente-id').value;
+  const saldo=getSaldoCliente(id);
+  if(saldo<=0.009) return;
+  document.getElementById('pag-valor').value=saldo.toFixed(2);
+  calcRestante();
+  const wrap=document.getElementById('pag-encargo-wrap');
+  if(wrap&&wrap.style.display!=='none'){
+    const enc=calcEncargosCliente(id).total;
+    document.getElementById('pag-encargo').value=enc>0?enc.toFixed(2):'';
+  }
+}
 function calcRestante(){
   const saldo=getSaldoCliente(document.getElementById('pag-cliente-id').value);
   const pago=parseFloat(document.getElementById('pag-valor').value)||0;
@@ -1295,6 +1308,9 @@ function registrarPagamento(){
   closeModal('modal-pagamento');
   const pg=document.querySelector('.page.active');
   if(pg) render(pg.id.replace('page-',''));
+  // oferece enviar o comprovante por WhatsApp (v5.38)
+  const infoComp={clienteId,valor,encargo:encCobrado,forma,data,saldoRestante:getSaldoCliente(clienteId)};
+  setTimeout(()=>perguntarComprovante(infoComp),250);
 }
 
 // ============ WHATSAPP ============
@@ -1310,6 +1326,7 @@ function cobrarWhatsapp(clienteId){
   const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:${enderecoLinha}\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*${encTxt}${pixBlocoCobranca(clienteId)}\n\nQualquer dúvida estou à disposição! 😊`;
   const tel=c.tel.replace(/\D/g,'');
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
+  registrarCobranca(clienteId); // guarda a data da última cobrança (v5.38)
 }
 
 // ============ IMPORTAR PEDIDOS — leitura + preview (v5.33.0, etapa 3) ============

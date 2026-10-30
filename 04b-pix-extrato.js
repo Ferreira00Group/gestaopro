@@ -242,3 +242,75 @@ function reciboPixHtml(v,sit){
     <div style="font-size:10px;word-break:break-all;color:var(--muted);margin-top:4px">${escapeHtml(pixPayload(d.valor))}</div>
     <button class="btn btn-outline btn-sm" data-noprint="1" style="margin-top:6px" onclick="copiarPixValor(${d.valor})">Copiar Pix</button>`;
 }
+
+// ───────── Comprovante de pagamento (v5.38) ─────────
+function gerarTextoComprovante(i){
+  const c=getCliente(i.clienteId);
+  const totalRecebido=round2(i.valor+(i.encargo||0));
+  return `🧾 *Comprovante de pagamento — GestãoPRO*\n\nCliente: ${c.nome}\nData: ${fmtDate(i.data)}\nForma: ${i.forma}\nValor pago: ${fmt(i.valor)}${i.encargo>0?`\nJuros/multa: ${fmt(i.encargo)}\n*Total recebido: ${fmt(totalRecebido)}*`:''}\n\n${i.saldoRestante>0.009?`*Saldo restante: ${fmt(i.saldoRestante)}*`:'✅ *Saldo quitado!*'}\n\nObrigado! 😊`;
+}
+function perguntarComprovante(i){
+  confirmarAcao(`Pagamento registrado. Enviar o comprovante de ${fmt(i.valor)} para ${getCliente(i.clienteId).nome} por WhatsApp?`,
+    ()=>enviarWhatsOuCopiar(getCliente(i.clienteId),gerarTextoComprovante(i)));
+}
+
+// ───────── Cobrança do dia (v5.38) ─────────
+// Vencidos + vencendo hoje, um cliente por linha. A data da última cobrança fica em
+// cliente.ultimaCobranca (campo opcional, sem migração) e é gravada ao tocar no WhatsApp.
+let cobrancaOcultarHoje=false;
+function registrarCobranca(clienteId){
+  const c=state.clientes.find(x=>x.id==clienteId);
+  if(!c) return;
+  c.ultimaCobranca=today();
+  marcarAlterado();
+  const pg=document.querySelector('.page.active');
+  if(pg&&pg.id==='page-cobranca') renderCobrancaDia();
+}
+function textoUltimaCobranca(c,hoje){
+  if(!c.ultimaCobranca) return {txt:'Nunca',hoje:false};
+  const n=diasEntre(c.ultimaCobranca,hoje);
+  if(n<=0) return {txt:'Hoje',hoje:true};
+  return {txt:`Há ${n}d (${fmtDate(c.ultimaCobranca).slice(0,5)})`,hoje:false};
+}
+function toggleCobrancaOcultarHoje(v){cobrancaOcultarHoje=!!v;renderCobrancaDia();}
+function renderCobrancaDia(){
+  const el=document.getElementById('cobranca-lista');
+  if(!el) return;
+  const hoje=today();
+  const porCliente={};
+  getUnidadesFiadoFlat().filter(u=>u.status!=='pago'&&u.vencimento&&u.vencimento<=hoje).forEach(u=>{
+    const o=porCliente[u.clienteId]||(porCliente[u.clienteId]={vencimento:u.vencimento,vencido:0});
+    if(u.vencimento<o.vencimento) o.vencimento=u.vencimento;
+    o.vencido+=u.valorRestante;
+  });
+  const lista=Object.keys(porCliente).map(k=>{
+    const id=parseInt(k),c=getCliente(id),o=porCliente[k];
+    return {id,c,vencimento:o.vencimento,vencido:round2(o.vencido),dias:diasEntre(o.vencimento,hoje),enc:calcEncargosCliente(id,hoje).total,uc:textoUltimaCobranca(c,hoje)};
+  });
+  const jaHoje=lista.filter(l=>l.uc.hoje).length;
+  const totalVencido=round2(lista.reduce((s,l)=>s+l.vencido,0));
+  const vis=(cobrancaOcultarHoje?lista.filter(l=>!l.uc.hoje):lista).sort((a,b)=>b.dias-a.dias||b.vencido-a.vencido);
+  if(lista.length===0){
+    el.innerHTML='<div style="text-align:center;padding:60px 20px"><h3 style="color:var(--green)">Nada para cobrar hoje</h3><p style="color:var(--muted);margin-top:8px">Nenhum fiado vencido ou vencendo hoje.</p></div>';
+    return;
+  }
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:13px">
+      <span><strong>${lista.length}</strong> cliente(s) · vencido <strong style="color:var(--red)">${fmt(totalVencido)}</strong> · <strong>${jaHoje}</strong> já cobrado(s) hoje</span>
+      <label style="display:flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer"><input type="checkbox" style="width:auto;margin:0" ${cobrancaOcultarHoje?'checked':''} onchange="toggleCobrancaOcultarHoje(this.checked)"> Ocultar já cobrados hoje</label>
+    </div>
+    <div class="table-card table-cards"><div class="table-scroll"><table>
+      <thead><tr><th>Cliente</th><th>Vencimento</th><th>Vencido</th><th>Última cobrança</th><th></th></tr></thead>
+      <tbody>${vis.length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Todos já foram cobrados hoje ✓</td></tr>':vis.map(l=>{
+        const cor=l.dias>0?'var(--red)':'#d35400';
+        const status=l.dias>0?`${l.dias}d atraso`:'Hoje';
+        return `<tr style="${l.uc.hoje?'opacity:.6':''}">
+          <td data-label="Cliente"><strong>${escapeHtml(l.c.nome)}</strong>${l.uc.hoje?' <span class="badge badge-green">Cobrado hoje</span>':''}<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(l.c.tel||'sem telefone')}</span></td>
+          <td data-label="Vencimento"><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(l.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${status}</span></td>
+          <td data-label="Vencido" class="debt-amount">${fmt(l.vencido)}${l.enc>0?`<div style="font-size:11px;color:var(--muted);font-weight:400">+ ${fmt(l.enc)} encargos</div>`:''}</td>
+          <td data-label="Última cobrança" style="font-size:12px">${l.uc.txt}</td>
+          <td><div class="actions-cell"><button class="btn btn-green btn-sm" onclick="abrirPagamento(${l.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button>${l.c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${l.id})" title="Cobrar por WhatsApp"><i data-lucide="message-circle" class="ic"></i></button>`:''}</div></td>
+        </tr>`;}).join('')}</tbody>
+    </table></div></div>`;
+  if(typeof lucide!=='undefined') lucide.createIcons();
+}

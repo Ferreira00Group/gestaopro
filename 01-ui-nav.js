@@ -695,6 +695,7 @@ function render(page){
   if(page==='clientes')renderClientes();
   if(page==='vendas')renderVendas();
   if(page==='receber')renderReceber();
+  if(page==='cobranca')renderCobrancaDia();
   if(page==='pagar')renderPagar();
   if(page==='producao')renderProducao();
   if(page==='estoque'){
