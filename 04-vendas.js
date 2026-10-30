@@ -93,7 +93,7 @@ function renderVendas(){
     const sel=vendasSelecionadas.has(v.id);
     const orcBadge=v.statusOrc==='aprovado'?{cls:'badge-green',txt:'Aprovado'}:{cls:'badge-yellow',txt:'Rascunho'};
     const seloImp=(isOrc&&v.origem==='importacao')?' <span class="badge badge-blue" title="Importado por Importar Pedidos"><i data-lucide="download" class="ic ic-sm"></i></span>':'';
-    const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>${seloImp}`:`<span class="badge ${st.cls}">${st.txt}</span>`;
+    const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>${seloImp}`:`<span class="badge ${st.cls}">${st.txt}</span>${(v.renegociadaId&&typeof vendaRenegociada==='function'&&vendaRenegociada(v.id))?' <span class="badge badge-orange" title="Dívida renegociada">🔁 Renegociada</span>':''}`;
     const pedidoCell=isOrc?'<span style="color:var(--muted);font-size:12px">—</span>':`<span class="badge ${sp.cls}">${sp.txt}</span>`;
     const acoes=isOrc
       ? `<button class="icon-btn" onclick="exportarOrcamentoWhatsapp(${v.id})" title="Enviar Proposta"><i data-lucide="send" class="ic"></i></button>
@@ -799,6 +799,7 @@ function checarEstoqueVenda(itens,vendaAnterior){
 }
 function salvarVenda(){
   const eid=document.getElementById('venda-edit-id').value;
+  if(eid&&typeof vendaRenegociada==='function'&&vendaRenegociada(parseInt(eid))){showToast('Esta venda entrou numa renegociação. Desfaça a renegociação para editá-la.','red');return;}
   const clienteId=parseInt(document.getElementById('venda-cliente').value);
   const obs=document.getElementById('venda-obs').value;
   const dataVenda=document.getElementById('venda-data').value||today();
@@ -992,6 +993,7 @@ function editarVenda(id){
 function excluirVenda(id){
   const alvo=state.vendas.find(v=>v.id===id);
   if(!alvo) return;
+  if(typeof vendaRenegociada==='function'&&vendaRenegociada(id)){showToast('Esta venda entrou numa renegociação. Desfaça a renegociação para excluí-la.','red');return;}
   const ehOrc=alvo.tipo==='orcamento';
   // Entradas registradas junto com esta venda (atalho "Entrada" em venda fiado) fazem parte do
   // dinheiro dela: saem junto — o pagamento e o lançamento no Financeiro. Antes ficavam órfãs:
@@ -1223,16 +1225,20 @@ function renderReceber(){
     const hist=[
       ...vendas.map(v=>({tipo:'venda',data:v.data,desc:v.itens.map(it=>nomeItemVenda(it)+' ×'+it.qtd).join(', '),val:v.total})),
       ...pags.map(p=>({tipo:'pag',data:p.data,desc:'Pagou ('+p.forma+')',val:p.valor})),
+      ...(state.renegociacoes||[]).filter(r=>r.clienteId===c.id).map(r=>({tipo:'reneg',data:r.data,desc:'Renegociação: '+r.parcelas.length+'x',val:r.total})),
     ].sort((a,b)=>b.data.localeCompare(a.data));
     return`<div class="client-debt-hero">
       <div><div class="name"><i data-lucide="user" class="ic ic-sm"></i> ${escapeHtml(c.nome)} <span style="font-size:12px;font-weight:400;opacity:.85">${fmtClienteNum(c.id)}</span></div>${c.tel?`<div class="phone"><i data-lucide="phone" class="ic ic-sm"></i> ${escapeHtml(c.tel)}</div>`:''}${(c.end||c.referencia)?`<div style="font-size:12px;opacity:.85;margin-top:2px"><i data-lucide="map-pin" class="ic ic-sm"></i> ${escapeHtml(c.end||'')}${c.end&&c.referencia?' · ':''}${escapeHtml(c.referencia||'')}</div>`:''}</div>
       <div style="text-align:right">
         <div class="amount">${fmt(c.saldo)}</div>
         <div class="amount-label">saldo devedor</div>
+        ${typeof promessaHtmlReceber==='function'?promessaHtmlReceber(c.id):''}
         ${(()=>{const e=calcEncargosCliente(c.id);return e.total>0?`<div style="font-size:12px;margin-top:6px;opacity:.9">Encargos de atraso: ${fmt(e.total)}</div>`:'';})()}
-        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:flex-end">
           <button class="btn btn-outline btn-sm" onclick="abrirExtrato(${c.id})"><i data-lucide="file-text" class="ic"></i> Extrato</button>
           <button class="btn btn-outline btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i> WhatsApp</button>
+          <button class="btn btn-outline btn-sm" onclick="abrirPromessa(${c.id})"><i data-lucide="handshake" class="ic"></i> Promessa</button>
+          <button class="btn btn-outline btn-sm" onclick="abrirRenegociar(${c.id})"><i data-lucide="refresh-cw" class="ic"></i> Renegociar</button>
           <button class="btn btn-primary btn-sm" onclick="abrirPagamento(${c.id})"><i data-lucide="banknote" class="ic"></i> Receber</button>
         </div>
       </div>
@@ -1242,8 +1248,8 @@ function renderReceber(){
       <div class="table-scroll"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead>
       <tbody>${hist.map(h=>`<tr>
         <td>${fmtDate(h.data)}</td><td>${escapeHtml(h.desc)}</td>
-        <td><span class="badge ${h.tipo==='venda'?'badge-blue':'badge-green'}">${h.tipo==='venda'?'Compra':'Pagamento'}</span></td>
-        <td class="${h.tipo==='venda'?'debt-amount':'debt-zero'}">${h.tipo==='venda'?'-':'+'} ${fmt(h.val)}</td>
+        <td><span class="badge ${h.tipo==='venda'?'badge-blue':h.tipo==='reneg'?'badge-orange':'badge-green'}">${h.tipo==='venda'?'Compra':h.tipo==='reneg'?'Renegociação':'Pagamento'}</span></td>
+        <td class="${h.tipo==='venda'?'debt-amount':h.tipo==='reneg'?'':'debt-zero'}">${h.tipo==='venda'?'-':h.tipo==='reneg'?'↻':'+'} ${fmt(h.val)}</td>
       </tr>`).join('')}</tbody></table></div>
     </div>`;
   }).join('');
@@ -1319,7 +1325,7 @@ function cobrarWhatsapp(clienteId){
   const saldo=getSaldoCliente(clienteId);
   const mapaFiado=getMapaSituacaoFiado();
   const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&situacaoVenda(v,mapaFiado).status!=='pago');
-  const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n');
+  const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n')+(typeof renegLinhasCobranca==='function'?renegLinhasCobranca(clienteId):'');
   const enderecoLinha=(c.end||c.referencia)?`\n📍 ${c.end||''}${c.end&&c.referencia?' — ':''}${c.referencia||''}`:'';
   const enc=calcEncargosCliente(clienteId);
   const encTxt=enc.total>0?`\n\n⚠️ *Encargos de atraso:* ${fmt(enc.total)}\n(multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)})\n*Total com encargos: ${fmt(saldo+enc.total)}*`:'';

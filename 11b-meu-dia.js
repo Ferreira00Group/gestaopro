@@ -25,7 +25,7 @@ function getParadasDoDia(){
     const c = state.clientes.find(x=>x.id==clienteId);
     if(!c) return null;
     return paradas[clienteId] || (paradas[clienteId] = {
-      id:c.id, c, rotaId:c.rotaId||null, entregas:[], vencido:0, venc:null, enc:0
+      id:c.id, c, rotaId:c.rotaId||null, entregas:[], vencido:0, venc:null, enc:0, us:[]
     });
   };
 
@@ -34,6 +34,7 @@ function getParadasDoDia(){
     if(u.status==='pago' || !u.vencimento || u.vencimento>hoje) return;
     const p = get(u.clienteId); if(!p) return;
     p.vencido += u.valorRestante;
+    p.us.push(u);
     if(!p.venc || u.vencimento<p.venc) p.venc = u.vencimento;
     const e = encargoDaUnidade(u, hoje, cfgEnc);
     if(e) p.enc += e.total;
@@ -97,6 +98,10 @@ function meuDiaParadaHtml(p, n){
   const selos = [];
   if(temEntrega) selos.push(`<span class="badge badge-orange">📦 ${p.entregas.length} entrega${p.entregas.length>1?'s':''}</span>`);
   if(temCobr) selos.push(`<span class="badge badge-red">💰 Cobrar ${fmt(p.vencido)}${p.dias>0?' · '+p.dias+'d':' · hoje'}</span>`);
+  const prom = (typeof promessaEstado==='function') ? promessaEstado(p.id, hoje, p.us) : null;
+  if(prom) selos.push(prom.estado==='ativa'
+    ? `<span class="badge badge-yellow">🤝 Prometeu ${fmtDate(prom.data)}</span>`
+    : `<span class="badge badge-red">⚠️ Promessa quebrada ${fmtDate(prom.data)}</span>`);
   if(!estaAtivo(p.c)) selos.push('<span class="badge badge-gray">Arquivado</span>');
   if(uc.hoje) selos.push('<span class="badge badge-green">Cobrado hoje</span>');
   if(!p.c.end) selos.push('<span class="badge badge-gray">⚠️ sem endereço</span>');

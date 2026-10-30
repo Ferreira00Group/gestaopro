@@ -84,6 +84,7 @@ const DEFAULT_STATE = {
   entradasEstoque:[],
   movEstoque:[],
   semiacabados:[],
+  renegociacoes:[],
   nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1},
   metas:{},
   fechamentos:[],
@@ -364,6 +365,7 @@ function carregarDados(){
       state.nextId      = { ...DEFAULT_STATE.nextId, ...parsed.nextId };
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
+      if(!Array.isArray(state.renegociacoes)) state.renegociacoes=[];
       if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
       if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
       // a aba "Movimentações" não é restaurada ao reabrir o app (a tela volta em Produtos Acabados)
@@ -727,6 +729,12 @@ function debounce(fn,delay=220){
 function getSaldoCliente(cId){
   const totalFiado=state.vendas.filter(v=>v.clienteId==cId&&v.forma=='fiado').reduce((s,v)=>s+v.total,0);
   const totalPago=state.pagamentos.filter(p=>p.clienteId==cId).reduce((s,p)=>s+p.valor,0);
+  // Renegociação (v5.42): a dívida antiga (base) é baixada e entra a nova (total = base ± encargos)
+  const rn=(state.renegociacoes||[]).filter(r=>r.clienteId==cId);
+  if(rn.length){
+    const novaDivida=rn.reduce((s,r)=>s+r.total,0), baixa=rn.reduce((s,r)=>s+r.base,0);
+    return Math.max(0,Math.round((totalFiado+novaDivida-totalPago-baixa)*100)/100);
+  }
   return Math.max(0,totalFiado-totalPago);
 }
 
@@ -747,6 +755,8 @@ function getUnidadesFiadoFlat(){
     (porCliente[v.clienteId]=porCliente[v.clienteId]||[]).push(v);
   });
   const flat=[];
+  // cliente só com renegociação (sem venda fiado) também precisa gerar unidades
+  (state.renegociacoes||[]).forEach(r=>{ if(!porCliente[r.clienteId]) porCliente[r.clienteId]=[]; });
   Object.keys(porCliente).forEach(cIdStr=>{
     const cId=parseInt(cIdStr);
     const unidades=[];
@@ -765,7 +775,9 @@ function getUnidadesFiadoFlat(){
     });
     // ordena da dívida mais antiga para a mais nova (por vencimento; sem vencimento, pela data da venda)
     unidades.sort((a,b)=>(a.vencimento||a.data||'').localeCompare(b.vencimento||b.data||'')||(a.data||'').localeCompare(b.data||''));
-    let saldoPago=state.pagamentos.filter(p=>p.clienteId==cId).reduce((s,p)=>s+p.valor,0);
+    // pagamentos + baixa das renegociações (a baixa quita as unidades ANTIGAS; as parcelas novas vêm depois)
+    let saldoPago=state.pagamentos.filter(p=>p.clienteId==cId).reduce((s,p)=>s+p.valor,0)
+      +(state.renegociacoes||[]).filter(r=>r.clienteId==cId).reduce((s,r)=>s+r.base,0);
     unidades.forEach(u=>{
       let status,valorPago;
       if(saldoPago<=0.009){ status='aberto'; valorPago=0; }
@@ -773,6 +785,22 @@ function getUnidadesFiadoFlat(){
       else { status='parcial'; valorPago=saldoPago; saldoPago=0; }
       u.status=status; u.valorPago=valorPago; u.valorRestante=Math.max(0,u.valor-valorPago);
       flat.push(u);
+    });
+    // Parcelas das renegociações (v5.42): renegociações já substituídas por outra consomem
+    // pagamento primeiro (ficam ocultas); depois as ativas, por vencimento.
+    const ru=[];
+    (state.renegociacoes||[]).filter(r=>r.clienteId==cId).forEach(r=>(r.parcelas||[]).forEach((pc,i)=>ru.push({
+      clienteId:cId,vendaId:'R'+r.id,parcelaIdx:i,parcelaNum:i+1,parcelaTotal:r.parcelas.length,
+      valor:pc.valor,vencimento:pc.vencimento,data:r.data,renegociacaoId:r.id,_sub:!!r.substituidaPor
+    })));
+    ru.sort((a,b)=>(a._sub?0:1)-(b._sub?0:1)||(a.vencimento||'').localeCompare(b.vencimento||''));
+    ru.forEach(u=>{
+      let status,valorPago;
+      if(saldoPago<=0.009){ status='aberto'; valorPago=0; }
+      else if(saldoPago>=u.valor-0.009){ status='pago'; valorPago=u.valor; saldoPago-=u.valor; }
+      else { status='parcial'; valorPago=saldoPago; saldoPago=0; }
+      u.status=status; u.valorPago=valorPago; u.valorRestante=Math.max(0,u.valor-valorPago);
+      if(!u._sub) flat.push(u);
     });
   });
   return flat;

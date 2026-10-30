@@ -179,6 +179,11 @@ function getExtratoCliente(clienteId){
     desc:'Pagou ('+(p.forma||'—')+')'+(p.obs?' — '+p.obs:''),
     debito:0,credito:p.valor||0
   }));
+  // renegociações (v5.42): crédito da dívida antiga + débito da nova
+  (state.renegociacoes||[]).filter(r=>r.clienteId==clienteId).forEach(r=>{
+    mov.push({data:r.data||'',ord:2,id:r.id,tipo:'renegociacao',desc:'Renegociação #'+r.id+' — dívida anterior substituída',debito:0,credito:r.base||0});
+    mov.push({data:r.data||'',ord:3,id:r.id,tipo:'renegociacao',desc:'Renegociação #'+r.id+' — '+(r.parcelas||[]).length+' parcela(s)'+(r.modoEnc==='incluir'?' (com '+fmt(r.encargos)+' de encargos)':(r.encargos>0?' (encargos perdoados)':'')),debito:r.total||0,credito:0});
+  });
   mov.sort((a,b)=>a.data.localeCompare(b.data)||a.ord-b.ord||a.id-b.id);
   let s=0;
   mov.forEach(m=>{s+=m.debito-m.credito;m.saldo=round2(s);});
@@ -198,7 +203,7 @@ function abrirExtrato(clienteId){
     ${ex.linhas.length===0?'<div style="text-align:center;color:var(--muted);padding:20px">Sem vendas fiado nem pagamentos.</div>':`
     <div class="table-scroll"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Saldo</th></tr></thead><tbody>
     ${ex.linhas.map(m=>`<tr><td>${fmtDate(m.data)}</td><td style="font-size:12px">${escapeHtml(m.desc)}</td>
-      <td class="${m.tipo==='venda'?'debt-amount':'debt-zero'}">${m.tipo==='venda'?'+':'−'} ${fmt(m.tipo==='venda'?m.debito:m.credito)}</td>
+      <td class="${m.debito>0?'debt-amount':'debt-zero'}">${m.debito>0?'+':'−'} ${fmt(m.debito>0?m.debito:m.credito)}</td>
       <td><strong>${fmt(Math.max(0,m.saldo))}</strong></td></tr>`).join('')}
     </tbody></table></div>`}
     <div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px;margin-top:12px"><span>Saldo final</span><span style="color:${ex.saldoFinal>0?'var(--red)':'var(--green)'}">${fmt(ex.saldoFinal)}</span></div>
@@ -216,6 +221,7 @@ function gerarTextoExtrato(clienteId){
   const saldoAnt=ex.linhas.length>MAX?Math.max(0,ex.linhas[ex.linhas.length-MAX-1].saldo):null;
   const linhas=recorte.map(m=>m.tipo==='venda'
     ?`${fmtDate(m.data)} — Compra: ${m.desc} — +${fmt(m.debito)} (saldo ${fmt(Math.max(0,m.saldo))})`
+    :m.tipo==='renegociacao'?`${fmtDate(m.data)} — ${m.desc} — ${m.debito>0?'+'+fmt(m.debito):'−'+fmt(m.credito)} (saldo ${fmt(Math.max(0,m.saldo))})`
     :`${fmtDate(m.data)} — Pagamento${m.forma?' ('+m.forma+')':''} — −${fmt(m.credito)} (saldo ${fmt(Math.max(0,m.saldo))})`).join('\n');
   const enc=calcEncargosCliente(clienteId);
   const encTxt=enc.total>0?`\n\n⚠️ Encargos de atraso (fora do saldo): ${fmt(enc.total)}\n(multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)})\nTotal com encargos: ${fmt(ex.saldoFinal+enc.total)}`:'';
@@ -279,38 +285,44 @@ function renderCobrancaDia(){
   const hoje=today();
   const porCliente={};
   getUnidadesFiadoFlat().filter(u=>u.status!=='pago'&&u.vencimento&&u.vencimento<=hoje).forEach(u=>{
-    const o=porCliente[u.clienteId]||(porCliente[u.clienteId]={vencimento:u.vencimento,vencido:0});
+    const o=porCliente[u.clienteId]||(porCliente[u.clienteId]={vencimento:u.vencimento,vencido:0,us:[]});
     if(u.vencimento<o.vencimento) o.vencimento=u.vencimento;
     o.vencido+=u.valorRestante;
+    o.us.push(u);
   });
-  const lista=Object.keys(porCliente).map(k=>{
+  const todos=Object.keys(porCliente).map(k=>{
     const id=parseInt(k),c=getCliente(id),o=porCliente[k];
-    return {id,c,vencimento:o.vencimento,vencido:round2(o.vencido),dias:diasEntre(o.vencimento,hoje),enc:calcEncargosCliente(id,hoje).total,uc:textoUltimaCobranca(c,hoje)};
+    const prom=(typeof promessaEstado==='function')?promessaEstado(id,hoje,o.us):null;
+    return {id,c,vencimento:o.vencimento,vencido:round2(o.vencido),dias:diasEntre(o.vencimento,hoje),enc:calcEncargosCliente(id,hoje).total,uc:textoUltimaCobranca(c,hoje),prom};
   });
+  // promessa em dia cobrindo tudo que está vencido: sai da lista até a data (v5.42)
+  const prometidos=todos.filter(l=>l.prom&&l.prom.estado==='ativa'&&l.prom.cobreTudo).sort((a,b)=>a.prom.data.localeCompare(b.prom.data));
+  const lista=todos.filter(l=>prometidos.indexOf(l)<0);
   const jaHoje=lista.filter(l=>l.uc.hoje).length;
   const totalVencido=round2(lista.reduce((s,l)=>s+l.vencido,0));
-  const vis=(cobrancaOcultarHoje?lista.filter(l=>!l.uc.hoje):lista).sort((a,b)=>b.dias-a.dias||b.vencido-a.vencido);
-  if(lista.length===0){
+  const quebrada=(l)=>(l.prom&&l.prom.estado==='quebrada')?1:0;
+  const vis=(cobrancaOcultarHoje?lista.filter(l=>!l.uc.hoje):lista).sort((a,b)=>quebrada(b)-quebrada(a)||b.dias-a.dias||b.vencido-a.vencido);
+  if(todos.length===0){
     el.innerHTML='<div style="text-align:center;padding:60px 20px"><h3 style="color:var(--green)">Nada para cobrar hoje</h3><p style="color:var(--muted);margin-top:8px">Nenhum fiado vencido ou vencendo hoje.</p></div>';
     return;
   }
   el.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:13px">
-      <span><strong>${lista.length}</strong> cliente(s) · vencido <strong style="color:var(--red)">${fmt(totalVencido)}</strong> · <strong>${jaHoje}</strong> já cobrado(s) hoje</span>
+      <span><strong>${lista.length}</strong> cliente(s) · vencido <strong style="color:var(--red)">${fmt(totalVencido)}</strong> · <strong>${jaHoje}</strong> já cobrado(s) hoje${prometidos.length?' · <strong>'+prometidos.length+'</strong> com promessa':''}</span>
       <label style="display:flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer"><input type="checkbox" style="width:auto;margin:0" ${cobrancaOcultarHoje?'checked':''} onchange="toggleCobrancaOcultarHoje(this.checked)"> Ocultar já cobrados hoje</label>
     </div>
     <div class="table-card table-cards"><div class="table-scroll"><table>
       <thead><tr><th>Cliente</th><th>Vencimento</th><th>Vencido</th><th>Última cobrança</th><th></th></tr></thead>
-      <tbody>${vis.length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Todos já foram cobrados hoje ✓</td></tr>':vis.map(l=>{
+      <tbody>${vis.length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">'+(lista.length===0?'Todos os clientes vencidos têm promessa em dia ✓':'Todos já foram cobrados hoje ✓')+'</td></tr>':vis.map(l=>{
         const cor=l.dias>0?'var(--red)':'#d35400';
         const status=l.dias>0?`${l.dias}d atraso`:'Hoje';
-        return `<tr style="${l.uc.hoje?'opacity:.6':''}">
-          <td data-label="Cliente"><strong>${escapeHtml(l.c.nome)}</strong>${l.uc.hoje?' <span class="badge badge-green">Cobrado hoje</span>':''}<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(l.c.tel||'sem telefone')}</span></td>
+        return `<tr style="${l.uc.hoje?'opacity:.6':''}${l.prom&&l.prom.estado==='quebrada'?';background:rgba(192,57,43,.12)':''}">
+          <td data-label="Cliente"><strong>${escapeHtml(l.c.nome)}</strong>${l.uc.hoje?' <span class="badge badge-green">Cobrado hoje</span>':''}${cobrancaPromBadge(l.prom)}<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(l.c.tel||'sem telefone')}</span></td>
           <td data-label="Vencimento"><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(l.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${status}</span></td>
           <td data-label="Vencido" class="debt-amount">${fmt(l.vencido)}${l.enc>0?`<div style="font-size:11px;color:var(--muted);font-weight:400">+ ${fmt(l.enc)} encargos</div>`:''}</td>
           <td data-label="Última cobrança" style="font-size:12px">${l.uc.txt}</td>
-          <td><div class="actions-cell"><button class="btn btn-green btn-sm" onclick="abrirPagamento(${l.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button>${l.c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${l.id})" title="Cobrar por WhatsApp"><i data-lucide="message-circle" class="ic"></i></button>`:''}</div></td>
+          <td><div class="actions-cell"><button class="btn btn-green btn-sm" onclick="abrirPagamento(${l.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button><button class="btn btn-outline btn-sm" onclick="abrirPromessa(${l.id})" title="Promessa de pagamento"><i data-lucide="handshake" class="ic"></i></button><button class="btn btn-outline btn-sm" onclick="abrirRenegociar(${l.id})" title="Renegociar dívida"><i data-lucide="refresh-cw" class="ic"></i></button>${l.c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${l.id})" title="Cobrar por WhatsApp"><i data-lucide="message-circle" class="ic"></i></button>`:''}</div></td>
         </tr>`;}).join('')}</tbody>
-    </table></div></div>`;
+    </table></div></div>`+cobrancaPrometidosHtml(prometidos);
   if(typeof lucide!=='undefined') lucide.createIcons();
 }

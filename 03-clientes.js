@@ -241,7 +241,7 @@ function editarCliente(id){
 function excluirCliente(id){
   const c=state.clientes.find(c=>c.id===id);
   if(!c) return;
-  const temHistorico=state.vendas.some(v=>v.clienteId===id)||state.pagamentos.some(p=>p.clienteId===id);
+  const temHistorico=state.vendas.some(v=>v.clienteId===id)||state.pagamentos.some(p=>p.clienteId===id)||(state.renegociacoes||[]).some(r=>r.clienteId===id);
   if(temHistorico){
     confirmarAcao('Este cliente já tem vendas ou pagamentos registrados — excluir de verdade apagaria esse histórico dos relatórios. Em vez disso ele será arquivado: some da lista e não pode mais receber vendas novas, mas todo o histórico financeiro continua intacto (e você pode reativá-lo a qualquer momento). Continuar?',()=>{
       c.ativo=false;

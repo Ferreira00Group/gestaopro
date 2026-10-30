@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.41.0">
+<link rel="stylesheet" href="styles.css?v=5.42.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -1240,6 +1240,66 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-promessa">
+  <div class="modal">
+    <div class="modal-header"><h3>Promessa de pagamento</h3><button class="modal-close" onclick="closeModal('modal-promessa')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="prom-cliente-id">
+      <div style="background:var(--gold-soft);border:1px solid rgba(201,162,75,.5);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-weight:700" id="prom-cliente-nome"></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="prom-info"></div>
+      </div>
+      <div class="form-group"><label>Prometeu pagar até</label>
+        <input class="form-control" id="prom-data" type="date">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button type="button" class="btn btn-outline btn-sm" onclick="promessaAtalho(1)">Amanhã</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="promessaAtalho(3)">+3 dias</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="promessaAtalho(7)">+7 dias</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Observação</label><input class="form-control" id="prom-obs" placeholder="opcional (ex: recebe no dia 10)"></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Até essa data o cliente sai da Cobrança do dia. Se passar sem pagamento, ele volta destacado.</div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="prom-btn-remover" onclick="removerPromessa()" style="display:none">Remover</button>
+        <button class="btn btn-outline" onclick="closeModal('modal-promessa')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarPromessa()">Salvar promessa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-reneg">
+  <div class="modal">
+    <div class="modal-header"><h3>Renegociar dívida</h3><button class="modal-close" onclick="closeModal('modal-reneg')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="reneg-cliente-id">
+      <div style="background:var(--gold-soft);border:1px solid rgba(201,162,75,.5);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Saldo devedor (principal)</div>
+        <div style="font-size:24px;font-weight:800;color:var(--red)" id="reneg-saldo">R$ 0,00</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="reneg-cliente-nome"></div>
+      </div>
+      <div id="reneg-enc-wrap" style="display:none;margin-bottom:14px">
+        <div style="font-size:13px;margin-bottom:6px">Encargos de atraso calculados: <strong id="reneg-enc-valor"></strong></div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:4px"><input type="radio" name="reneg-enc" value="perdoar" checked style="width:auto;margin:0" onchange="renegAtualizar()"> Perdoar os encargos</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="radio" name="reneg-enc" value="incluir" style="width:auto;margin:0" onchange="renegAtualizar()"> Incluir os encargos no novo saldo</label>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Nº de parcelas</label><input class="form-control" id="reneg-n" type="number" min="1" max="36" step="1" inputmode="numeric" value="3" oninput="renegAtualizar()"></div>
+        <div class="form-group"><label>Intervalo (dias)</label><input class="form-control" id="reneg-intervalo" type="number" min="1" max="365" step="1" inputmode="numeric" value="30" oninput="renegAtualizar()"></div>
+      </div>
+      <div class="form-group"><label>Primeiro vencimento</label><input class="form-control" id="reneg-primeiro" type="date" onchange="renegAtualizar()" oninput="renegAtualizar()"></div>
+      <div class="form-group"><label>Observação</label><input class="form-control" id="reneg-obs" placeholder="opcional"></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Se o cliente der entrada, registre o pagamento em "Receber" antes de renegociar o restante.</div>
+      <div id="reneg-preview"></div>
+      <div id="reneg-anteriores"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-reneg')">Cancelar</button>
+        <button class="btn btn-primary" onclick="confirmarRenegociacao()">Confirmar renegociação</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-pagamento">
   <div class="modal">
     <div class="modal-header"><h3>Registrar Pagamento</h3><button class="modal-close" onclick="closeModal('modal-pagamento')"><i data-lucide="x" class="ic"></i></button></div>
@@ -1916,23 +1976,24 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.41.0"></script>
-<script src="00-core.js?v=5.41.0"></script>
-<script src="01-ui-nav.js?v=5.41.0"></script>
-<script src="02-dashboard.js?v=5.41.0"></script>
-<script src="03-clientes.js?v=5.41.0"></script>
-<script src="04-vendas.js?v=5.41.0"></script>
-<script src="04b-pix-extrato.js?v=5.41.0"></script>
-<script src="11b-meu-dia.js?v=5.41.0"></script>
-<script src="05-producao.js?v=5.41.0"></script>
-<script src="06-estoque.js?v=5.41.0"></script>
-<script src="07-precificacao.js?v=5.41.0"></script>
-<script src="08-compras-fornecedores.js?v=5.41.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.41.0"></script>
-<script src="10-fab-inline.js?v=5.41.0"></script>
-<script src="10b-planejamento.js?v=5.41.0"></script>
-<script src="12-drive-backup.js?v=5.41.0"></script>
-<script src="11-app-init.js?v=5.41.0"></script>
+<script src="00a-config.js?v=5.42.0"></script>
+<script src="00-core.js?v=5.42.0"></script>
+<script src="01-ui-nav.js?v=5.42.0"></script>
+<script src="02-dashboard.js?v=5.42.0"></script>
+<script src="03-clientes.js?v=5.42.0"></script>
+<script src="04-vendas.js?v=5.42.0"></script>
+<script src="04b-pix-extrato.js?v=5.42.0"></script>
+<script src="11b-meu-dia.js?v=5.42.0"></script>
+<script src="11c-promessa-reneg.js?v=5.42.0"></script>
+<script src="05-producao.js?v=5.42.0"></script>
+<script src="06-estoque.js?v=5.42.0"></script>
+<script src="07-precificacao.js?v=5.42.0"></script>
+<script src="08-compras-fornecedores.js?v=5.42.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.42.0"></script>
+<script src="10-fab-inline.js?v=5.42.0"></script>
+<script src="10b-planejamento.js?v=5.42.0"></script>
+<script src="12-drive-backup.js?v=5.42.0"></script>
+<script src="11-app-init.js?v=5.42.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
