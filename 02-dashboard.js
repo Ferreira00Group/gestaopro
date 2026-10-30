@@ -84,16 +84,12 @@ function renderDashboard(){
   const ticketMedio=vendasMes.length?vendasMes.reduce((s,v)=>s+v.total,0)/vendasMes.length:0;
   document.getElementById('dash-ticket-medio').textContent=fmt(ticketMedio);
 
-  // Top 5 clientes que mais devem (reaproveita "devedores", já ordenado por saldo desc)
+  // Top 5 clientes que mais devem (reaproveita "devedores", já ordenado por saldo desc) — v5.39: cartões
   const tbTopDev=document.getElementById('dash-top-devedores');
   if(devedores.length===0){
-    tbTopDev.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px"><div class="empty-inline"><i data-lucide="circle-check"></i><span>Nenhum cliente devendo</span></div></td></tr>';
+    tbTopDev.innerHTML='<div class="empty-inline" style="padding:20px;text-align:center"><i data-lucide="circle-check"></i><span>Nenhum cliente devendo</span></div>';
   } else {
-    tbTopDev.innerHTML=devedores.slice(0,5).map(c=>`<tr>
-      <td><strong>${escapeHtml(c.nome)}</strong></td>
-      <td class="debt-amount">${fmt(c.saldo)}</td>
-      <td><div class="actions-cell"><button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button>${c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}</div></td>
-    </tr>`).join('');
+    tbTopDev.innerHTML=devedores.slice(0,5).map(c=>dashCardCliente(c,c.saldo,true)).join('');
   }
 
   // Produtos mais vendidos no mês
@@ -128,23 +124,9 @@ function renderDashboard(){
   const vistosD=new Set();
   const alertasUnicos=alertasVenc.filter(u=>{if(vistosD.has(u.clienteId))return false;vistosD.add(u.clienteId);return true;});
   const tb=document.getElementById('dash-devedores');
-  if(alertasUnicos.length===0){
-    tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px"><div class="empty-inline"><i data-lucide="circle-check"></i><span>Nenhuma cobrança vencida</span></div></td></tr>';
-  } else {
-    tb.innerHTML=alertasUnicos.slice(0,6).map(u=>{
-      const c=getCliente(u.clienteId);
-      const saldo=getSaldoCliente(u.clienteId);
-      const dias=diasParaVencimento(u.vencimento,hoje);
-      const statusVenc=dias<0?`${Math.abs(dias)}d atraso`:dias===0?'Hoje':dias===1?'Amanhã':`Em ${dias}d`;
-      const cor=dias<0?'var(--red)':dias<=1?'#d35400':'var(--yellow)';
-      return `<tr>
-        <td><strong>${escapeHtml(c.nome)}</strong></td>
-        <td><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(u.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${statusVenc}</span></td>
-        <td class="debt-amount">${fmt(saldo>0?saldo:u.valor)}</td>
-        <td><div class="actions-cell">${saldo>0?`<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button>`:''}<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button></div></td>
-      </tr>`;
-    }).join('');
-  }
+  tb.innerHTML=alertasUnicos.length===0
+    ?'<div class="empty-inline" style="padding:20px;text-align:center"><i data-lucide="circle-check"></i><span>Nenhuma cobrança vencida</span></div>'
+    :dashVencimentosHtml(alertasUnicos,hoje);
   const hist=document.getElementById('dash-historico');
   const items=[
     ...state.vendas.map(v=>({type:'sale',data:v.data,title:'Venda — '+v.itens.map(it=>nomeItemVenda(it)).join(', '),sub:getCliente(v.clienteId).nome+' · '+v.itens.reduce((s,it)=>s+it.qtd,0)+' un.',val:v.total})),
@@ -219,3 +201,49 @@ function renderMetaVendas(realizado){
   }
 }
 
+
+// ───────── v5.39: listas do Dashboard em cartões + Vencimentos agrupados por data ─────────
+function dashBotoesCliente(id,tel,podeReceber){
+  return `<div class="dash-cli-acoes">${podeReceber?`<button class="btn btn-green dash-btn" onclick="abrirPagamento(${id})"><i data-lucide="banknote" class="ic"></i> Receber</button>`:''}${tel?`<button class="btn btn-whatsapp dash-btn" onclick="cobrarWhatsapp(${id})"><i data-lucide="message-circle" class="ic"></i> Cobrar</button>`:''}</div>`;
+}
+function dashCardCliente(c,valor,podeReceber){
+  return `<div class="dash-cli"><div class="dash-cli-top"><strong class="dash-cli-nome">${escapeHtml(c.nome)}</strong><span class="debt-amount">${fmt(valor)}</span></div>${dashBotoesCliente(c.id,c.tel,podeReceber)}</div>`;
+}
+// dias = diasParaVencimento (negativo = atraso). Faixas: 1–7 dias, 8–30 dias, mais de 30 dias.
+function faixaVencimento(dias){
+  if(dias<-30) return {tag:'Crítico',cls:'badge-red',cor:'var(--red)'};
+  if(dias<-7) return {tag:'Atenção',cls:'badge-orange',cor:'#d35400'};
+  if(dias<0) return {tag:'Recente',cls:'badge-yellow',cor:'var(--yellow)'};
+  return {tag:'A vencer',cls:'badge-blue',cor:'var(--blue)'};
+}
+function tituloVencimento(dias){
+  if(dias<0){const n=Math.abs(dias);return `${n} dia${n>1?'s':''} de atraso`;}
+  if(dias===0) return 'Vence hoje';
+  if(dias===1) return 'Vence amanhã';
+  return `Vence em ${dias} dias`;
+}
+// Agrupa por data de vencimento (lista já vem em ordem de data, um item por cliente).
+function dashVencimentosHtml(itens,hoje){
+  const MAX=8; // máximo de clientes mostrados no card
+  const grupos=[];
+  itens.forEach(u=>{
+    let g=grupos.find(x=>x.venc===u.vencimento);
+    if(!g){g={venc:u.vencimento,itens:[]};grupos.push(g);}
+    g.itens.push(u);
+  });
+  let restante=MAX,mostrados=0,html='';
+  grupos.forEach(g=>{
+    if(restante<=0) return;
+    const dias=diasParaVencimento(g.venc,hoje),f=faixaVencimento(dias);
+    const total=g.itens.reduce((s,u)=>{const sd=getSaldoCliente(u.clienteId);return s+(sd>0?sd:u.valor);},0);
+    html+=`<div class="dash-grupo"><div class="dash-grupo-l"><span style="color:${f.cor}">${fmtDate(g.venc)}</span><span class="badge ${f.cls}">${f.tag}</span></div><div class="dash-grupo-sub">${tituloVencimento(dias)} · ${g.itens.length} cliente${g.itens.length>1?'s':''} · ${fmt(total)}</div></div>`;
+    g.itens.slice(0,restante).forEach(u=>{
+      const c=getCliente(u.clienteId),saldo=getSaldoCliente(u.clienteId);
+      html+=dashCardCliente(c,saldo>0?saldo:u.valor,saldo>0);
+      mostrados++;
+    });
+    restante-=Math.min(restante,g.itens.length);
+  });
+  if(mostrados<itens.length) html+=`<div class="dash-mais">+ ${itens.length-mostrados} cliente${itens.length-mostrados>1?'s':''} — <a onclick="goto('receber')">ver todas</a></div>`;
+  return html;
+}

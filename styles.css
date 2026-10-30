@@ -668,3 +668,38 @@ nav a .icon{stroke-width:1.75}
 .parcelas-resumo .tot{font-weight:800;color:var(--green)}
 @media print{.vc-top,.avulso-keys{display:none!important}}
 
+
+
+/* ===== v5.39 — Dashboard em cartões + Vencimentos agrupados ===== */
+.dash-list{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
+.dash-cli{background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.dash-cli-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.dash-cli-nome{font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-cli-acoes{display:flex;gap:8px;margin-top:10px}
+.dash-btn{flex:1;justify-content:center;min-height:44px;font-size:13.5px}
+.dash-btn .ic{width:18px;height:18px;margin:0}
+.dash-grupo{padding:6px 4px 0}
+.dash-grupo:first-child{padding-top:0}
+.dash-grupo-l{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+.dash-grupo-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.dash-mais{text-align:center;font-size:12px;color:var(--muted);padding:4px 0}
+.dash-mais a{color:var(--blue);cursor:pointer}
+@media(min-width:640px){
+  .dash-list{padding:12px 14px 14px}
+  .dash-cli{display:flex;align-items:center;gap:14px}
+  .dash-cli-top{flex:1}
+  .dash-cli-acoes{margin-top:0}
+  .dash-btn{flex:none;min-height:36px;padding:0 14px}
+}
+
+/* ===== v5.39 — Modais como folha deslizante (celular) =====
+   Rodapé de botões fixo, conteúdo rolando por dentro, folha sobe acima do teclado
+   (as variáveis --kb e --vvh são atualizadas em 01-ui-nav.js pela visualViewport). */
+.modal-overlay{box-sizing:border-box;padding-bottom:var(--kb,0px)}
+.modal{overscroll-behavior:contain;scroll-padding-bottom:96px;max-height:min(92vh,calc(var(--vvh,100vh) - 12px))}
+@supports(height:100dvh){.modal{max-height:min(92dvh,calc(var(--vvh,100dvh) - 12px))}}
+@media(max-width:639px){
+  .modal-body:has(>.modal-footer){padding-bottom:0}
+  .modal-body>.modal-footer{position:sticky;bottom:0;z-index:5;flex-wrap:wrap;margin:16px -20px 0;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--border);box-shadow:0 -12px 16px -12px rgba(0,0,0,.6)}
+  .modal-body>.modal-footer .btn{flex:1 1 auto;justify-content:center;min-height:44px}
+}

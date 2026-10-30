@@ -715,3 +715,58 @@ function render(page){
   if(page==='relatorio')initRelatorio();
 }
 
+
+// ============ FOLHA DESLIZANTE DOS MODAIS (v5.39) ============
+// 1) Teclado: no Android o teclado não encolhe a tela e cobria o botão de salvar. A visualViewport
+//    informa quanto sobrou; o CSS usa --kb/--vvh para subir a folha acima do teclado.
+(function(){
+  const vv=window.visualViewport;
+  if(!vv) return;
+  const r=document.documentElement;
+  const ajustar=()=>{
+    r.style.setProperty('--kb',Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop))+'px');
+    r.style.setProperty('--vvh',Math.round(vv.height)+'px');
+  };
+  vv.addEventListener('resize',()=>{
+    ajustar();
+    const el=document.activeElement;
+    if(el&&el.closest&&el.closest('.modal')&&/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){
+      setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),80); // campo em foco fica visível
+    }
+  });
+  vv.addEventListener('scroll',ajustar);
+  ajustar();
+})();
+// 2) Arrastar a alça/título para baixo fecha a folha (só no celular).
+(function(){
+  let m=null,startY=0,dy=0,ativo=false;
+  document.addEventListener('touchstart',e=>{
+    m=null;
+    if(window.innerWidth>=640||!e.target.closest) return;
+    const modal=e.target.closest('.modal');
+    if(!modal||!modal.parentElement.classList.contains('open')||modal.scrollTop>0) return;
+    if(e.touches[0].clientY-modal.getBoundingClientRect().top>56) return; // só a faixa do topo
+    m=modal;startY=e.touches[0].clientY;dy=0;ativo=false;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!m) return;
+    dy=Math.max(0,e.touches[0].clientY-startY);
+    if(dy<=0&&!ativo) return;
+    ativo=true;
+    m.style.transition='none';
+    m.style.transform=`translateY(${dy}px)`;
+    e.preventDefault();
+  },{passive:false});
+  const fim=()=>{
+    if(!m) return;
+    const modal=m;m=null;
+    modal.style.transition='';
+    if(ativo&&dy>90){
+      closeModal(modal.parentElement.id);
+      requestAnimationFrame(()=>{modal.style.transform='';});
+    } else modal.style.transform='';
+    ativo=false;
+  };
+  document.addEventListener('touchend',fim);
+  document.addEventListener('touchcancel',fim);
+})();
