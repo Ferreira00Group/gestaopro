@@ -697,6 +697,7 @@ function render(page){
   if(page==='receber')renderReceber();
   if(page==='cobranca')renderCobrancaDia();
   if(page==='meudia')renderMeuDia();
+  if(page==='orcaprov')renderAprovarLote();
   if(page==='pagar')renderPagar();
   if(page==='producao')renderProducao();
   if(page==='estoque'){

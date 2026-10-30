@@ -1133,10 +1133,17 @@ function abrirNovoOrcamento(){
   setVendaTipo('orcamento');
   document.getElementById('modal-venda').classList.add('open');
 }
+// Regra única de aprovação (usada pela aprovação individual e pela em lote, v5.43):
+// só orçamento ainda em rascunho; só muda o status. Estoque e financeiro só mexem na conversão em venda.
+function aplicarAprovacaoOrcamento(o){
+  if(!o||o.tipo!=='orcamento'||o.statusOrc==='aprovado') return false;
+  o.statusOrc='aprovado';
+  return true;
+}
 function aprovarOrcamento(id){
   const o=state.vendas.find(v=>v.id===id);
   if(!o)return;
-  o.statusOrc='aprovado';
+  aplicarAprovacaoOrcamento(o);
   marcarAlterado();
   showToast('Orçamento aprovado ✓','green');renderVendas();renderDashboard();
 }
