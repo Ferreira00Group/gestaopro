@@ -127,7 +127,7 @@ function renomearRota(id,nome){
 function excluirRota(id){
   confirmarAcao('Excluir esta rota? Os clientes vinculados ficarão sem rota.',()=>{
     state.rotas=state.rotas.filter(r=>r.id!==id);
-    state.clientes.forEach(c=>{if(c.rotaId===id)c.rotaId=null;});
+    state.clientes.forEach(c=>{if(c.rotaId===id){c.rotaId=null;c.rotaOrdem=null;}});
     marcarAlterado();salvarDados();
     renderListaRotas();
     populateRotaSelect(document.getElementById('cliente-rota').value);
@@ -136,7 +136,7 @@ function excluirRota(id){
   });
 }
 function clearClienteForm(){
-  ['cliente-edit-id','cliente-nome','cliente-tel','cliente-end','cliente-referencia'].forEach(id=>document.getElementById(id).value='');
+  ['cliente-edit-id','cliente-nome','cliente-tel','cliente-end','cliente-referencia','cliente-rota-ordem'].forEach(id=>document.getElementById(id).value='');
   populateRotaSelect('');
   document.getElementById('modal-cliente-title').textContent='Novo Cliente';
 }
@@ -147,13 +147,15 @@ function salvarCliente(){
   const end=document.getElementById('cliente-end').value.trim();
   const referencia=document.getElementById('cliente-referencia').value.trim();
   const rotaId=parseInt(document.getElementById('cliente-rota').value)||null;
+  const ordemTxt=parseInt(document.getElementById('cliente-rota-ordem').value);
+  const rotaOrdem=(rotaId&&ordemTxt>0)?ordemTxt:null; // ordem de visita só faz sentido com rota
   if(!nome){showToast('Informe o nome do cliente','red');return;}
   if(eid){
     const c=state.clientes.find(c=>c.id==eid);
-    c.nome=nome;c.tel=tel;c.end=end;c.referencia=referencia;c.rotaId=rotaId;
+    c.nome=nome;c.tel=tel;c.end=end;c.referencia=referencia;c.rotaId=rotaId;c.rotaOrdem=rotaOrdem;
     showToast('Cliente atualizado','green');
   } else {
-    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,rotaId,ativo:true,dataCadastro:today()});
+    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,rotaId,rotaOrdem,ativo:true,dataCadastro:today()});
     showToast('Cliente cadastrado','green');
   }
   marcarAlterado();
@@ -226,6 +228,7 @@ function editarCliente(id){
   document.getElementById('cliente-end').value=c.end||'';
   document.getElementById('cliente-referencia').value=c.referencia||'';
   populateRotaSelect(c.rotaId||'');
+  document.getElementById('cliente-rota-ordem').value=c.rotaOrdem||'';
   document.getElementById('modal-cliente-title').textContent=`Editar Cliente ${fmtClienteNum(c.id)}`;
   document.getElementById('modal-cliente').classList.add('open');
 }
