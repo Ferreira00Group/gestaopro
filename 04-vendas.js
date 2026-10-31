@@ -1332,7 +1332,13 @@ function cobrarWhatsapp(clienteId){
   const saldo=getSaldoCliente(clienteId);
   const mapaFiado=getMapaSituacaoFiado();
   const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&situacaoVenda(v,mapaFiado).status!=='pago');
-  const lista=vendas.map(v=>`• ${fmtDate(v.data)} — ${v.itens.map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`).join('\n')+(typeof renegLinhasCobranca==='function'?renegLinhasCobranca(clienteId):'');
+  const lista=vendas.map(v=>{
+    // v5.51.3: venda com pagamento parcial mostra quanto já foi pago e quanto resta (antes só aparecia o total
+    // da venda, e o cliente via R$ 70,00 na linha e R$ 20,00 no "Total devedor").
+    const rest=round2(situacaoVenda(v,mapaFiado).valorRestante||0);
+    const parcial=rest>0.009&&rest<round2(v.total)-0.009;
+    return `• ${fmtDate(v.data)} — ${v.itens.map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`+(parcial?` (já pago ${fmt(round2(v.total-rest))} · resta ${fmt(rest)})`:'');
+  }).join('\n')+(typeof renegLinhasCobranca==='function'?renegLinhasCobranca(clienteId):'');
   const enderecoLinha=(c.end||c.referencia)?`\n📍 ${c.end||''}${c.end&&c.referencia?' — ':''}${c.referencia||''}`:'';
   const enc=calcEncargosCliente(clienteId);
   const encTxt=enc.total>0?`\n\n⚠️ *Encargos de atraso:* ${fmt(enc.total)}\n(multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)})\n*Total com encargos: ${fmt(saldo+enc.total)}*`:'';
