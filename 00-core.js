@@ -1,3 +1,15 @@
+// Modelos de mensagem do CRM (v5.46). "seg" liga o modelo ao segmento de cliente em que ele é sugerido.
+function crmModelosPadrao(){
+  return [
+    {nome:'Reativação',seg:'inativo',texto:'Olá, {nome}! Faz um tempo que não nos falamos (sua última compra foi em {ultima_compra}). Posso te ajudar com um novo pedido?'},
+    {nome:'Recompra',seg:'recompra',texto:'Olá, {nome}, tudo bem? Pelo seu ritmo de compras, já deve estar na hora de repor. Quer que eu separe o pedido de sempre?'},
+    {nome:'Agradecimento VIP',seg:'vip',texto:'Olá, {nome}! Passando para agradecer a parceria — você é um dos nossos melhores clientes. Qualquer necessidade, é só falar.'},
+    {nome:'Pós-venda',seg:'posvenda',texto:'Olá, {nome}, tudo bem? Passando para saber se ficou tudo certo com seu último pedido e se posso ajudar em algo.'},
+    {nome:'Cobrança amigável',seg:'cobranca',texto:'Olá, {nome}, tudo bem? Só um lembrete do saldo em aberto de {saldo}. Se já pagou, desconsidere. Qualquer dúvida, me chame.'},
+  ];
+}
+function crmModelosSemente(){ return crmModelosPadrao().map((m,i)=>({...m,id:i+1})); }
+
 // ============ DEFAULT STATE ============
 const DEFAULT_STATE = {
   rotas:[
@@ -85,7 +97,9 @@ const DEFAULT_STATE = {
   movEstoque:[],
   semiacabados:[],
   renegociacoes:[],
-  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1},
+  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1,crmNotas:1,crmModelos:6},
+  crmNotas:[],
+  crmModelos:crmModelosSemente(),
   crmLeads:[],
   crmNegocios:[],
   crmAtividades:[],
@@ -199,8 +213,9 @@ let _avisouFalhaGravacao = false;
 //        opção quando não sabemos o custo real da época — ver 09-financeiro-relatorios.js).//   15 → state.pix (Pix do celular: chave, tipo, nome, cidade) — v5.36. Chave digitada pelo
 //        usuário, fica só no aparelho e no backup.
 //   16 → state.encargos (multa/juros de atraso, desligado por padrão) — v5.37.
-//   17 → (versão atual) CRM: state.crmLeads / crmNegocios / crmAtividades (+ nextId) — v5.44.
-const SCHEMA_VERSION = 17;
+//   17 → CRM: state.crmLeads / crmNegocios / crmAtividades (+ nextId) — v5.44.
+//   18 → (versão atual) CRM: state.crmNotas, state.crmModelos (modelos de mensagem, com 5 padrões) e tags nos clientes — v5.46.
+const SCHEMA_VERSION = 18;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -320,6 +335,15 @@ const MIGRATIONS = {
     ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!(d.nextId[k]>0)) d.nextId[k]=1; });
     return d;
   },
+  // v17 → v18: notas e modelos de mensagem do CRM (v5.46)
+  17: (d) => {
+    d.crmNotas = d.crmNotas || [];
+    if(!Array.isArray(d.crmModelos)) d.crmModelos = crmModelosSemente();
+    d.nextId = { ...(d.nextId||{}) };
+    if(!(d.nextId.crmNotas>0)) d.nextId.crmNotas = 1;
+    if(!(d.nextId.crmModelos>0)) d.nextId.crmModelos = d.crmModelos.reduce((m,x)=>Math.max(m,x.id||0),0)+1;
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -341,7 +365,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object',crmLeads:'array',crmNegocios:'array',crmAtividades:'array'};
+  fichas:'object',nextId:'object',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){
@@ -383,6 +407,7 @@ function carregarDados(){
       if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
       if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
       ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
+      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente();
       // a aba "Movimentações" não é restaurada ao reabrir o app (a tela volta em Produtos Acabados)
       if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
       state._version    = SCHEMA_VERSION;
@@ -1066,6 +1091,7 @@ function aplicarDadosNoState(raw){
   state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
   if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
   ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
+      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente();
   if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
   state._version=SCHEMA_VERSION;
   _bloquearGravacao=false;

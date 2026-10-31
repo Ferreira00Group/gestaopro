@@ -48,6 +48,7 @@ function renderClientes(){
       <td data-label="Frequência" style="font-size:12px;color:var(--muted)">${freqTxt}</td>
       <td data-label="Status"><span class="badge ${saldo>0?'badge-red':'badge-green'}">${saldo>0?'Devendo':'Em dia'}</span></td>
       <td><div class="actions-cell">
+        <button class="icon-btn" onclick="abrirCliente360(${c.id})" title="Ficha 360º"><i data-lucide="contact" class="ic"></i></button>
         <button class="icon-btn" onclick="abrirExtrato(${c.id})" title="Extrato"><i data-lucide="file-text" class="ic"></i></button>
         ${saldo>0?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}
         ${saldo>0?`<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})"><i data-lucide="banknote" class="ic"></i></button>`:''}

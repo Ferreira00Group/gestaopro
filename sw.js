@@ -52,6 +52,7 @@ const ASSETS = [
   './10b-planejamento.js' + v,
   './13-crm.js' + v,
   './14-relacionamento.js' + v,
+  './15-cliente360.js' + v,
   './12-drive-backup.js' + v,
   './11-app-init.js' + v,
   './manifest.json',

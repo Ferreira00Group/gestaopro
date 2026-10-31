@@ -59,40 +59,31 @@ function relCalcClientes(){
   return lista;
 }
 
-function relMensagem(x){
-  const nome=(x.c.nome||'').split(' ')[0];
-  if(x.seg.inativo) return `Olá, ${nome}! Faz um tempo que não nos falamos. Posso te ajudar com um novo pedido? Se precisar de algo, é só me chamar.`;
-  if(x.seg.recompra) return `Olá, ${nome}, tudo bem? Acho que já está na hora de repor seu pedido. Quer que eu separe o de sempre?`;
-  if(x.seg.vip) return `Olá, ${nome}! Passando para agradecer a parceria — você é um dos nossos melhores clientes. Qualquer novidade ou necessidade, é só falar.`;
-  return `Olá, ${nome}, tudo bem? Passando para saber se ficou tudo certo com seu último pedido e se posso ajudar em algo.`;
-}
-function relWhats(clienteId){
-  const x=relCalcClientes().find(x=>x.c.id===clienteId); if(!x) return;
-  if(!x.c.tel){ showToast('Cliente sem telefone cadastrado','red'); return; }
-  crmWhats(x.c.tel,relMensagem(x));
-  crmGaranteEstado();
-  state.crmAtividades.push({id:nextId('crmAtividades'),tipo:'whatsapp',titulo:'WhatsApp de relacionamento',data:today(),hora:'',
-    concluida:true,concluidaEm:today(),criadoEm:today(),clienteId,leadId:null,negocioId:null});
-  marcarAlterado();
-}
+function relWhats(clienteId){ crmAbrirEnvio(clienteId); }
 
 // ── Aba "Clientes" do CRM ──
+let relTag='';
 function relSetFiltro(v){ relFiltro=v; renderCRM(); }
 function relSetOrdem(v){ relOrdem=v; renderCRM(); }
+function relSetTag(v){ relTag=v; renderCRM(); }
 function relHtmlClientes(){
   let lista=relCalcClientes();
   const cont={vip:0,frequente:0,inativo:0,recompra:0};
   lista.forEach(x=>Object.keys(cont).forEach(k=>{ if(x.seg[k]) cont[k]++; }));
   if(relFiltro!=='todos') lista=lista.filter(x=>x.seg[relFiltro]);
-  else lista=lista.filter(x=>x.compras>0);
+  else lista=lista.filter(x=>x.compras>0||(x.c.tags||[]).length);
+  const tags=typeof c360TodasTags==='function'?c360TodasTags():[];
+  if(relTag&&!tags.includes(relTag)) relTag='';
+  if(relTag) lista=lista.filter(x=>(x.c.tags||[]).includes(relTag));
   const ord={fat:(a,b)=>b.fat12-a.fat12||b.fat-a.fat, lucro:(a,b)=>b.lucro-a.lucro, compras:(a,b)=>b.compras-a.compras,
     ultima:(a,b)=>(b.ultima||'').localeCompare(a.ultima||''), proxima:(a,b)=>(a.proxima||'9999').localeCompare(b.proxima||'9999')};
   lista.sort(ord[relOrdem]||ord.fat);
-  const opt=(v,t,sel)=>`<option value="${v}"${sel===v?' selected':''}>${t}</option>`;
+  const opt=(v,t,sel)=>`<option value="${escapeHtml(v)}"${sel===v?' selected':''}>${escapeHtml(t)}</option>`;
   const filtros=`<div class="search-bar">
     <select class="filter" style="max-width:none" onchange="relSetFiltro(this.value)">
       ${opt('todos','Todos que já compraram',relFiltro)}${opt('vip','VIP ('+cont.vip+')',relFiltro)}${opt('frequente','Frequentes ('+cont.frequente+')',relFiltro)}
       ${opt('inativo','Inativos ('+cont.inativo+')',relFiltro)}${opt('recompra','Recompra próxima ('+cont.recompra+')',relFiltro)}</select>
+    ${tags.length?`<select class="filter" style="max-width:none" onchange="relSetTag(this.value)">${opt('','Todas as tags',relTag)}${tags.map(t=>opt(t,'#'+t,relTag)).join('')}</select>`:''}
     <select class="filter" style="max-width:none" onchange="relSetOrdem(this.value)">
       ${opt('fat','Ordem: faturamento 12m',relOrdem)}${opt('lucro','Ordem: lucro estimado',relOrdem)}${opt('compras','Ordem: nº de compras',relOrdem)}
       ${opt('ultima','Ordem: última compra',relOrdem)}${opt('proxima','Ordem: próxima compra',relOrdem)}</select></div>
@@ -101,13 +92,14 @@ function relHtmlClientes(){
   const hoje=today();
   return filtros+'<div class="crm-lista">'+lista.slice(0,100).map((x,i)=>{
     const b=(x.seg.vip?'<span class="badge badge-yellow">VIP</span> ':'')+(x.seg.frequente?'<span class="badge badge-green">Frequente</span> ':'')+(x.seg.inativo?'<span class="badge badge-red">Inativo</span> ':'')+(x.seg.recompra?'<span class="badge badge-blue">Recompra próxima</span> ':'');
+    const tg=(x.c.tags||[]).map(t=>`<span class="crm-chip">${escapeHtml(t)}</span>`).join(' ');
     let prox='';
     if(x.proxima){ const atras=x.proxima<hoje; prox=`<span class="${atras&&!x.seg.inativo?'crm-atraso':''}">Próxima prevista: ${fmtDate(x.proxima)}${atras?' ('+relDias(x.proxima,hoje)+'d de atraso)':''}</span>`; }
-    return `<div class="crm-item"><div class="crm-item-main"><strong>${i+1}. ${escapeHtml(x.c.nome)}</strong> ${b}
+    return `<div class="crm-item"><div class="crm-item-main"><strong class="crm-link" onclick="abrirCliente360(${x.c.id})">${i+1}. ${escapeHtml(x.c.nome)}</strong> ${b}${tg}
       <div class="crm-card-sub">12m: <strong>${fmt(x.fat12)}</strong> · Lucro est.: ${fmt(x.lucro)} · ${x.compras} compra(s)${x.intervalo?' · a cada '+x.intervalo+'d':''}</div>
       <div class="crm-card-sub">Última: ${x.ultima?fmtDate(x.ultima)+' ('+x.diasSem+'d)':'—'}${prox?' · '+prox:''}</div></div>
-      <div class="actions-cell">${x.c.tel?`<button class="btn btn-whatsapp btn-sm" title="WhatsApp de relacionamento" onclick="relWhats(${x.c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}
-      <button class="btn btn-outline btn-sm" onclick="crmNovoNegocio({clienteId:${x.c.id}})">+ Negócio</button></div></div>`;
+      <div class="actions-cell">${x.c.tel?`<button class="btn btn-whatsapp btn-sm" title="WhatsApp" onclick="crmAbrirEnvio(${x.c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}
+      <button class="btn btn-outline btn-sm" onclick="abrirCliente360(${x.c.id})">Ficha</button></div></div>`;
   }).join('')+'</div>'+(lista.length>100?`<div class="crm-vazio">Mostrando os 100 primeiros de ${lista.length}</div>`:'');
 }
 

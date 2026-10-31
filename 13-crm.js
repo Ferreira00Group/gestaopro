@@ -137,7 +137,7 @@ function crmModais(){
 function crmTab(t){ state.crm_tab=t; renderCRM(); }
 function renderCRM(){
   crmGaranteEstado(); crmModais();
-  const abas=[['funil','Funil','kanban'],['clientes','Clientes','users'],['leads','Leads','user-plus'],['atividades','Atividades','calendar-check'],['painel','Painel','bar-chart-3']];
+  const abas=[['funil','Funil','kanban'],['clientes','Clientes','users'],['leads','Leads','user-plus'],['atividades','Atividades','calendar-check'],['painel','Painel','bar-chart-3'],['modelos','Modelos','message-square-text']];
   const pend=state.crmAtividades.filter(a=>!a.concluida&&a.data&&a.data<=today()).length;
   document.getElementById('crm-tabs').innerHTML=abas.map(([id,nome,ic])=>
     `<button class="crm-tab${state.crm_tab===id?' active':''}" onclick="crmTab('${id}')"><i data-lucide="${ic}" class="ic"></i> ${nome}${id==='atividades'&&pend?`<span class="crm-pill">${pend}</span>`:''}</button>`).join('');
@@ -146,6 +146,7 @@ function renderCRM(){
   else if(state.crm_tab==='leads') el.innerHTML=crmHtmlLeads();
   else if(state.crm_tab==='atividades') el.innerHTML=crmHtmlAtividades();
   else if(state.crm_tab==='painel') el.innerHTML=crmHtmlPainel();
+  else if(state.crm_tab==='modelos') el.innerHTML=(typeof crmHtmlModelos==='function')?crmHtmlModelos():'';
   else el.innerHTML=crmHtmlFunil();
 }
 
