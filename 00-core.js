@@ -85,7 +85,11 @@ const DEFAULT_STATE = {
   movEstoque:[],
   semiacabados:[],
   renegociacoes:[],
-  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1},
+  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1},
+  crmLeads:[],
+  crmNegocios:[],
+  crmAtividades:[],
+  crm_tab:'funil',
   metas:{},
   fechamentos:[],
   custosFixos:[
@@ -194,8 +198,9 @@ let _avisouFalhaGravacao = false;
 //        esse campo, e o relatório cai de volta pro cálculo pela ficha atual nesse caso (única
 //        opção quando não sabemos o custo real da época — ver 09-financeiro-relatorios.js).//   15 → state.pix (Pix do celular: chave, tipo, nome, cidade) — v5.36. Chave digitada pelo
 //        usuário, fica só no aparelho e no backup.
-//   16 → (versão atual) state.encargos (multa/juros de atraso, desligado por padrão) — v5.37.
-const SCHEMA_VERSION = 16;
+//   16 → state.encargos (multa/juros de atraso, desligado por padrão) — v5.37.
+//   17 → (versão atual) CRM: state.crmLeads / crmNegocios / crmAtividades (+ nextId) — v5.44.
+const SCHEMA_VERSION = 17;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -306,6 +311,15 @@ const MIGRATIONS = {
     d.encargos = { ativo:false, multa:5, juros:3, carencia:0, pixComEncargos:false, ...(d.encargos||{}) };
     return d;
   },
+  // v16 → v17: CRM (v5.44) — listas vazias e contadores de id
+  16: (d) => {
+    d.crmLeads = d.crmLeads || [];
+    d.crmNegocios = d.crmNegocios || [];
+    d.crmAtividades = d.crmAtividades || [];
+    d.nextId = { ...(d.nextId||{}) };
+    ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!(d.nextId[k]>0)) d.nextId[k]=1; });
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -327,7 +341,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object'};
+  fichas:'object',nextId:'object',crmLeads:'array',crmNegocios:'array',crmAtividades:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){
@@ -368,6 +382,7 @@ function carregarDados(){
       if(!Array.isArray(state.renegociacoes)) state.renegociacoes=[];
       if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
       if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
+      ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
       // a aba "Movimentações" não é restaurada ao reabrir o app (a tela volta em Produtos Acabados)
       if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
       state._version    = SCHEMA_VERSION;
@@ -1050,6 +1065,7 @@ function aplicarDadosNoState(raw){
   limparFiltrosDeTela(state);
   state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
   if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
+  ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
   if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
   state._version=SCHEMA_VERSION;
   _bloquearGravacao=false;

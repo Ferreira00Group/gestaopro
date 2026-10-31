@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.43.0">
+<link rel="stylesheet" href="styles.css?v=5.44.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -108,6 +108,7 @@
   <nav>
     <a class="active" onclick="goto('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard" class="icon"></i> Dashboard</a>
     <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
+    <a onclick="goto('crm')" data-page="crm"><i data-lucide="handshake" class="icon"></i> CRM</a>
     <a onclick="goto('vendas')" data-page="vendas"><i data-lucide="shopping-cart" class="icon"></i> Vendas / Pedidos</a>
     <a onclick="goto('orcaprov')" data-page="orcaprov"><i data-lucide="check-check" class="icon"></i> Aprovar orçamentos</a>
     <a onclick="goto('receber')" data-page="receber"><i data-lucide="wallet" class="icon"></i> Contas a Receber<span class="nav-dot" id="bell-cobranca"></span></a>
@@ -283,6 +284,21 @@
       <tbody id="clientes-table"></tbody>
     </table></div>
   </div>
+</div>
+
+<!-- CRM -->
+<div id="page-crm" class="page">
+  <div class="print-header"><h1>GestãoPRO — CRM</h1></div>
+  <div class="page-header">
+    <div><h2>CRM</h2><p>Leads, funil de negócios e atividades</p></div>
+    <div class="page-header-actions">
+      <button class="btn btn-outline" onclick="crmNovaAtividade()">+ Atividade</button>
+      <button class="btn btn-outline" onclick="crmNovoLead()">+ Lead</button>
+      <button class="btn btn-primary" onclick="crmNovoNegocio()">+ Negócio</button>
+    </div>
+  </div>
+  <div class="crm-tabs" id="crm-tabs"></div>
+  <div id="crm-content"></div>
 </div>
 
 <!-- ORÇAMENTO -->
@@ -1987,25 +2003,26 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.43.0"></script>
-<script src="00-core.js?v=5.43.0"></script>
-<script src="01-ui-nav.js?v=5.43.0"></script>
-<script src="02-dashboard.js?v=5.43.0"></script>
-<script src="03-clientes.js?v=5.43.0"></script>
-<script src="04-vendas.js?v=5.43.0"></script>
-<script src="04b-pix-extrato.js?v=5.43.0"></script>
-<script src="11b-meu-dia.js?v=5.43.0"></script>
-<script src="11c-promessa-reneg.js?v=5.43.0"></script>
-<script src="11d-aprovar-lote.js?v=5.43.0"></script>
-<script src="05-producao.js?v=5.43.0"></script>
-<script src="06-estoque.js?v=5.43.0"></script>
-<script src="07-precificacao.js?v=5.43.0"></script>
-<script src="08-compras-fornecedores.js?v=5.43.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.43.0"></script>
-<script src="10-fab-inline.js?v=5.43.0"></script>
-<script src="10b-planejamento.js?v=5.43.0"></script>
-<script src="12-drive-backup.js?v=5.43.0"></script>
-<script src="11-app-init.js?v=5.43.0"></script>
+<script src="00a-config.js?v=5.44.0"></script>
+<script src="00-core.js?v=5.44.0"></script>
+<script src="01-ui-nav.js?v=5.44.0"></script>
+<script src="02-dashboard.js?v=5.44.0"></script>
+<script src="03-clientes.js?v=5.44.0"></script>
+<script src="04-vendas.js?v=5.44.0"></script>
+<script src="04b-pix-extrato.js?v=5.44.0"></script>
+<script src="11b-meu-dia.js?v=5.44.0"></script>
+<script src="11c-promessa-reneg.js?v=5.44.0"></script>
+<script src="11d-aprovar-lote.js?v=5.44.0"></script>
+<script src="05-producao.js?v=5.44.0"></script>
+<script src="06-estoque.js?v=5.44.0"></script>
+<script src="07-precificacao.js?v=5.44.0"></script>
+<script src="08-compras-fornecedores.js?v=5.44.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.44.0"></script>
+<script src="10-fab-inline.js?v=5.44.0"></script>
+<script src="10b-planejamento.js?v=5.44.0"></script>
+<script src="13-crm.js?v=5.44.0"></script>
+<script src="12-drive-backup.js?v=5.44.0"></script>
+<script src="11-app-init.js?v=5.44.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

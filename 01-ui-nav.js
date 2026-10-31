@@ -693,6 +693,7 @@ function render(page){
   if(typeof atualizarAlertBells==='function') atualizarAlertBells();
   if(page==='dashboard'){renderDashboard();renderChartDash();renderChart30Dias();}
   if(page==='clientes')renderClientes();
+  if(page==='crm'&&typeof renderCRM==='function')renderCRM();
   if(page==='vendas')renderVendas();
   if(page==='receber')renderReceber();
   if(page==='cobranca')renderCobrancaDia();

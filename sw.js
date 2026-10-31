@@ -50,6 +50,7 @@ const ASSETS = [
   './09-financeiro-relatorios.js' + v,
   './10-fab-inline.js' + v,
   './10b-planejamento.js' + v,
+  './13-crm.js' + v,
   './12-drive-backup.js' + v,
   './11-app-init.js' + v,
   './manifest.json',
