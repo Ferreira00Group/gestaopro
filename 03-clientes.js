@@ -136,8 +136,41 @@ function excluirRota(id){
     showToast('Rota excluída','green');
   });
 }
+// ---- Localização no mapa (v5.51) ----
+// Aceita: "lat, lng", link longo do Google Maps (@lat,lng | !3dlat!4dlng | /place/lat,lng | ?q=lat,lng).
+// Link curto (maps.app.goo.gl) não dá pra ler sem internet: fica salvo só como link.
+function parseLocMapa(txt){
+  const t=String(txt||'').trim(); if(!t) return null;
+  const ok=(a,b)=>{a=parseFloat(a);b=parseFloat(b);return (isFinite(a)&&isFinite(b)&&Math.abs(a)<=90&&Math.abs(b)<=180)?{lat:a,lng:b}:null;};
+  let dec=t; try{dec=decodeURIComponent(t);}catch(e){}
+  let m;
+  if((m=dec.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/))) return ok(m[1],m[2]);
+  if((m=dec.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/))) return ok(m[1],m[2]);
+  if((m=dec.match(/\/place\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/))) return ok(m[1],m[2]);
+  if((m=dec.match(/[?&](?:q|ll|query|destination)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/))) return ok(m[1],m[2]);
+  if((m=dec.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/))) return ok(m[1],m[2]);
+  return null;
+}
+function clienteTemPin(c){return c&&typeof c.lat==='number'&&typeof c.lng==='number';}
+function clienteLocAqui(){
+  if(!navigator.geolocation){showToast('Este aparelho não oferece GPS ao navegador','red');return;}
+  showToast('Pegando localização… aguarde','');
+  navigator.geolocation.getCurrentPosition(p=>{
+    document.getElementById('cliente-loc').value=p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6);
+    showToast('Localização capturada (±'+Math.round(p.coords.accuracy)+' m). Toque em Salvar Cliente','green');
+  },e=>{
+    showToast(e.code===1?'Permissão de localização negada no navegador':'Não consegui o GPS agora. Tente em local aberto','red');
+  },{enableHighAccuracy:true,timeout:25000,maximumAge:0});
+}
+function clienteLocAbrir(){
+  const t=document.getElementById('cliente-loc').value.trim();
+  const p=parseLocMapa(t);
+  if(p) window.open('https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng,'_blank');
+  else if(/^https?:\/\//i.test(t)) window.open(t,'_blank');
+  else showToast('Sem localização preenchida','red');
+}
 function clearClienteForm(){
-  ['cliente-edit-id','cliente-nome','cliente-tel','cliente-end','cliente-referencia','cliente-rota-ordem'].forEach(id=>document.getElementById(id).value='');
+  ['cliente-edit-id','cliente-nome','cliente-tel','cliente-end','cliente-referencia','cliente-loc','cliente-rota-ordem'].forEach(id=>document.getElementById(id).value='');
   populateRotaSelect('');
   document.getElementById('modal-cliente-title').textContent='Novo Cliente';
 }
@@ -147,18 +180,23 @@ function salvarCliente(){
   const tel=document.getElementById('cliente-tel').value.trim();
   const end=document.getElementById('cliente-end').value.trim();
   const referencia=document.getElementById('cliente-referencia').value.trim();
+  const locTxt=document.getElementById('cliente-loc').value.trim();
+  const locP=parseLocMapa(locTxt);
+  const locLink=(locTxt&&!locP)?locTxt:'';
+  const lat=locP?locP.lat:null, lng=locP?locP.lng:null;
   const rotaId=parseInt(document.getElementById('cliente-rota').value)||null;
   const ordemTxt=parseInt(document.getElementById('cliente-rota-ordem').value);
   const rotaOrdem=(rotaId&&ordemTxt>0)?ordemTxt:null; // ordem de visita só faz sentido com rota
   if(!nome){showToast('Informe o nome do cliente','red');return;}
   if(eid){
     const c=state.clientes.find(c=>c.id==eid);
-    c.nome=nome;c.tel=tel;c.end=end;c.referencia=referencia;c.rotaId=rotaId;c.rotaOrdem=rotaOrdem;
+    c.nome=nome;c.tel=tel;c.end=end;c.referencia=referencia;c.rotaId=rotaId;c.rotaOrdem=rotaOrdem;c.lat=lat;c.lng=lng;c.locLink=locLink;
     showToast('Cliente atualizado','green');
   } else {
-    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,rotaId,rotaOrdem,ativo:true,dataCadastro:today()});
+    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,lat,lng,locLink,rotaId,rotaOrdem,ativo:true,dataCadastro:today()});
     showToast('Cliente cadastrado','green');
   }
+  if(locLink) showToast('Link curto salvo: abre no mapa, mas não entra na otimização. Cole o link longo, as coordenadas ou use o GPS','red');
   marcarAlterado();
   closeModal('modal-cliente');renderClientes();renderDashboard();
 }
@@ -228,6 +266,7 @@ function editarCliente(id){
   document.getElementById('cliente-tel').value=c.tel;
   document.getElementById('cliente-end').value=c.end||'';
   document.getElementById('cliente-referencia').value=c.referencia||'';
+  document.getElementById('cliente-loc').value=clienteTemPin(c)?(c.lat+', '+c.lng):(c.locLink||'');
   populateRotaSelect(c.rotaId||'');
   document.getElementById('cliente-rota-ordem').value=c.rotaOrdem||'';
   document.getElementById('modal-cliente-title').textContent=`Editar Cliente ${fmtClienteNum(c.id)}`;
