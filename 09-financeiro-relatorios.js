@@ -123,12 +123,14 @@ function excluirLancamento(id){
 
 // ============ RELATÓRIO POR PERÍODO ============
 function showRelTab(tab,btn){
-  ['periodo','dre','fluxo','inadimplencia','balanco'].forEach(t=>{
+  ['periodo','dre','fluxo','inadimplencia','balanco','caixa','previsao'].forEach(t=>{
     const el=document.getElementById('rel-tab-'+t);
     if(el) el.style.display=t===tab?'block':'none';
   });
   document.querySelectorAll('#page-relatorio .tab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
+  if(tab==='caixa'&&typeof relRenderCaixa==='function') relRenderCaixa();
+  if(tab==='previsao'&&typeof relRenderPrevisao==='function') relRenderPrevisao();
 }
 
 function initRelatorio(){
