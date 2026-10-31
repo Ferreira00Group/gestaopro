@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.50.0">
+<link rel="stylesheet" href="styles.css?v=5.50.1">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -150,11 +150,8 @@
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
   <div class="print-header"><h1>GestãoPRO — Dashboard</h1><p id="print-date-dashboard"></p></div>
-  <div class="page-header">
-    <div><h2>Dashboard</h2><p id="dash-date">Resumo geral do negócio</p></div>
-    <div class="page-header-actions">
-    </div>
-  </div>
+  <p id="dash-date" class="dash-date-line">Resumo geral do negócio</p>
+
   <!-- META DO MÊS (barra no topo) -->
   <div class="table-card" style="margin-bottom:10px;padding:10px 14px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -176,9 +173,9 @@
   <!-- PARTE 1: cards grandes -->
   <div class="dash-grid2" id="dash-cards-grid" style="margin-bottom:10px">
     <div class="card-hero red" style="cursor:pointer" onclick="goto('receber')" title="Ver contas a receber"><div class="label">Total a Receber</div><div class="value debt-pulse" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
-    <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
-    <div class="card-hero blue" style="cursor:pointer" onclick="goto('financeiro')" title="Gastos do mês"><div class="label">Gastos do Mês</div><div class="value" id="dash-gastos-mes">R$ 0</div><div class="sub" id="dash-gastos-mes-insumos" title="Parte do gasto que foi de insumos / matéria-prima">R$ 0,00</div></div>
     <div class="card-hero green" style="cursor:pointer" onclick="goto('relatorio')" title="Lucro do mês (vendas − gastos)"><div class="label">Lucro</div><div class="value" id="dash-lucro">R$ 0</div><div class="sub" id="dash-lucro-pct" title="Margem real: lucro ÷ vendas do mês">0%</div></div>
+    <div class="card-hero blue" style="cursor:pointer" onclick="goto('financeiro')" title="Gastos do mês"><div class="label">Gastos do Mês</div><div class="value" id="dash-gastos-mes">R$ 0</div><div class="sub" id="dash-gastos-mes-insumos" title="Parte do gasto que foi de insumos / matéria-prima">R$ 0,00</div></div>
+    <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
   </div>
 
   <!-- ACESSO RÁPIDO -->
@@ -2027,29 +2024,29 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.50.0"></script>
-<script src="00-core.js?v=5.50.0"></script>
-<script src="01-ui-nav.js?v=5.50.0"></script>
-<script src="02-dashboard.js?v=5.50.0"></script>
-<script src="03-clientes.js?v=5.50.0"></script>
-<script src="04-vendas.js?v=5.50.0"></script>
-<script src="04b-pix-extrato.js?v=5.50.0"></script>
-<script src="11b-meu-dia.js?v=5.50.0"></script>
-<script src="11c-promessa-reneg.js?v=5.50.0"></script>
-<script src="11d-aprovar-lote.js?v=5.50.0"></script>
-<script src="05-producao.js?v=5.50.0"></script>
-<script src="06-estoque.js?v=5.50.0"></script>
-<script src="07-precificacao.js?v=5.50.0"></script>
-<script src="08-compras-fornecedores.js?v=5.50.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.50.0"></script>
-<script src="10-fab-inline.js?v=5.50.0"></script>
-<script src="10b-planejamento.js?v=5.50.0"></script>
-<script src="13-crm.js?v=5.50.0"></script>
-<script src="14-relacionamento.js?v=5.50.0"></script>
-<script src="15-cliente360.js?v=5.50.0"></script>
-<script src="16-automacoes.js?v=5.50.0"></script>
-<script src="12-drive-backup.js?v=5.50.0"></script>
-<script src="11-app-init.js?v=5.50.0"></script>
+<script src="00a-config.js?v=5.50.1"></script>
+<script src="00-core.js?v=5.50.1"></script>
+<script src="01-ui-nav.js?v=5.50.1"></script>
+<script src="02-dashboard.js?v=5.50.1"></script>
+<script src="03-clientes.js?v=5.50.1"></script>
+<script src="04-vendas.js?v=5.50.1"></script>
+<script src="04b-pix-extrato.js?v=5.50.1"></script>
+<script src="11b-meu-dia.js?v=5.50.1"></script>
+<script src="11c-promessa-reneg.js?v=5.50.1"></script>
+<script src="11d-aprovar-lote.js?v=5.50.1"></script>
+<script src="05-producao.js?v=5.50.1"></script>
+<script src="06-estoque.js?v=5.50.1"></script>
+<script src="07-precificacao.js?v=5.50.1"></script>
+<script src="08-compras-fornecedores.js?v=5.50.1"></script>
+<script src="09-financeiro-relatorios.js?v=5.50.1"></script>
+<script src="10-fab-inline.js?v=5.50.1"></script>
+<script src="10b-planejamento.js?v=5.50.1"></script>
+<script src="13-crm.js?v=5.50.1"></script>
+<script src="14-relacionamento.js?v=5.50.1"></script>
+<script src="15-cliente360.js?v=5.50.1"></script>
+<script src="16-automacoes.js?v=5.50.1"></script>
+<script src="12-drive-backup.js?v=5.50.1"></script>
+<script src="11-app-init.js?v=5.50.1"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

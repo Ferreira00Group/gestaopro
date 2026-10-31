@@ -798,3 +798,5 @@ nav a .icon{stroke-width:1.75}
 .dash-cli-row .dash-cli-acoes{margin:0;gap:6px;flex:none}
 .dash-cli-row .dash-btn{flex:none;min-height:38px;padding:0 9px;font-size:12px}
 .dash-cli-row .dash-btn .ic{width:14px;height:14px}
+
+.dash-date-line{margin:0 0 8px;font-size:12px;color:var(--muted);text-transform:capitalize}
