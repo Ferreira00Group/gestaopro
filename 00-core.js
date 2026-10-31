@@ -104,13 +104,16 @@ const DEFAULT_STATE = {
   movEstoque:[],
   semiacabados:[],
   renegociacoes:[],
-  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1,crmNotas:1,crmModelos:6,crmFunis:2,crmEtapas:1,crmSegmentos:1},
+  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1,crmNotas:1,crmModelos:6,crmFunis:2,crmEtapas:1,crmSegmentos:1,crmAutomacoes:1,crmFila:1},
   crmNotas:[],
   crmModelos:crmModelosSemente(),
   crmFunis:crmFunisPadrao(),
   crm_funil_id:1,
   automacaoDisparos:{},
   crmSegmentos:[],
+  crmAutomacoes:[],
+  crmFila:[],
+  crmAutoLimite:20,
   crmLeads:[],
   crmNegocios:[],
   crmAtividades:[],
@@ -228,8 +231,10 @@ let _avisouFalhaGravacao = false;
 //   18 → CRM: state.crmNotas, state.crmModelos (modelos de mensagem, com 5 padrões) e tags nos clientes — v5.46.
 //   19 → CRM: state.crmFunis (vários funis, etapas com probabilidade); negócios ganham funilId, itens e proxAcao — v5.47.
 //   20 → negócios ganham historico:[{etapa,data}] e origem; state.automacaoDisparos {chave:data} — v5.48.
-//   21 → (versão atual) state.crmSegmentos (segmentos de clientes salvos e combináveis) — v5.48.1.
-const SCHEMA_VERSION = 21;
+//   21 → state.crmSegmentos (segmentos de clientes salvos e combináveis) — v5.48.1.
+//   22 → (versão atual) automações do CRM: state.crmAutomacoes (regras segmento + cadência), state.crmFila (fila de envio)
+//        e state.crmAutoLimite (envios por dia) — v5.49.
+const SCHEMA_VERSION = 22;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -389,6 +394,16 @@ const MIGRATIONS = {
     if(!(d.nextId.crmSegmentos>0)) d.nextId.crmSegmentos = d.crmSegmentos.reduce((m,s)=>Math.max(m,s.id||0),0)+1;
     return d;
   },
+  // v21 → v22: automações do CRM — regras (segmento + cadência), fila de envio e limite diário (v5.49)
+  21: (d) => {
+    if(!Array.isArray(d.crmAutomacoes)) d.crmAutomacoes = [];
+    if(!Array.isArray(d.crmFila)) d.crmFila = [];
+    if(!(d.crmAutoLimite>0)) d.crmAutoLimite = 20;
+    d.nextId = { ...(d.nextId||{}) };
+    if(!(d.nextId.crmAutomacoes>0)) d.nextId.crmAutomacoes = d.crmAutomacoes.reduce((m,r)=>Math.max(m,r.id||0),0)+1;
+    if(!(d.nextId.crmFila>0)) d.nextId.crmFila = d.crmFila.reduce((m,i)=>Math.max(m,i.id||0),0)+1;
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -410,7 +425,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object',automacaoDisparos:'object',crmSegmentos:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array'};
+  fichas:'object',nextId:'object',automacaoDisparos:'object',crmSegmentos:'array',crmAutomacoes:'array',crmFila:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){
@@ -452,7 +467,7 @@ function carregarDados(){
       if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
       if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
       ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
-      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente(); if(!Array.isArray(state.crmFunis)||!state.crmFunis.length) state.crmFunis=crmFunisPadrao(); if(!Array.isArray(state.crmSegmentos)) state.crmSegmentos=[];
+      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente(); if(!Array.isArray(state.crmFunis)||!state.crmFunis.length) state.crmFunis=crmFunisPadrao(); if(!Array.isArray(state.crmSegmentos)) state.crmSegmentos=[]; if(!Array.isArray(state.crmAutomacoes)) state.crmAutomacoes=[]; if(!Array.isArray(state.crmFila)) state.crmFila=[]; if(!(state.crmAutoLimite>0)) state.crmAutoLimite=20;
       // a aba "Movimentações" não é restaurada ao reabrir o app (a tela volta em Produtos Acabados)
       if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
       state._version    = SCHEMA_VERSION;
@@ -1167,7 +1182,7 @@ function aplicarDadosNoState(raw){
   state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
   if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
   ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
-      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente(); if(!Array.isArray(state.crmFunis)||!state.crmFunis.length) state.crmFunis=crmFunisPadrao(); if(!Array.isArray(state.crmSegmentos)) state.crmSegmentos=[];
+      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente(); if(!Array.isArray(state.crmFunis)||!state.crmFunis.length) state.crmFunis=crmFunisPadrao(); if(!Array.isArray(state.crmSegmentos)) state.crmSegmentos=[]; if(!Array.isArray(state.crmAutomacoes)) state.crmAutomacoes=[]; if(!Array.isArray(state.crmFila)) state.crmFila=[]; if(!(state.crmAutoLimite>0)) state.crmAutoLimite=20;
   if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
   state._version=SCHEMA_VERSION;
   _bloquearGravacao=false;

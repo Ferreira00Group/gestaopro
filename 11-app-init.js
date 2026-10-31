@@ -100,3 +100,5 @@ inicializarIconesLucide();
 initGoogleDriveClient();
 setTimeout(tentarBackupSilenciosoDrive, 1000);
 setTimeout(verificarLembreteBackup, 3000);
+// v5.49: avalia as automações do CRM (inscreve clientes nas cadências e cancela passos de quem saiu do segmento)
+setTimeout(()=>{ if(typeof autoExecutar==='function'){ try{ autoExecutar(true); }catch(e){ console.warn('[GestãoPRO] Automações:',e); } } }, 1500);

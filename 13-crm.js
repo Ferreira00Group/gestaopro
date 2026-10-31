@@ -10,6 +10,7 @@
 //     historico: uma linha por entrada em etapa (inclui ganho/perdido), data YYYY-MM-DD; aprox:true = reconstruído na migração.
 //   state.crmAtividades  [{id,tipo,titulo,data,hora,concluida,clienteId?,leadId?,negocioId?}]
 //   state.crmSegmentos   [{id,nome,crit,criadoEm}]   segmentos de clientes salvos (v5.48.1 — ver 14-relacionamento.js)
+//   state.crmAutomacoes / state.crmFila / state.crmAutoLimite   automações, cadências e fila de envio (v5.49 — ver 16-automacoes.js)
 // Regras: negócio aberto sempre tem próxima ação (com data); valor ponderado = valor × probabilidade da etapa;
 // com itens do catálogo, o valor é a soma dos itens e a venda gerada nasce com esses itens.
 // Integração: lead convertido vira registro em state.clientes; negócio ganho abre "Nova Venda" já preenchida
@@ -33,6 +34,7 @@ function crmGaranteEstado(){
   ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!(state.nextId[k]>0)) state.nextId[k]=1; });
   if(!Array.isArray(state.crmSegmentos)) state.crmSegmentos=[];
   if(!(state.nextId.crmSegmentos>0)) state.nextId.crmSegmentos=state.crmSegmentos.reduce((m,s)=>Math.max(m,s.id||0),0)+1;
+  if(typeof auGaranteEstado==='function') auGaranteEstado();
   if(!state.crm_tab) state.crm_tab='funil';
   if(!Array.isArray(state.crmFunis)||!state.crmFunis.length) state.crmFunis=crmFunisPadrao();
   ['crmFunis','crmEtapas'].forEach(k=>{ if(!(state.nextId[k]>0)) state.nextId[k]=(k==='crmFunis'?state.crmFunis.reduce((m,f)=>Math.max(m,f.id||0),0)+1:1); });
@@ -184,17 +186,20 @@ function crmModais(){
 function crmTab(t){ state.crm_tab=t; renderCRM(); }
 function renderCRM(){
   crmGaranteEstado(); crmModais();
-  const abas=[['funil','Funil','kanban'],['clientes','Clientes','users'],['leads','Leads','user-plus'],['atividades','Atividades','calendar-check'],['painel','Painel','bar-chart-3'],['insights','Insights','lightbulb'],['modelos','Modelos','message-square-text']];
+  if(typeof autoExecutar==='function'){ try{ autoExecutar(); }catch(e){ console.warn('[GestãoPRO] Automações:',e); } }
+  const abas=[['funil','Funil','kanban'],['clientes','Clientes','users'],['leads','Leads','user-plus'],['atividades','Atividades','calendar-check'],['painel','Painel','bar-chart-3'],['insights','Insights','lightbulb'],['automacoes','Automações','zap'],['modelos','Modelos','message-square-text']];
   const pend=state.crmAtividades.filter(a=>!a.concluida&&a.data&&a.data<=today()).length;
   const nIns=(typeof insCalcular==='function')?insCalcular().length:0;
+  const nFila=(typeof autoFilaHoje==='function')?autoFilaHoje().visiveis.length:0;
   document.getElementById('crm-tabs').innerHTML=abas.map(([id,nome,ic])=>
-    `<button class="crm-tab${state.crm_tab===id?' active':''}" onclick="crmTab('${id}')"><i data-lucide="${ic}" class="ic"></i> ${nome}${id==='atividades'&&pend?`<span class="crm-pill">${pend}</span>`:''}${id==='insights'&&nIns?`<span class="crm-pill">${nIns}</span>`:''}</button>`).join('');
+    `<button class="crm-tab${state.crm_tab===id?' active':''}" onclick="crmTab('${id}')"><i data-lucide="${ic}" class="ic"></i> ${nome}${id==='atividades'&&pend?`<span class="crm-pill">${pend}</span>`:''}${id==='insights'&&nIns?`<span class="crm-pill">${nIns}</span>`:''}${id==='automacoes'&&nFila?`<span class="crm-pill">${nFila}</span>`:''}</button>`).join('');
   const el=document.getElementById('crm-content');
   if(state.crm_tab==='clientes') el.innerHTML=(typeof relHtmlClientes==='function')?relHtmlClientes():'';
   else if(state.crm_tab==='leads') el.innerHTML=crmHtmlLeads();
   else if(state.crm_tab==='atividades') el.innerHTML=crmHtmlAtividades();
   else if(state.crm_tab==='painel') el.innerHTML=crmHtmlPainel();
   else if(state.crm_tab==='insights') el.innerHTML=(typeof crmHtmlInsights==='function')?crmHtmlInsights():'';
+  else if(state.crm_tab==='automacoes') el.innerHTML=(typeof autoHtmlAba==='function')?autoHtmlAba():'';
   else if(state.crm_tab==='modelos') el.innerHTML=(typeof crmHtmlModelos==='function')?crmHtmlModelos():'';
   else el.innerHTML=crmHtmlFunil();
 }
@@ -536,7 +541,9 @@ function crmMeuDiaHtml(){
   const abertos=state.crmNegocios.filter(n=>!crmFechada(n.etapa));
   const acoes=abertos.filter(n=>crmTemProxAcao(n)&&n.proxAcao.data<=hoje).sort((a,b)=>a.proxAcao.data.localeCompare(b.proxAcao.data));
   const semAcao=abertos.filter(n=>!crmTemProxAcao(n));
-  const qtd=ativ.length+acoes.length+semAcao.length;
+  const fila=(typeof autoFilaMeuDia==='function')?autoFilaMeuDia():{qtd:0,html:''}; // v5.49: mensagens das automações
+  const qtdCrm=ativ.length+acoes.length+semAcao.length;
+  const qtd=qtdCrm+fila.qtd;
   if(!qtd) return {qtd:0,html:''};
   const zap=(o)=>{ const t=crmTelRef(o); return t?`<button class="btn btn-whatsapp btn-sm" title="WhatsApp" onclick="crmWhats('${escapeHtml(t)}')"><i data-lucide="message-circle" class="ic"></i></button>`:''; };
   const rowsAcao=acoes.map(n=>{
@@ -556,7 +563,7 @@ function crmMeuDiaHtml(){
   const rowsSem=semAcao.map(n=>`<div class="crm-item"><i data-lucide="alert-triangle" class="ic crm-atraso"></i>
       <div class="crm-item-main"><strong>${escapeHtml(n.titulo)}</strong><div class="crm-card-sub crm-atraso">Negócio aberto sem próxima ação</div></div>
       <div class="actions-cell"><button class="btn btn-outline btn-sm" onclick="crmEditarNegocio(${n.id})">Definir</button></div></div>`).join('');
-  return {qtd,html:`<div class="crm-meudia"><h3 class="crm-sec-titulo"><i data-lucide="handshake" class="ic ic-sm"></i> CRM · follow-ups <span>(${qtd})</span></h3><div class="crm-lista">${rowsAcao}${rowsAtiv}${rowsSem}</div></div>`};
+  return {qtd,html:fila.html+(qtdCrm?`<div class="crm-meudia"><h3 class="crm-sec-titulo"><i data-lucide="handshake" class="ic ic-sm"></i> CRM · follow-ups <span>(${qtdCrm})</span></h3><div class="crm-lista">${rowsAcao}${rowsAtiv}${rowsSem}</div></div>`:'')};
 }
 
 // ── LEADS ──
