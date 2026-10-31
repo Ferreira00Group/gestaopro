@@ -8,93 +8,132 @@ function renderTrend(elId,atual,anterior,legenda){
   const cls=diff>0.5?'up':diff<-0.5?'down':'flat';
   el.innerHTML=`<span class="trend ${cls}">${arrow} ${Math.abs(diff).toFixed(0)}%</span> ${legenda||''}`;
 }
+
+// ───────── v5.50.0: nova tela inicial ─────────
+function dashSet(id,txt){const el=document.getElementById(id);if(el)el.textContent=txt;}
+function dashNorm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+// Combustível: categoria com "gasolina", "combustível", diesel, etanol ou álcool
+function dashEhCombustivel(f){return /gasolina|combustiv|diesel|etanol|alcool/.test(dashNorm(f.categoria));}
+// Insumos/matéria-prima: saída gerada por compra ou por pagamento a fornecedor
+function dashEhInsumo(f){return !!(f.compraId||f.pagamentoFornecedorId);}
+function dashSoma(arr,fn){return arr.reduce((s,x)=>s+(fn?fn(x):x.valor||0),0);}
+function dashPct(n){return String(Number(n.toFixed(1))).replace('.',',')+'%';}
+function dashMoedaSinal(v){return (v<0?'-':'')+fmt(Math.abs(v));}
+
+// Menu do botão "Nova venda"
+function abrirMenuNovaVenda(){
+  document.getElementById('qa-sheet-backdrop').classList.add('open');
+  document.getElementById('qa-sheet').classList.add('open');
+}
+function fecharMenuNovaVenda(){
+  document.getElementById('qa-sheet-backdrop').classList.remove('open');
+  document.getElementById('qa-sheet').classList.remove('open');
+}
+// Venda rápida = orçamento (depois completo e converto em venda)
+function novaVendaRapida(){
+  fecharMenuNovaVenda();
+  setTimeout(function(){goto('vendas');setTimeout(function(){abrirNovaVenda();setVendaTipo('orcamento');},80);},120);
+}
+function novaVendaCompleta(){
+  fecharMenuNovaVenda();
+  setTimeout(function(){goto('vendas');setTimeout(function(){abrirNovaVenda();},80);},120);
+}
+// Novo gasto = lançamento de saída (com categoria; use "Gasolina" para o número do card)
+function abrirNovoGasto(){
+  openModal('modal-lancamento');
+  document.getElementById('lanc-tipo').value='saida';
+  toggleCategoriaLanc();
+}
+
 function renderDashboard(){
-  const d=document.getElementById('dash-date');
-  d.textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  const devedores=state.clientes.map(c=>({...c,saldo:getSaldoCliente(c.id)})).filter(c=>c.saldo>0).sort((a,b)=>b.saldo-a.saldo);
-  const totalFiado=devedores.reduce((s,c)=>s+c.saldo,0);
-  document.getElementById('dash-total-fiado').textContent=fmt(totalFiado);
-  document.getElementById('dash-fiado-count').textContent=devedores.length+' clientes devendo';
-  // Contas a Pagar (fornecedor) — mesmo cálculo, espelhado
-  const fornecedoresDevendo=state.fornecedores.map(f=>({...f,saldo:getSaldoFornecedor(f.id)})).filter(f=>f.saldo>0);
-  const totalAPagar=fornecedoresDevendo.reduce((s,f)=>s+f.saldo,0);
-  const elPagar=document.getElementById('dash-total-pagar');
-  if(elPagar) elPagar.textContent=fmt(totalAPagar);
-  const elPagarSub=document.getElementById('dash-pagar-count');
-  if(elPagarSub) elPagarSub.textContent=fornecedoresDevendo.length+' fornecedor'+(fornecedoresDevendo.length!==1?'es':'')+' em aberto';
   const hoje=today();
-  const ontem=new Date(Date.now()-86400000).toISOString().split('T')[0];
-  const recHoje=state.pagamentos.filter(p=>p.data===hoje).reduce((s,p)=>s+p.valor,0);
-  const recOntem=state.pagamentos.filter(p=>p.data===ontem).reduce((s,p)=>s+p.valor,0);
-  document.getElementById('dash-recebido').textContent=fmt(recHoje);
-  renderTrend('dash-trend-recebido',recHoje,recOntem,'vs ontem');
   const mesAtual=hoje.slice(0,7);
-  const vendasMes=state.vendas.filter(v=>v.data.startsWith(mesAtual));
-  document.getElementById('dash-vendas-mes').textContent=fmt(vendasMes.reduce((s,v)=>s+v.total,0));
-  document.getElementById('dash-vendas-count').textContent=vendasMes.length+' pedidos';
-  const alertas=getAlertasEstoque();
-  document.getElementById('dash-estoque-baixo').textContent=alertas.total;
-  // Compras do mês
-  const mesAtualCompras=today().slice(0,7);
-  const comprasMes=state.compras.filter(c=>c.data&&c.data.slice(0,7)===mesAtualCompras);
-  const totalComprasMes=comprasMes.reduce((s,c)=>s+(c.total||0),0);
-  document.getElementById('dash-compras-mes').textContent=fmt(totalComprasMes);
-  document.getElementById('dash-compras-mes-sub').textContent=`${comprasMes.length} pedido${comprasMes.length!==1?'s':''}`;
-  // Comparativo com mês anterior (vendas e compras)
-  const [anoRef,mesRef]=mesAtual.split('-').map(Number);
-  const dataMesAnt=new Date(anoRef,mesRef-2,1);
-  const mesAnt=`${dataMesAnt.getFullYear()}-${String(dataMesAnt.getMonth()+1).padStart(2,'0')}`;
-  const vendasMesAntTotal=state.vendas.filter(v=>v.data.startsWith(mesAnt)).reduce((s,v)=>s+v.total,0);
-  const comprasMesAntTotal=state.compras.filter(c=>c.data&&c.data.slice(0,7)===mesAnt).reduce((s,c)=>s+(c.total||0),0);
-  renderTrend('dash-trend-vendas-mes',vendasMes.reduce((s,v)=>s+v.total,0),vendasMesAntTotal,'vs mês ant.');
-  renderTrend('dash-trend-compras-mes',totalComprasMes,comprasMesAntTotal,'vs mês ant.');
-  const orcPend=state.vendas.filter(v=>v.tipo==='orcamento');
-  document.getElementById('dash-orc-pendentes').textContent=orcPend.length;
-  document.getElementById('dash-orc-sub').textContent=orcPend.filter(o=>o.statusOrc==='rascunho').length+' rascunho · '+orcPend.filter(o=>o.statusOrc==='aprovado').length+' aprovado';
-  renderAlertasBanner();
+  const el=document.getElementById('dash-date');
+  if(el) el.textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  // Vendas Hoje
-  const vendasHoje=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data===hoje);
-  const vendasOntem=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data===ontem);
-  document.getElementById('dash-vendas-hoje').textContent=fmt(vendasHoje.reduce((s,v)=>s+v.total,0));
-  document.getElementById('dash-vendas-hoje-count').textContent=vendasHoje.length+' venda'+(vendasHoje.length!==1?'s':'')+' hoje';
-  renderTrend('dash-trend-vendas-hoje',vendasHoje.reduce((s,v)=>s+v.total,0),vendasOntem.reduce((s,v)=>s+v.total,0),'vs ontem');
-
-  // Caixa Atual (saldo acumulado de todo o financeiro: entradas - saídas, desde o início).
-  // Compra "a prazo" não lança saída aqui até o pagamento ao fornecedor ser registrado (ver
-  // registrarCompra/registrarPagamentoFornecedor em 08-compras-fornecedores.js) — antes de
-  // existir Contas a Pagar, TODA compra baixava o caixa na hora, mesmo a prazo, o que fazia
-  // esse número ficar errado (mostrava menos dinheiro disponível do que realmente havia).
+  // ── Parte 1: cards grandes ──
+  const devedores=state.clientes.map(c=>({...c,saldo:getSaldoCliente(c.id)})).filter(c=>c.saldo>0).sort((a,b)=>b.saldo-a.saldo);
+  dashSet('dash-total-fiado',fmt(dashSoma(devedores,c=>c.saldo)));
+  dashSet('dash-fiado-count',devedores.length+' cliente'+(devedores.length!==1?'s':'')+' devendo');
+  // Caixa atual = entradas − saídas (compra a prazo só baixa o caixa quando o pagamento ao fornecedor é registrado)
   const caixaAtual=state.financeiro.reduce((s,f)=>s+(f.tipo==='entrada'?f.valor:-f.valor),0);
-  document.getElementById('dash-caixa-atual').textContent=fmt(Math.abs(caixaAtual));
-  document.getElementById('dash-caixa-sub').textContent=caixaAtual>=0?'dinheiro disponível':'caixa negativo';
+  dashSet('dash-caixa-atual',dashMoedaSinal(caixaAtual));
+  dashSet('dash-caixa-sub',caixaAtual>=0?'dinheiro disponível':'caixa negativo');
+  // Vendas do mês (sem orçamentos) e gastos do mês (saídas do Financeiro)
+  const vendasMes=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data&&v.data.startsWith(mesAtual));
+  const totalVendasMes=dashSoma(vendasMes,v=>v.total);
+  const saidasMes=state.financeiro.filter(f=>f.tipo==='saida'&&f.data&&f.data.startsWith(mesAtual));
+  const gastosMes=dashSoma(saidasMes);
+  dashSet('dash-gastos-mes',fmt(gastosMes));
+  dashSet('dash-gastos-mes-insumos',fmt(dashSoma(saidasMes.filter(dashEhInsumo))));
+  // Lucro = vendas do mês − gastos do mês; % = margem real (lucro ÷ vendas)
+  const lucro=totalVendasMes-gastosMes;
+  const margem=totalVendasMes>0?(lucro/totalVendasMes)*100:0;
+  const elLucro=document.getElementById('dash-lucro');
+  if(elLucro){elLucro.textContent=dashMoedaSinal(lucro);elLucro.style.color=lucro<0?'var(--red)':'';}
+  dashSet('dash-lucro-pct',dashPct(margem));
 
-  // Contas Vencidas e Vencem Hoje (por parcela/unidade de dívida, não por venda —
-  // uma venda parcelada de 3x pode ter 2 parcelas atrasadas e 1 em dia)
+  // ── Acesso rápido: contador de clientes (só o número, 999+) ──
+  const nCli=state.clientes.filter(estaAtivo).length;
+  dashSet('qa-clientes-count',nCli>999?'999+':String(nCli));
+
+  // ── Parte 2: alertas (sem mudança de layout) ──
+  const alertas=getAlertasEstoque();
+  dashSet('dash-estoque-baixo',alertas.total);
+  const orcPend=state.vendas.filter(v=>v.tipo==='orcamento');
+  dashSet('dash-orc-pendentes',orcPend.length);
+  dashSet('dash-orc-sub',orcPend.filter(o=>o.statusOrc==='rascunho').length+' rascunho · '+orcPend.filter(o=>o.statusOrc==='aprovado').length+' aprovado');
+  renderAlertasBanner();
+  // Contas vencidas e vencem hoje (por parcela)
   const flatFiado=getUnidadesFiadoFlat();
   const pendentesFiado=flatFiado.filter(u=>u.status!=='pago'&&u.vencimento);
   const vencidas=pendentesFiado.filter(u=>u.vencimento<hoje);
   const vencemHojeArr=pendentesFiado.filter(u=>u.vencimento===hoje);
-  document.getElementById('dash-contas-vencidas').textContent=vencidas.length;
-  document.getElementById('dash-contas-vencidas-sub').textContent=vencidas.length===1?'1 parcela atrasada':vencidas.length+' parcelas atrasadas';
-  document.getElementById('dash-vencem-hoje').textContent=vencemHojeArr.length;
-  document.getElementById('dash-vencem-hoje-sub').textContent=vencemHojeArr.length===1?'1 cobrança':vencemHojeArr.length+' cobranças';
+  dashSet('dash-contas-vencidas',vencidas.length);
+  dashSet('dash-contas-vencidas-sub',vencidas.length===1?'1 parcela atrasada':vencidas.length+' parcelas atrasadas');
+  dashSet('dash-vencem-hoje',vencemHojeArr.length);
+  dashSet('dash-vencem-hoje-sub',vencemHojeArr.length===1?'1 cobrança':vencemHojeArr.length+' cobranças');
 
-  // Ticket Médio (mês)
-  const ticketMedio=vendasMes.length?vendasMes.reduce((s,v)=>s+v.total,0)/vendasMes.length:0;
-  document.getElementById('dash-ticket-medio').textContent=fmt(ticketMedio);
+  // ── Parte 3: desempenho do dia ──
+  const vendasHoje=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data===hoje);
+  dashSet('dash-vendas-hoje',fmt(dashSoma(vendasHoje,v=>v.total)));
+  dashSet('dash-vendas-hoje-count',vendasHoje.length+' venda'+(vendasHoje.length!==1?'s':''));
+  // Recebido hoje = vendas à vista (vendaId) + pagamentos recebidos (pagamentoId); pequeno = só à vista
+  const entradasHoje=state.financeiro.filter(f=>f.tipo==='entrada'&&f.data===hoje&&(f.vendaId||f.pagamentoId));
+  dashSet('dash-recebido',fmt(dashSoma(entradasHoje)));
+  dashSet('dash-recebido-avista',fmt(dashSoma(entradasHoje.filter(f=>f.vendaId))));
+  // Gastos do dia = saídas de hoje; pequeno = só combustível
+  const saidasHoje=state.financeiro.filter(f=>f.tipo==='saida'&&f.data===hoje);
+  dashSet('dash-gastos-dia',fmt(dashSoma(saidasHoje)));
+  dashSet('dash-gastos-dia-comb',fmt(dashSoma(saidasHoje.filter(dashEhCombustivel))));
 
-  // Top 5 clientes que mais devem (reaproveita "devedores", já ordenado por saldo desc) — v5.39: cartões
+  // ── Meta do mês ──
+  renderMetaVendas(totalVendasMes);
+
+  // ── Listas ──
+  const alertasVenc=flatFiado
+    .filter(u=>u.vencimento && u.status!=='pago')
+    .filter(u=>{const d=diasParaVencimento(u.vencimento,hoje);return d<=3;})
+    .sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
+  const vistosD=new Set();
+  const alertasUnicos=alertasVenc.filter(u=>{if(vistosD.has(u.clienteId))return false;vistosD.add(u.clienteId);return true;});
+  const tb=document.getElementById('dash-devedores');
+  tb.innerHTML=alertasUnicos.length===0
+    ?'<div class="empty-inline" style="padding:20px;text-align:center"><i data-lucide="circle-check"></i><span>Nenhuma cobrança vencida</span></div>'
+    :dashVencimentosHtml(alertasUnicos,hoje);
+
+  // Mais devem (5 primeiros + "ver todos")
   const tbTopDev=document.getElementById('dash-top-devedores');
   if(devedores.length===0){
     tbTopDev.innerHTML='<div class="empty-inline" style="padding:20px;text-align:center"><i data-lucide="circle-check"></i><span>Nenhum cliente devendo</span></div>';
   } else {
-    tbTopDev.innerHTML=devedores.slice(0,5).map(c=>dashCardCliente(c,c.saldo,true)).join('');
+    tbTopDev.innerHTML=devedores.slice(0,5).map(c=>dashCardCliente(c,c.saldo,true)).join('')
+      +(devedores.length>5?`<div class="dash-mais">+ ${devedores.length-5} cliente${devedores.length-5>1?'s':''} — <a onclick="goto('receber')">ver todos</a></div>`:'');
   }
 
-  // Produtos mais vendidos no mês
+  // Mais vendidos no mês (5 primeiros)
   const prodMap={};
-  vendasMes.filter(v=>v.tipo!=='orcamento').forEach(v=>{
+  vendasMes.forEach(v=>{
     (v.itens||[]).forEach(it=>{
       const key=it.avulso?'av_'+nomeItemVenda(it):it.produtoId+'_'+(it.varianteId||0);
       if(!prodMap[key]) prodMap[key]={nome:nomeItemVenda(it),qtd:0,valor:0};
@@ -114,19 +153,7 @@ function renderDashboard(){
     </tr>`).join('');
   }
 
-  // META DE VENDAS
-  renderMetaVendas(vendasMes.reduce((s,v)=>s+v.total,0));
-  // Cobranças vencidas + vencendo em breve (até 3 dias)
-  const alertasVenc=flatFiado
-    .filter(u=>u.vencimento && u.status!=='pago')
-    .filter(u=>{const d=diasParaVencimento(u.vencimento,hoje);return d<=3;})
-    .sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
-  const vistosD=new Set();
-  const alertasUnicos=alertasVenc.filter(u=>{if(vistosD.has(u.clienteId))return false;vistosD.add(u.clienteId);return true;});
-  const tb=document.getElementById('dash-devedores');
-  tb.innerHTML=alertasUnicos.length===0
-    ?'<div class="empty-inline" style="padding:20px;text-align:center"><i data-lucide="circle-check"></i><span>Nenhuma cobrança vencida</span></div>'
-    :dashVencimentosHtml(alertasUnicos,hoje);
+  // Movimentações recentes
   const hist=document.getElementById('dash-historico');
   const items=[
     ...state.vendas.map(v=>({type:'sale',data:v.data,title:'Venda — '+v.itens.map(it=>nomeItemVenda(it)).join(', '),sub:getCliente(v.clienteId).nome+' · '+v.itens.reduce((s,it)=>s+it.qtd,0)+' un.',val:v.total})),
@@ -149,7 +176,7 @@ function salvarMeta(){
   state.metas[mesAtual]=val;
   marcarAlterado();
   salvarMetaDebounced();
-  const vendasMes=state.vendas.filter(v=>v.data.startsWith(mesAtual));
+  const vendasMes=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data.startsWith(mesAtual));
   renderMetaVendas(vendasMes.reduce((s,v)=>s+v.total,0));
 }
 const salvarMetaDebounced=debounce(salvarDados,500);
@@ -182,7 +209,7 @@ function renderMetaVendas(realizado){
     bar.style.width=pct+'%';
     bar.style.background=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--blue)';
   }
-  if(lbl) lbl.textContent=fmt(realizado)+' / '+(meta>0?fmt(meta):'sem meta definida');
+  if(lbl) lbl.textContent=fmt(realizado)+' de '+(meta>0?fmt(meta):'— defina uma meta acima');
   if(pctEl){
     pctEl.textContent=meta>0?pct.toFixed(1)+'%':'—';
     pctEl.style.color=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--navy)';
@@ -207,12 +234,12 @@ function dashBotoesCliente(id,tel,podeReceber){
   return `<div class="dash-cli-acoes">${podeReceber?`<button class="btn btn-green dash-btn" onclick="abrirPagamento(${id})"><i data-lucide="banknote" class="ic"></i> Receber</button>`:''}${tel?`<button class="btn btn-whatsapp dash-btn" onclick="cobrarWhatsapp(${id})"><i data-lucide="message-circle" class="ic"></i> Cobrar</button>`:''}</div>`;
 }
 function dashCardCliente(c,valor,podeReceber){
-  return `<div class="dash-cli"><div class="dash-cli-top"><strong class="dash-cli-nome">${escapeHtml(c.nome)}</strong><span class="debt-amount">${fmt(valor)}</span></div>${dashBotoesCliente(c.id,c.tel,podeReceber)}</div>`;
+  return `<div class="dash-cli dash-cli-row"><strong class="dash-cli-nome">${escapeHtml(c.nome)}</strong><span class="debt-amount">${fmt(valor)}</span>${dashBotoesCliente(c.id,c.tel,podeReceber)}</div>`;
 }
-// dias = diasParaVencimento (negativo = atraso). Faixas: 1–7 dias, 8–30 dias, mais de 30 dias.
+// dias = diasParaVencimento (negativo = atraso). Faixas: 1–15 dias (amarelo), 16–60 (laranja), mais de 60 (vermelho).
 function faixaVencimento(dias){
-  if(dias<-30) return {tag:'Crítico',cls:'badge-red',cor:'var(--red)'};
-  if(dias<-7) return {tag:'Atenção',cls:'badge-orange',cor:'#d35400'};
+  if(dias<-60) return {tag:'Crítico',cls:'badge-red',cor:'var(--red)'};
+  if(dias<-15) return {tag:'Atenção',cls:'badge-orange',cor:'#d35400'};
   if(dias<0) return {tag:'Recente',cls:'badge-yellow',cor:'var(--yellow)'};
   return {tag:'A vencer',cls:'badge-blue',cor:'var(--blue)'};
 }
@@ -224,7 +251,7 @@ function tituloVencimento(dias){
 }
 // Agrupa por data de vencimento (lista já vem em ordem de data, um item por cliente).
 function dashVencimentosHtml(itens,hoje){
-  const MAX=8; // máximo de clientes mostrados no card
+  const MAX=5; // máximo de clientes mostrados no card
   const grupos=[];
   itens.forEach(u=>{
     let g=grupos.find(x=>x.venc===u.vencimento);

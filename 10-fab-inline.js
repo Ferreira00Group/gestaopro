@@ -2,6 +2,7 @@
 function toggleFabMenu(force){
   var wrap=document.getElementById('fab-wrap');
   var backdrop=document.getElementById('fab-backdrop');
+  if(!wrap||!backdrop) return; // botão flutuante removido da home (v5.50.0)
   var open = typeof force==='boolean' ? force : !wrap.classList.contains('open');
   wrap.classList.toggle('open', open);
   backdrop.classList.toggle('open', open);

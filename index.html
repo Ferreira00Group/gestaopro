@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.49.0">
+<link rel="stylesheet" href="styles.css?v=5.50.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -155,13 +155,42 @@
     <div class="page-header-actions">
     </div>
   </div>
-  <div class="dash-grid2" id="dash-cards-grid" style="margin-bottom:10px;margin-top:4px">
-    <div class="card-hero red" style="cursor:pointer" onclick="goto('receber')" title="Ver contas a receber"><div class="label">Total a Receber</div><div class="value debt-pulse" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
-    <div class="card-hero green" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Recebido Hoje</div><div class="value" id="dash-recebido">R$ 0</div><div class="sub"><span id="dash-recebido-sub">valor recebido hoje</span> <span id="dash-trend-recebido"></span></div></div>
-    <div class="card-hero blue" style="cursor:pointer" onclick="goto('vendas')" title="Ver vendas"><div class="label">Vendas Hoje</div><div class="value" id="dash-vendas-hoje">R$ 0</div><div class="sub"><span id="dash-vendas-hoje-count">total vendido no dia</span> <span id="dash-trend-vendas-hoje"></span></div></div>
-    <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
+  <!-- META DO MÊS (barra no topo) -->
+  <div class="table-card" style="margin-bottom:10px;padding:10px 14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <strong style="font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px"><i data-lucide="target" class="ic" style="color:var(--gold)"></i>Meta do Mês</strong>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span style="font-size:11px;color:var(--muted)">R$</span>
+        <input type="number" id="dash-meta-input" min="0" step="100" placeholder="Definir meta"
+          style="width:96px;padding:4px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;font-weight:700;outline:none;transition:border .15s"
+          oninput="salvarMeta()" onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor='var(--border)';salvarMetaAgora()">
+      </div>
+      <div style="flex:1;min-width:110px;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+        <div id="dash-meta-bar" style="height:100%;border-radius:4px;background:var(--green);transition:width .5s ease,background .3s;width:0%"></div>
+      </div>
+      <span id="dash-meta-pct" style="font-size:13.5px;font-weight:800;color:var(--navy);white-space:nowrap">0%</span>
+      <span id="dash-meta-label" style="font-size:10.5px;color:var(--muted);white-space:nowrap;width:100%">R$ 0,00 de sem meta definida</span>
+    </div>
   </div>
 
+  <!-- PARTE 1: cards grandes -->
+  <div class="dash-grid2" id="dash-cards-grid" style="margin-bottom:10px">
+    <div class="card-hero red" style="cursor:pointer" onclick="goto('receber')" title="Ver contas a receber"><div class="label">Total a Receber</div><div class="value debt-pulse" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
+    <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
+    <div class="card-hero blue" style="cursor:pointer" onclick="goto('financeiro')" title="Gastos do mês"><div class="label">Gastos do Mês</div><div class="value" id="dash-gastos-mes">R$ 0</div><div class="sub" id="dash-gastos-mes-insumos" title="Parte do gasto que foi de insumos / matéria-prima">R$ 0,00</div></div>
+    <div class="card-hero green" style="cursor:pointer" onclick="goto('relatorio')" title="Lucro do mês (vendas − gastos)"><div class="label">Lucro</div><div class="value" id="dash-lucro">R$ 0</div><div class="sub" id="dash-lucro-pct" title="Margem real: lucro ÷ vendas do mês">0%</div></div>
+  </div>
+
+  <!-- ACESSO RÁPIDO -->
+  <div class="dash-section-title"><i data-lucide="zap" class="ic"></i>Acesso rápido</div>
+  <div class="qa-grid">
+    <button type="button" class="qa-btn" onclick="abrirMenuNovaVenda()"><span class="qa-ic"><i data-lucide="circle-plus"></i></span><span class="qa-lb">Nova venda</span></button>
+    <button type="button" class="qa-btn" onclick="openModal('modal-cliente')"><span class="qa-ic"><i data-lucide="user-plus"></i><span class="qa-count" id="qa-clientes-count" title="Clientes cadastrados">0</span></span><span class="qa-lb">Novo cliente</span></button>
+    <button type="button" class="qa-btn" onclick="abrirNovoGasto()"><span class="qa-ic"><i data-lucide="receipt"></i></span><span class="qa-lb">Novo gasto</span></button>
+    <button type="button" class="qa-btn" onclick="goto('receber')"><span class="qa-ic"><i data-lucide="wallet"></i></span><span class="qa-lb">Receber</span></button>
+  </div>
+
+  <!-- PARTE 2: alertas (sem mudança) -->
   <div class="dash-section-title"><i data-lucide="triangle-alert" class="ic"></i>Alertas</div>
   <div class="dash-grid2" id="dash-cards-grid-2" style="margin-bottom:10px">
     <div class="card-compacto alerta" style="cursor:pointer" onclick="goto('receber')" title="Ver contas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
@@ -170,29 +199,12 @@
     <div class="card-compacto" style="cursor:pointer" onclick="filterVendaTipo('orcamento');goto('vendas')" title="Ver orçamentos"><div class="icon"><i data-lucide="clipboard-list"></i></div><div class="info"><span class="label">Orçamentos</span><span class="value" id="dash-orc-pendentes">0</span><span class="sub" id="dash-orc-sub">aguardando aprovação</span></div></div>
   </div>
 
-  <div class="dash-section-title"><i data-lucide="activity" class="ic"></i>Desempenho do mês</div>
+  <!-- PARTE 3: desempenho do dia -->
+  <div class="dash-section-title"><i data-lucide="activity" class="ic"></i>Desempenho do dia</div>
   <div class="scroll-pilulas" id="dash-cards-grid-3" style="margin-bottom:10px">
-    <div class="pilula" onclick="goto('vendas')" title="Ver vendas"><span class="label">Vendas Mês</span><span class="value" id="dash-vendas-mes">R$ 0</span><span class="sub"><span id="dash-vendas-count">0 pedidos</span> <span id="dash-trend-vendas-mes"></span></span></div>
-    <div class="pilula" title="Ticket médio do mês"><span class="label">Ticket Médio</span><span class="value" id="dash-ticket-medio">R$ 0</span><span class="sub">média por venda</span></div>
-    <div class="pilula" onclick="gotoFornecedores()" title="Ver compras"><span class="label">Compras Mês</span><span class="value" id="dash-compras-mes">R$ 0</span><span class="sub"><span id="dash-compras-mes-sub">0 pedidos</span> <span id="dash-trend-compras-mes"></span></span></div>
-  </div>
-
-  <!-- META DE VENDAS (compacta, uma linha) -->
-  <div class="table-card" style="margin-bottom:10px;padding:10px 14px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <strong style="font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px"><i data-lucide="target" class="ic" style="color:var(--gold)"></i>Meta do Mês</strong>
-      <div style="display:flex;align-items:center;gap:5px">
-        <span style="font-size:11px;color:var(--muted)">R$</span>
-        <input type="number" id="dash-meta-input" min="0" step="100" placeholder="0,00"
-          style="width:88px;padding:4px 7px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;font-weight:700;outline:none;transition:border .15s"
-          oninput="salvarMeta()" onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor='var(--border)';salvarMetaAgora()">
-      </div>
-      <div style="flex:1;min-width:110px;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-        <div id="dash-meta-bar" style="height:100%;border-radius:4px;background:var(--green);transition:width .5s ease,background .3s;width:0%"></div>
-      </div>
-      <span id="dash-meta-pct" style="font-size:13.5px;font-weight:800;color:var(--navy);white-space:nowrap">0%</span>
-      <span id="dash-meta-label" style="font-size:10.5px;color:var(--muted);white-space:nowrap;width:100%">R$ 0,00 / R$ 0,00</span>
-    </div>
+    <div class="pilula" onclick="goto('vendas')" title="Ver vendas"><span class="label">Vendas do dia</span><span class="value" id="dash-vendas-hoje">R$ 0</span><span class="sub" id="dash-vendas-hoje-count">0 vendas</span></div>
+    <div class="pilula" onclick="goto('financeiro')" title="Recebido hoje (pequeno: parte das vendas à vista)"><span class="label">Recebido hoje</span><span class="value" id="dash-recebido" style="color:var(--green)">R$ 0</span><span class="sub" id="dash-recebido-avista" title="Parte recebida em vendas à vista">R$ 0,00</span></div>
+    <div class="pilula" onclick="goto('financeiro')" title="Gastos de hoje (pequeno: gasolina)"><span class="label">Gastos do dia</span><span class="value" id="dash-gastos-dia" style="color:var(--red)">R$ 0</span><span class="sub" id="dash-gastos-dia-comb" title="Parte do gasto que foi de combustível">R$ 0,00</span></div>
   </div>
 
   <!-- ABAS: Cobranças/Vencimentos ⇄ Últimas Movimentações -->
@@ -866,18 +878,13 @@
 
 </div><!-- /main -->
 
-<!-- BOTÃO FLUTUANTE: Nova Venda -->
-<div id="fab-wrap">
-  <div id="fab-menu">
-    <button class="fab-mini" onclick="fabAction('compra')"><i data-lucide="package" class="ic"></i> Compra</button>
-    <button class="fab-mini" onclick="fabAction('orcamento')"><i data-lucide="file-text" class="ic"></i> Orçamento</button>
-    <button class="fab-mini" onclick="fabAction('cliente')"><i data-lucide="user" class="ic"></i> Cliente</button>
-    <button class="fab-mini" onclick="fabAction('receber')"><i data-lucide="wallet" class="ic"></i> Receber</button>
-    <button class="fab-mini" onclick="fabAction('venda')"><i data-lucide="shopping-cart" class="ic"></i> Nova Venda</button>
-  </div>
-  <button id="fab-nova-venda" onclick="toggleFabMenu()" title="Ações rápidas"><i data-lucide="plus" class="ic"></i></button>
+<!-- MENU "NOVA VENDA" (Acesso rápido) -->
+<div id="qa-sheet-backdrop" onclick="fecharMenuNovaVenda()"></div>
+<div id="qa-sheet">
+  <div class="qa-sheet-title">Nova venda</div>
+  <button type="button" class="qa-sheet-op" onclick="novaVendaRapida()"><i data-lucide="zap"></i><span><strong>Venda rápida</strong><small>Salva como orçamento · completo depois</small></span></button>
+  <button type="button" class="qa-sheet-op" onclick="novaVendaCompleta()"><i data-lucide="file-pen-line"></i><span><strong>Cadastro completo</strong><small>Venda com todos os dados</small></span></button>
 </div>
-<div id="fab-backdrop" onclick="toggleFabMenu(false)"></div>
 
 <!-- MODALS -->
 <!-- CLIENTE -->
@@ -2020,29 +2027,29 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.49.0"></script>
-<script src="00-core.js?v=5.49.0"></script>
-<script src="01-ui-nav.js?v=5.49.0"></script>
-<script src="02-dashboard.js?v=5.49.0"></script>
-<script src="03-clientes.js?v=5.49.0"></script>
-<script src="04-vendas.js?v=5.49.0"></script>
-<script src="04b-pix-extrato.js?v=5.49.0"></script>
-<script src="11b-meu-dia.js?v=5.49.0"></script>
-<script src="11c-promessa-reneg.js?v=5.49.0"></script>
-<script src="11d-aprovar-lote.js?v=5.49.0"></script>
-<script src="05-producao.js?v=5.49.0"></script>
-<script src="06-estoque.js?v=5.49.0"></script>
-<script src="07-precificacao.js?v=5.49.0"></script>
-<script src="08-compras-fornecedores.js?v=5.49.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.49.0"></script>
-<script src="10-fab-inline.js?v=5.49.0"></script>
-<script src="10b-planejamento.js?v=5.49.0"></script>
-<script src="13-crm.js?v=5.49.0"></script>
-<script src="14-relacionamento.js?v=5.49.0"></script>
-<script src="15-cliente360.js?v=5.49.0"></script>
-<script src="16-automacoes.js?v=5.49.0"></script>
-<script src="12-drive-backup.js?v=5.49.0"></script>
-<script src="11-app-init.js?v=5.49.0"></script>
+<script src="00a-config.js?v=5.50.0"></script>
+<script src="00-core.js?v=5.50.0"></script>
+<script src="01-ui-nav.js?v=5.50.0"></script>
+<script src="02-dashboard.js?v=5.50.0"></script>
+<script src="03-clientes.js?v=5.50.0"></script>
+<script src="04-vendas.js?v=5.50.0"></script>
+<script src="04b-pix-extrato.js?v=5.50.0"></script>
+<script src="11b-meu-dia.js?v=5.50.0"></script>
+<script src="11c-promessa-reneg.js?v=5.50.0"></script>
+<script src="11d-aprovar-lote.js?v=5.50.0"></script>
+<script src="05-producao.js?v=5.50.0"></script>
+<script src="06-estoque.js?v=5.50.0"></script>
+<script src="07-precificacao.js?v=5.50.0"></script>
+<script src="08-compras-fornecedores.js?v=5.50.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.50.0"></script>
+<script src="10-fab-inline.js?v=5.50.0"></script>
+<script src="10b-planejamento.js?v=5.50.0"></script>
+<script src="13-crm.js?v=5.50.0"></script>
+<script src="14-relacionamento.js?v=5.50.0"></script>
+<script src="15-cliente360.js?v=5.50.0"></script>
+<script src="16-automacoes.js?v=5.50.0"></script>
+<script src="12-drive-backup.js?v=5.50.0"></script>
+<script src="11-app-init.js?v=5.50.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
