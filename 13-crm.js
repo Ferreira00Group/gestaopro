@@ -4,7 +4,10 @@
 //   state.crmLeads       [{id,nome,tel,email,origem,status,obs,criadoEm,clienteId?}]
 //     status: novo | contato | qualificado | desqualificado | convertido
 //   state.crmNegocios    [{id,titulo,funilId,clienteId?,leadId?,valor,itens:[{produtoId,varianteId,nome,qtd,preco}],etapa,
-//                          proxAcao:{tipo,titulo,data}|null,previsao,motivoPerda,obs,criadoEm,fechadoEm?,vendaGerada?}]
+//                          proxAcao:{tipo,titulo,data}|null,previsao,motivoPerda,obs,criadoEm,fechadoEm?,vendaGerada?,
+//                          origem,historico:[{etapa,data,aprox?}]}]   (v5.48)
+//     origem: copiada da origem do lead no momento em que o negócio é criado (sobrevive à conversão do lead em cliente).
+//     historico: uma linha por entrada em etapa (inclui ganho/perdido), data YYYY-MM-DD; aprox:true = reconstruído na migração.
 //   state.crmAtividades  [{id,tipo,titulo,data,hora,concluida,clienteId?,leadId?,negocioId?}]
 // Regras: negócio aberto sempre tem próxima ação (com data); valor ponderado = valor × probabilidade da etapa;
 // com itens do catálogo, o valor é a soma dos itens e a venda gerada nasce com esses itens.
@@ -32,6 +35,21 @@ function crmGaranteEstado(){
   ['crmFunis','crmEtapas'].forEach(k=>{ if(!(state.nextId[k]>0)) state.nextId[k]=(k==='crmFunis'?state.crmFunis.reduce((m,f)=>Math.max(m,f.id||0),0)+1:1); });
   if(!crmFunil(state.crm_funil_id)) state.crm_funil_id=state.crmFunis[0].id;
   state.crmNegocios.forEach(n=>{ if(!n.funilId) n.funilId=state.crmFunis[0].id; if(!Array.isArray(n.itens)) n.itens=[]; });
+}
+// v5.48 — origem do lead levada para o negócio. Depois que o lead vira cliente o negócio perde o leadId,
+// então a origem é copiada na criação; se só há cliente, procura o lead que originou aquele cliente.
+function crmOrigemDe(clienteId,leadId){
+  let l=leadId?state.crmLeads.find(l=>l.id==leadId):null;
+  if(!l&&clienteId) l=state.crmLeads.find(l=>l.clienteId==clienteId);
+  return (l&&l.origem)||'';
+}
+// v5.48 — registra a entrada do negócio numa etapa (não duplica se já é a última do histórico).
+function crmRegistraEtapa(n,etapa){
+  if(!Array.isArray(n.historico)) n.historico=[];
+  if(!n.historico.length&&n.etapa&&n.etapa!==etapa) n.historico.push({etapa:n.etapa,data:n.criadoEm||today(),aprox:true});
+  const ult=n.historico[n.historico.length-1];
+  if(ult&&ult.etapa===etapa) return;
+  n.historico.push({etapa,data:today()});
 }
 function crmNum(v){ return Math.max(0,parseFloat(String(v==null?'':v).replace(',','.'))||0); }
 function crmNomeRef(o){
@@ -369,8 +387,13 @@ function crmSalvarNegocio(){
     previsao:document.getElementById('crm-neg-prev').value||'',obs:document.getElementById('crm-neg-obs').value.trim(),
     motivoPerda:etapa==='perdido'?document.getElementById('crm-neg-motivo').value.trim():''};
   let n;
-  if(eid){ n=state.crmNegocios.find(n=>n.id==eid); Object.assign(n,dados); }
-  else { n={id:nextId('crmNegocios'),criadoEm:today(),etapa:crmEtapasFunil(funilId)[0].id,...dados}; state.crmNegocios.push(n); }
+  if(eid){
+    n=state.crmNegocios.find(n=>n.id==eid);
+    const refMudou=String(n.clienteId||'')!==String(ref.clienteId||'')||String(n.leadId||'')!==String(ref.leadId||'');
+    Object.assign(n,dados);
+    if(!n.origem||refMudou) n.origem=crmOrigemDe(n.clienteId,n.leadId);
+  }
+  else { n={id:nextId('crmNegocios'),criadoEm:today(),etapa:crmEtapasFunil(funilId)[0].id,origem:crmOrigemDe(ref.clienteId,ref.leadId),historico:[{etapa,data:today()}],...dados}; state.crmNegocios.push(n); }
   state.crm_funil_id=funilId;
   marcarAlterado();
   closeModal('modal-crm-negocio');
@@ -383,6 +406,7 @@ function crmMover(id,etapa){
   crmAplicarEtapa(n,etapa);
 }
 function crmAplicarEtapa(n,etapa,vindoDoModal){
+  crmRegistraEtapa(n,etapa);
   n.etapa=etapa;
   if(crmFechada(etapa)){ n.fechadoEm=n.fechadoEm||today(); n.proxAcao=null; } else n.fechadoEm='';
   if(etapa!=='perdido') n.motivoPerda='';
@@ -609,7 +633,7 @@ function crmConverterLeadSilencioso(leadId){
     l.clienteId=cid;
   }
   l.status='convertido';
-  state.crmNegocios.forEach(n=>{ if(n.leadId===leadId){ n.clienteId=l.clienteId; n.leadId=null; } });
+  state.crmNegocios.forEach(n=>{ if(n.leadId===leadId){ if(!n.origem) n.origem=l.origem||''; n.clienteId=l.clienteId; n.leadId=null; } });
   state.crmAtividades.forEach(a=>{ if(a.leadId===leadId){ a.clienteId=l.clienteId; a.leadId=null; } });
   marcarAlterado();
   return l.clienteId;

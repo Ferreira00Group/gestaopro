@@ -109,6 +109,7 @@ const DEFAULT_STATE = {
   crmModelos:crmModelosSemente(),
   crmFunis:crmFunisPadrao(),
   crm_funil_id:1,
+  automacaoDisparos:{},
   crmLeads:[],
   crmNegocios:[],
   crmAtividades:[],
@@ -224,8 +225,9 @@ let _avisouFalhaGravacao = false;
 //   16 → state.encargos (multa/juros de atraso, desligado por padrão) — v5.37.
 //   17 → CRM: state.crmLeads / crmNegocios / crmAtividades (+ nextId) — v5.44.
 //   18 → CRM: state.crmNotas, state.crmModelos (modelos de mensagem, com 5 padrões) e tags nos clientes — v5.46.
-//   19 → (versão atual) CRM: state.crmFunis (vários funis, etapas com probabilidade); negócios ganham funilId, itens e proxAcao — v5.47.
-const SCHEMA_VERSION = 19;
+//   19 → CRM: state.crmFunis (vários funis, etapas com probabilidade); negócios ganham funilId, itens e proxAcao — v5.47.
+//   20 → (versão atual) negócios ganham historico:[{etapa,data}] e origem; state.automacaoDisparos {chave:data} — v5.48.
+const SCHEMA_VERSION = 20;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -364,6 +366,20 @@ const MIGRATIONS = {
     if(!d.crm_funil_id) d.crm_funil_id = d.crmFunis[0].id;
     return d;
   },
+  // v19 → v20: histórico de etapas e origem nos negócios; registro de disparos de automação (v5.48)
+  // Negócios antigos não têm como reconstruir o caminho: ganham uma linha só, com a etapa atual (aprox:true).
+  19: (d) => {
+    const leads = d.crmLeads || [];
+    (d.crmNegocios||[]).forEach(n=>{
+      if(!Array.isArray(n.historico) || !n.historico.length) n.historico = [{etapa:n.etapa, data:(n.fechadoEm||n.criadoEm||''), aprox:true}];
+      if(n.origem==null){
+        const l = (n.leadId && leads.find(l=>l.id==n.leadId)) || (n.clienteId && leads.find(l=>l.clienteId==n.clienteId)) || null;
+        n.origem = (l && l.origem) || '';
+      }
+    });
+    if(!d.automacaoDisparos || typeof d.automacaoDisparos!=='object' || Array.isArray(d.automacaoDisparos)) d.automacaoDisparos = {};
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -385,7 +401,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array'};
+  fichas:'object',nextId:'object',automacaoDisparos:'object',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){
@@ -782,6 +798,37 @@ function calcularCustoFicha(produtoId,varianteId,qtd=1){
   return ficha.reduce((s,f)=>s+((f.qtd/rendimento)*qtd*custoItemFicha(f.tipo||'mp',f.mpId)),0);
 }
 function nextId(k){return state.nextId[k]++}
+
+// ============ CHAVE DE DISPARO DE AUTOMAÇÃO (v5.48) ============
+// As automações só rodam com o app aberto, então a cada abertura a mesma regra reavaliaria os mesmos clientes.
+// Cada disparo tem uma chave "regra|clienteId|data" guardada em state.automacaoDisparos ({chave: dia em que disparou}),
+// que entra em backup/Drive. Uso:
+//   autoDisparar('fiado-vencido', cliente.id, venda.vencimento, ()=>{ /* cria o alerta/atividade aqui */ });
+// "data" é a data que identifica a ocorrência (vencimento, dia da regra...); sem ela vale o dia de hoje.
+// Nomes de regra não podem conter "|".
+function autoChave(regra,clienteId,data){ return [regra,(clienteId==null?'-':clienteId),(data||today())].join('|'); }
+function autoMapaDisparos(){
+  if(!state.automacaoDisparos||typeof state.automacaoDisparos!=='object'||Array.isArray(state.automacaoDisparos)) state.automacaoDisparos={};
+  return state.automacaoDisparos;
+}
+function autoJaDisparou(regra,clienteId,data){ return !!autoMapaDisparos()[autoChave(regra,clienteId,data)]; }
+// Devolve true se disparou agora, false se já tinha disparado (ou se criar() falhou — aí a chave é desfeita).
+function autoDisparar(regra,clienteId,data,criar){
+  const mapa=autoMapaDisparos(), chave=autoChave(regra,clienteId,data);
+  if(mapa[chave]) return false;
+  mapa[chave]=today();
+  try{ criar(chave); }
+  catch(e){ delete mapa[chave]; console.warn('[GestãoPRO] Automação falhou ('+chave+'):',e); return false; }
+  marcarAlterado();
+  return true;
+}
+// Remove chaves de disparos antigos (por padrão > 120 dias) para o registro não crescer sem fim.
+function autoLimparDisparos(dias){
+  const mapa=autoMapaDisparos(), lim=new Date(Date.now()-(dias||120)*86400000).toISOString().slice(0,10);
+  let n=0; Object.keys(mapa).forEach(k=>{ if(String(mapa[k])<lim){ delete mapa[k]; n++; } });
+  if(n) marcarAlterado();
+  return n;
+}
 function debounce(fn,delay=220){
   let t=null;
   return function(...args){clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),delay);};
