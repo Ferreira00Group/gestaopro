@@ -773,3 +773,24 @@ function render(page){
   document.addEventListener('touchend',fim);
   document.addEventListener('touchcancel',fim);
 })();
+
+
+// v5.50.2 — campo fora de modal (busca, meta) fica visível acima do teclado e força repintura do topo
+(function(){
+  const vv=window.visualViewport; if(!vv) return;
+  const repintar=()=>{
+    const els=[document.getElementById('topbar'),document.getElementById('busca-bar-wrap')];
+    els.forEach(e=>{if(e){e.style.display='none';void e.offsetHeight;e.style.display='';}});
+  };
+  let t;
+  vv.addEventListener('resize',()=>{
+    clearTimeout(t);
+    t=setTimeout(()=>{
+      repintar();
+      const el=document.activeElement;
+      if(el&&/^(INPUT|TEXTAREA)$/.test(el.tagName)&&!(el.closest&&el.closest('.modal'))&&el.id!=='busca-global-input'){
+        el.scrollIntoView({block:'center',behavior:'smooth'});
+      }
+    },120);
+  });
+})();
