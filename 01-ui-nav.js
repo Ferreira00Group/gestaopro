@@ -726,16 +726,19 @@ function render(page){
   const vv=window.visualViewport;
   if(!vv) return;
   const r=document.documentElement;
+  let _kb=null,_vvh=null,_raf=0;
   const ajustar=()=>{
-    r.style.setProperty('--kb',Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop))+'px');
-    r.style.setProperty('--vvh',Math.round(vv.height)+'px');
+    if(_raf) return;
+    _raf=requestAnimationFrame(()=>{
+      _raf=0;
+      const kb=Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop));
+      const vh=Math.round(vv.height);
+      if(kb!==_kb){_kb=kb;r.style.setProperty('--kb',kb+'px');}
+      if(vh!==_vvh){_vvh=vh;r.style.setProperty('--vvh',vh+'px');}
+    });
   };
   vv.addEventListener('resize',()=>{
     ajustar();
-    const el=document.activeElement;
-    if(el&&el.closest&&el.closest('.modal')&&/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){
-      setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),80); // campo em foco fica visível
-    }
   });
   vv.addEventListener('scroll',ajustar);
   ajustar();
@@ -775,22 +778,41 @@ function render(page){
 })();
 
 
-// v5.50.2 — campo fora de modal (busca, meta) fica visível acima do teclado e força repintura do topo
+// v5.51.2 — teclado aberto: campo em foco visível + força re-rasterização quando o teclado termina de
+// abrir/fechar (Chrome Android às vezes deixa áreas em branco/pretas na tela depois do resize).
 (function(){
   const vv=window.visualViewport; if(!vv) return;
-  const repintar=()=>{
-    const els=[document.getElementById('topbar'),document.getElementById('busca-bar-wrap')];
-    els.forEach(e=>{if(e){e.style.display='none';void e.offsetHeight;e.style.display='';}});
-  };
   let t;
-  vv.addEventListener('resize',()=>{
+  const repintar=()=>{
+    const alvos=[document.querySelector('.modal-overlay.open .modal'),document.getElementById('main')].filter(Boolean);
+    alvos.forEach(e=>{e.style.opacity='0.999';});
+    requestAnimationFrame(()=>requestAnimationFrame(()=>alvos.forEach(e=>{e.style.opacity='';})));
+  };
+  const aposTeclado=()=>{
     clearTimeout(t);
     t=setTimeout(()=>{
       repintar();
       const el=document.activeElement;
-      if(el&&/^(INPUT|TEXTAREA)$/.test(el.tagName)&&!(el.closest&&el.closest('.modal'))&&el.id!=='busca-global-input'){
-        el.scrollIntoView({block:'center',behavior:'smooth'});
+      if(el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)&&el.id!=='busca-global-input'){
+        el.scrollIntoView({block:'center',behavior:'auto'});
       }
-    },120);
-  });
+    },250);
+  };
+  vv.addEventListener('resize',aposTeclado);
+  document.addEventListener('focusout',()=>setTimeout(aposTeclado,50));
+})();
+
+// Desliga o autopreenchimento do Android/Chrome em todos os campos (a faixa de chaves/cartão/endereço
+// acima do teclado muda a altura do teclado em duas etapas e agrava o problema de repintura).
+(function(){
+  const marcar=root=>{
+    (root.querySelectorAll?root.querySelectorAll('input:not([type=password]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select'):[]).forEach(e=>{
+      if(!e.hasAttribute('autocomplete')) e.setAttribute('autocomplete','off');
+    });
+  };
+  const ini=()=>{
+    marcar(document);
+    new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType===1){if(n.matches&&n.matches('input,textarea,select')&&!n.hasAttribute('autocomplete'))n.setAttribute('autocomplete','off');marcar(n);}}))).observe(document.body,{childList:true,subtree:true});
+  };
+  if(document.body) ini(); else document.addEventListener('DOMContentLoaded',ini);
 })();
