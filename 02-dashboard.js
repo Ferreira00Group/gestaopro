@@ -62,7 +62,7 @@ function renderDashboard(){
   // Vendas do mês (sem orçamentos) e gastos do mês (saídas do Financeiro)
   const vendasMes=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data&&v.data.startsWith(mesAtual));
   const totalVendasMes=dashSoma(vendasMes,v=>v.total);
-  const saidasMes=state.financeiro.filter(f=>f.tipo==='saida'&&f.data&&f.data.startsWith(mesAtual));
+  const saidasMes=state.financeiro.filter(f=>f.tipo==='saida'&&!f.retirada&&f.data&&f.data.startsWith(mesAtual));
   const gastosMes=dashSoma(saidasMes);
   dashSet('dash-gastos-mes',fmt(gastosMes));
   dashSet('dash-gastos-mes-insumos',fmt(dashSoma(saidasMes.filter(dashEhInsumo))));
@@ -103,7 +103,7 @@ function renderDashboard(){
   dashSet('dash-recebido',fmt(dashSoma(entradasHoje)));
   dashSet('dash-recebido-avista',fmt(dashSoma(entradasHoje.filter(f=>f.vendaId))));
   // Gastos do dia = saídas de hoje; pequeno = só combustível
-  const saidasHoje=state.financeiro.filter(f=>f.tipo==='saida'&&f.data===hoje);
+  const saidasHoje=state.financeiro.filter(f=>f.tipo==='saida'&&!f.retirada&&f.data===hoje);
   dashSet('dash-gastos-dia',fmt(dashSoma(saidasHoje)));
   dashSet('dash-gastos-dia-comb',fmt(dashSoma(saidasHoje.filter(dashEhCombustivel))));
 

@@ -3,7 +3,7 @@
 // Sugestões: algumas prontas + o que já foi usado antes (evita "Gasolina" x "gasolina" x "combustível").
 const CATEGORIAS_DESPESA_SUGERIDAS=['Gasolina','Manutenção Veículo','Aluguel','Internet/Telefone','Embalagens','Marketing/Aquisição','Outros'];
 function getCategoriasDespesaExistentes(){
-  const usadas=state.financeiro.filter(f=>f.tipo==='saida'&&f.categoria).map(f=>f.categoria.trim());
+  const usadas=state.financeiro.filter(f=>f.tipo==='saida'&&!f.retirada&&f.categoria).map(f=>f.categoria.trim());
   const vistas=new Set();
   const resultado=[];
   [...CATEGORIAS_DESPESA_SUGERIDAS,...usadas].forEach(c=>{
@@ -20,6 +20,7 @@ function popularCategoriasDespesaLista(){
 function toggleCategoriaLanc(){
   const tipo=document.getElementById('lanc-tipo').value;
   document.getElementById('lanc-categoria-wrap').style.display=tipo==='saida'?'block':'none';
+  const _d=document.getElementById('lanc-desc'); if(_d&&tipo==='retirada'&&!_d.value) _d.value='Retirada do dono';
 }
 function renderFinanceiro(){
   const mesEl=document.getElementById('fin-filtro-mes');
@@ -59,18 +60,21 @@ function renderFinanceiro(){
 }
 function salvarLancamento(){
   const eid=document.getElementById('lanc-edit-id').value;
-  const tipo=document.getElementById('lanc-tipo').value;
+  const tipoSel=document.getElementById('lanc-tipo').value;
+  const retirada=tipoSel==='retirada';
+  const tipo=retirada?'saida':tipoSel;
   const desc=document.getElementById('lanc-desc').value.trim();
   const valor=parseFloat(document.getElementById('lanc-valor').value);
   const data=document.getElementById('lanc-data').value||today();
-  const categoria=tipo==='saida'?(document.getElementById('lanc-categoria').value.trim()||'Outros'):null;
+  const categoria=retirada?'Retirada do dono':tipo==='saida'?(document.getElementById('lanc-categoria').value.trim()||'Outros'):null;
   if(!desc||!valor){showToast('Preencha todos os campos','red');return;}
   if(eid){
     const f=state.financeiro.find(f=>f.id==eid);
     f.tipo=tipo;f.desc=desc;f.valor=valor;f.data=data;f.categoria=categoria;
+    if(retirada) f.retirada=true; else delete f.retirada;
     showToast('Lançamento atualizado','green');
   } else {
-    state.financeiro.push({id:nextId('financeiro'),tipo,desc,valor,data,categoria});
+    state.financeiro.push({id:nextId('financeiro'),tipo,desc,valor,data,categoria,...(retirada?{retirada:true}:{})});
     showToast('Lançamento registrado','green');
   }
   closeModal('modal-lancamento');marcarAlterado();renderFinanceiro();setTimeout(renderChartFinanceiro,50);
@@ -86,7 +90,7 @@ function editarLancamento(id){
   if(f && f.pagamentoFornecedorId){showToast('Este lançamento vem de um pagamento a fornecedor. Exclua-o (isso desfaz o pagamento) e registre de novo em Contas a Pagar, se precisar corrigir.','red');return;}
   document.getElementById('lanc-edit-id').value=id;
   document.getElementById('modal-lanc-title').textContent='Editar Lançamento';
-  document.getElementById('lanc-tipo').value=f.tipo;
+  document.getElementById('lanc-tipo').value=f.retirada?'retirada':f.tipo;
   document.getElementById('lanc-desc').value=f.desc;
   document.getElementById('lanc-valor').value=f.valor;
   document.getElementById('lanc-data').value=f.data;
@@ -151,7 +155,7 @@ function gerarRelatorio(){
   const finPeriodo=state.financeiro.filter(f=>f.data>=inicio&&f.data<=fim);
   const pagPeriodo=state.pagamentos.filter(p=>p.data>=inicio&&p.data<=fim);
   const receita=vendasPeriodo.reduce((s,v)=>s+v.total,0);
-  const despesas=finPeriodo.filter(f=>f.tipo==='saida').reduce((s,f)=>s+f.valor,0);
+  const despesas=finPeriodo.filter(f=>f.tipo==='saida'&&!f.retirada).reduce((s,f)=>s+f.valor,0);
   const recebimentos=pagPeriodo.reduce((s,p)=>s+p.valor,0);
   const lucro=receita-despesas;
   document.getElementById('rel-receita').textContent=fmt(receita);
@@ -268,12 +272,13 @@ function gerarDRE(){
   const custoMP=comprasMes.reduce((s,c)=>s+c.total,0);
 
   // CUSTOS FIXOS cadastrados
-  const totalCF=(state.custosFixos||[]).reduce((s,c)=>s+(c.valor||0),0);
+  const retiradasMes=fin.filter(f=>f.retirada).reduce((s,f)=>s+f.valor,0); // retiradas lançadas no Financeiro somam como pró-labore
+  const totalCF=(state.custosFixos||[]).reduce((s,c)=>s+(c.valor||0),0)+retiradasMes;
 
   // OUTRAS DESPESAS = saídas no financeiro excluindo as que têm tag "MP" (compraId) — essas já
   // entram em "Custo de Matéria-Prima" acima (via state.compras); somar de novo aqui contaria
   // a mesma compra 2x no lucro líquido.
-  const outrasDespesas=fin.filter(f=>f.tipo==='saida'&&!f.compraId).reduce((s,f)=>s+f.valor,0);
+  const outrasDespesas=fin.filter(f=>f.tipo==='saida'&&!f.compraId&&!f.retirada).reduce((s,f)=>s+f.valor,0);
 
   // ENTRADAS EXTRAS (lançamentos de entrada que não são vendas)
   const entradasExtras=fin.filter(f=>f.tipo==='entrada').reduce((s,f)=>s+f.valor,0);
@@ -289,7 +294,7 @@ function gerarDRE(){
   // ver renderCustosFixosLista em 07-precificacao.js). É um SUBCONJUNTO de totalCF, não um
   // valor à parte — por isso EBITDA/Lucro Líquido continuam calculados exatamente como antes;
   // só a linha "Custos Fixos" da DRE é exibida em 2 partes quando há algo flagado.
-  const totalProLabore=(state.custosFixos||[]).filter(c=>c.isProLabore).reduce((s,c)=>s+(c.valor||0),0);
+  const totalProLabore=(state.custosFixos||[]).filter(c=>c.isProLabore).reduce((s,c)=>s+(c.valor||0),0)+retiradasMes;
   const totalCFOperacional=totalCF-totalProLabore;
 
   // ROI OPERACIONAL = lucro líquido do mês ÷ tudo que saiu pra gerar esse lucro (MP + fixos +
@@ -309,7 +314,7 @@ function gerarDRE(){
   // mês (é sempre o valor cadastrado "hoje"), então entra igual dos dois lados da comparação —
   // mesma limitação que getCustoFixoPorUnidade já carrega em Precificação.
   const comprasMA=state.compras.filter(c=>c.data.startsWith(maStr)).reduce((s,c)=>s+c.total,0);
-  const outrasDespesasMA=state.financeiro.filter(f=>f.tipo==='saida'&&!f.compraId&&f.data.startsWith(maStr)).reduce((s,f)=>s+f.valor,0);
+  const outrasDespesasMA=state.financeiro.filter(f=>f.tipo==='saida'&&!f.compraId&&!f.retirada&&f.data.startsWith(maStr)).reduce((s,f)=>s+f.valor,0);
   const custoTotalMA=comprasMA+totalCF+outrasDespesasMA;
   const varCustoTotal=custoTotalMA>0?((custoTotalMes-custoTotalMA)/custoTotalMA*100):null;
   const alavancagem=(varReceita!=null&&varCustoTotal!=null)?(varReceita-varCustoTotal):null;
@@ -355,7 +360,7 @@ function gerarDRE(){
     <div class="cards-grid cards-grid-3" style="margin-bottom:20px">
       <div class="stat-card ${roiOperacional==null?'':roiOperacional>=0?'green':'red'}"><div class="label">ROI Operacional</div><div class="value">${roiOperacional!=null?roiOperacional.toFixed(1)+'%':'—'}</div><div class="sub">lucro ÷ custo total do mês</div></div>
       <div class="stat-card ${alavancagem==null?'':alavancagem>=0?'green':'red'}"><div class="label">Alavancagem Operacional</div><div class="value">${alavancagem!=null?(alavancagem>=0?'+':'')+alavancagem.toFixed(1)+'pp':'—'}</div><div class="sub">receita vs custo, mês a mês</div></div>
-      <div class="stat-card"><div class="label">Pró-labore do Mês</div><div class="value">${fmt(totalProLabore)}</div><div class="sub">${totalProLabore>0?'retirada do dono':'nenhum item marcado em Custos Fixos'}</div></div>
+      <div class="stat-card"><div class="label">Pró-labore do Mês</div><div class="value">${fmt(totalProLabore)}</div><div class="sub">${totalProLabore>0?'retirada do dono':'nenhuma retirada ou item marcado'}</div></div>
     </div>
     <div class="detail-panel" style="font-size:12px;color:var(--muted)">
       <strong style="color:var(--text)">Como interpretar</strong><br>

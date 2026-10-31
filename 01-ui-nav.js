@@ -215,7 +215,7 @@ function renderDespesasCategoria(){
   const comprasMes=state.compras.filter(c=>c.data.startsWith(mes));
   // exclui lançamentos com compraId: são o mesmo valor já contado em totalMP (via state.compras),
   // então incluí-los aqui contaria a mesma compra 2x em totalDespesas
-  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&f.data.startsWith(mes)&&!f.compraId);
+  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&!f.retirada&&f.data.startsWith(mes)&&!f.compraId);
   const finEntradas=state.financeiro.filter(f=>f.tipo==='entrada'&&f.data.startsWith(mes));
   const vendasMes=state.vendas.filter(v=>v.data.startsWith(mes));
 
@@ -363,7 +363,7 @@ function calcularSnapshotMes(mes){
   const finEntradas=state.financeiro.filter(f=>f.tipo==='entrada'&&f.data.startsWith(mes));
   // exclui lançamentos de compra (compraId): já contados em custoMP via state.compras — somar
   // de novo aqui contaria a mesma compra 2x no lucro líquido do fechamento.
-  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&f.data.startsWith(mes)&&!f.compraId);
+  const finSaidas=state.financeiro.filter(f=>f.tipo==='saida'&&!f.retirada&&f.data.startsWith(mes)&&!f.compraId);
   const pagamentos=state.pagamentos.filter(p=>p.data.startsWith(mes));
 
   const receita=vendas.reduce((s,v)=>s+v.total,0);
