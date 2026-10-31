@@ -150,13 +150,19 @@ function renderMeuDia(){
   if(meuDiaRota==='none') todas = todas.filter(p=>!p.rotaId);
   else if(meuDiaRota) todas = todas.filter(p=>String(p.rotaId||'')===String(meuDiaRota));
 
+  // v5.47: follow-ups do CRM (próximas ações, atividades vencidas, negócios sem próxima ação)
+  const crm = (typeof crmMeuDiaHtml==='function') ? crmMeuDiaHtml() : {qtd:0, html:''};
+
   const totEntregas = todas.reduce((s,p)=>s+p.entregas.length,0);
   const totCobrar = round2(todas.reduce((s,p)=>s+p.vencido,0));
   const resumo = `<div style="font-size:13px;margin-bottom:12px"><strong>${todas.length}</strong> parada(s) · <strong>${totEntregas}</strong> entrega(s) · a cobrar <strong style="color:var(--red)">${fmt(totCobrar)}</strong></div>`;
 
   if(todas.length===0){
-    el.innerHTML = `<div style="text-align:center;padding:60px 20px"><h3 style="color:var(--green)">Nada para hoje${meuDiaRota?' nesta rota':''}</h3>
-      <p style="color:var(--muted);margin-top:8px">Sem entregas pendentes (últimos ${MEUDIA_DIAS_ENTREGA} dias) nem fiado vencido.</p></div>`;
+    el.innerHTML = crm.html + (crm.qtd
+      ? `<p style="color:var(--muted);margin-top:14px;font-size:13px">Sem entregas pendentes nem fiado vencido${meuDiaRota?' nesta rota':''}.</p>`
+      : `<div style="text-align:center;padding:60px 20px"><h3 style="color:var(--green)">Nada para hoje${meuDiaRota?' nesta rota':''}</h3>
+      <p style="color:var(--muted);margin-top:8px">Sem entregas pendentes (últimos ${MEUDIA_DIAS_ENTREGA} dias), fiado vencido nem follow-ups do CRM.</p></div>`);
+    if(typeof lucide!=='undefined') lucide.createIcons();
     return;
   }
 
@@ -171,6 +177,6 @@ function renderMeuDia(){
     return `<h3 style="margin:14px 0 8px;font-size:14px"><i data-lucide="map-pin" class="ic ic-sm"></i> ${escapeHtml(g.nome)} <span style="color:var(--muted);font-weight:500">(${itens.length})</span></h3>`
       + itens.map((p,i)=>meuDiaParadaHtml(p,i+1)).join('');
   }).join('');
-  el.innerHTML = resumo + html;
+  el.innerHTML = crm.html + resumo + html;
   if(typeof lucide!=='undefined') lucide.createIcons();
 }

@@ -747,3 +747,27 @@ nav a .icon{stroke-width:1.75}
 .c360-ev{display:flex;gap:10px;align-items:flex-start}
 .c360-ic{flex:0 0 30px;height:30px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center}
 .c360-ev-txt{flex:1;min-width:0;font-size:13px}
+
+/* ===== CRM v5.47: funis, itens, próxima ação, Meu dia ===== */
+.crm-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.crm-toolbar .filter{flex:1;min-width:150px}
+.crm-prox{display:flex;align-items:flex-start;gap:6px;margin-top:8px;padding:6px 8px;border-radius:8px;background:var(--card-2);font-size:12px;color:var(--text)}
+.crm-prox>span{flex:1;min-width:0}
+.crm-prox small{color:var(--muted)}
+.crm-prox.crm-atraso{color:var(--red)}
+.crm-prox.crm-atraso small{color:var(--red)}
+.crm-prox .icon-btn{flex:0 0 auto}
+.crm-card-valor small{color:var(--muted);font-weight:500}
+.crm-pa-box{border:1px solid var(--border);background:var(--card-2);border-radius:10px;padding:10px;margin-bottom:12px}
+.crm-pa-box>label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}
+.crm-pa-box .form-row{margin-bottom:8px}
+#crm-neg-itens-lista{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.crm-iten{display:grid;grid-template-columns:1fr 64px 84px auto;gap:6px;align-items:center}
+.crm-iten-nome{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.crm-funil-card{border:1px solid var(--border);background:var(--card-2);border-radius:12px;padding:12px;margin-bottom:12px}
+.crm-funil-head{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.crm-etapa-row{display:grid;grid-template-columns:1fr 64px auto auto auto auto;gap:6px;align-items:center;margin-bottom:6px}
+.crm-pct{color:var(--muted);font-size:12px}
+.crm-meudia{margin-bottom:18px}
+.crm-sec-titulo{margin:0 0 8px;font-size:14px}
+.crm-sec-titulo span{color:var(--muted);font-weight:500}

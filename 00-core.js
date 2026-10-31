@@ -9,6 +9,13 @@ function crmModelosPadrao(){
   ];
 }
 function crmModelosSemente(){ return crmModelosPadrao().map((m,i)=>({...m,id:i+1})); }
+// Funis do CRM (v5.47). Só as etapas intermediárias ficam salvas; "Ganho" (100%) e "Perdido" (0%) são fixas.
+function crmFunisPadrao(){
+  return [{id:1,nome:'Vendas',etapas:[
+    {id:'qualificacao',nome:'Qualificação',cor:'#8E897C',prob:10},
+    {id:'proposta',nome:'Proposta',cor:'#C9A24B',prob:40},
+    {id:'negociacao',nome:'Negociação',cor:'#E0B95A',prob:70}]}];
+}
 
 // ============ DEFAULT STATE ============
 const DEFAULT_STATE = {
@@ -97,9 +104,11 @@ const DEFAULT_STATE = {
   movEstoque:[],
   semiacabados:[],
   renegociacoes:[],
-  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1,crmNotas:1,crmModelos:6},
+  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1,crmNotas:1,crmModelos:6,crmFunis:2,crmEtapas:1},
   crmNotas:[],
   crmModelos:crmModelosSemente(),
+  crmFunis:crmFunisPadrao(),
+  crm_funil_id:1,
   crmLeads:[],
   crmNegocios:[],
   crmAtividades:[],
@@ -214,8 +223,9 @@ let _avisouFalhaGravacao = false;
 //        usuário, fica só no aparelho e no backup.
 //   16 → state.encargos (multa/juros de atraso, desligado por padrão) — v5.37.
 //   17 → CRM: state.crmLeads / crmNegocios / crmAtividades (+ nextId) — v5.44.
-//   18 → (versão atual) CRM: state.crmNotas, state.crmModelos (modelos de mensagem, com 5 padrões) e tags nos clientes — v5.46.
-const SCHEMA_VERSION = 18;
+//   18 → CRM: state.crmNotas, state.crmModelos (modelos de mensagem, com 5 padrões) e tags nos clientes — v5.46.
+//   19 → (versão atual) CRM: state.crmFunis (vários funis, etapas com probabilidade); negócios ganham funilId, itens e proxAcao — v5.47.
+const SCHEMA_VERSION = 19;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -344,6 +354,16 @@ const MIGRATIONS = {
     if(!(d.nextId.crmModelos>0)) d.nextId.crmModelos = d.crmModelos.reduce((m,x)=>Math.max(m,x.id||0),0)+1;
     return d;
   },
+  // v18 → v19: vários funis com probabilidade por etapa; negócios existentes vão para o 1º funil (v5.47)
+  18: (d) => {
+    if(!Array.isArray(d.crmFunis) || !d.crmFunis.length) d.crmFunis = crmFunisPadrao();
+    (d.crmNegocios||[]).forEach(n=>{ if(!n.funilId) n.funilId = d.crmFunis[0].id; if(!Array.isArray(n.itens)) n.itens = []; });
+    d.nextId = { ...(d.nextId||{}) };
+    if(!(d.nextId.crmFunis>0)) d.nextId.crmFunis = d.crmFunis.reduce((m,f)=>Math.max(m,f.id||0),0)+1;
+    if(!(d.nextId.crmEtapas>0)) d.nextId.crmEtapas = 1;
+    if(!d.crm_funil_id) d.crm_funil_id = d.crmFunis[0].id;
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -365,7 +385,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array'};
+  fichas:'object',nextId:'object',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){
@@ -407,7 +427,7 @@ function carregarDados(){
       if(!state.pagamentosFornecedor) state.pagamentosFornecedor=[];
       if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
       ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
-      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente();
+      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente(); if(!Array.isArray(state.crmFunis)||!state.crmFunis.length) state.crmFunis=crmFunisPadrao();
       // a aba "Movimentações" não é restaurada ao reabrir o app (a tela volta em Produtos Acabados)
       if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
       state._version    = SCHEMA_VERSION;
@@ -1091,7 +1111,7 @@ function aplicarDadosNoState(raw){
   state.nextId={...DEFAULT_STATE.nextId,...(parsed.nextId||{})};
   if(!Array.isArray(state.movEstoque)) state.movEstoque=[];
   ['crmLeads','crmNegocios','crmAtividades'].forEach(k=>{ if(!Array.isArray(state[k])) state[k]=[]; });
-      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente();
+      if(!Array.isArray(state.crmNotas)) state.crmNotas=[]; if(!Array.isArray(state.crmModelos)) state.crmModelos=crmModelosSemente(); if(!Array.isArray(state.crmFunis)||!state.crmFunis.length) state.crmFunis=crmFunisPadrao();
   if(state.estoque_tab==='movimentos') state.estoque_tab='produtos';
   state._version=SCHEMA_VERSION;
   _bloquearGravacao=false;
