@@ -161,7 +161,7 @@ function relRenderPrevisao(){
   const ult3=hist.slice(-3), pesos=[1,2,3];
   const somaPesos=ult3.reduce((s,_,i)=>s+pesos[i],0);
   const proxMes=ult3.length&&comDados.length>=2?ult3.reduce((s,h,i)=>s+h.v*pesos[i],0)/somaPesos:null;
-  const meta=(state.metas&&state.metas[mesAtual])||0;
+  const meta=(typeof metaVigente==='function'?metaVigente(mesAtual).valor:(state.metas&&state.metas[mesAtual]))||0;
   const nomeMes=m=>{ const [a,n]=m.split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+n-1]+'/'+a.slice(2); };
   const max=Math.max(1,projLinear,...hist.map(h=>h.v),realizado);
   const barras=hist.map(h=>`<div class="crm-barra"><span>${nomeMes(h.m)}</span><div><i style="width:${Math.round(h.v/max*100)}%;background:var(--primary)"></i></div><strong>${fmt(h.v)}</strong></div>`).join('')

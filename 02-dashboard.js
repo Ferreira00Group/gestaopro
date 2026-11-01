@@ -169,15 +169,39 @@ function renderDashboard(){
 }
 
 // ============ META DE VENDAS ============
+// v5.52.1: a meta vale a partir do mês em que foi definida e CONTINUA nos meses seguintes até ser trocada.
+// Antes ela só existia para o mês corrente e aparecia zerada todo dia 1º. state.metas[AAAA-MM]=valor.
+// Um valor 0 definido de propósito (campo apagado) significa "sem meta" a partir daquele mês.
+function metaVigente(ym){
+  const m=state.metas||{};
+  const chaves=Object.keys(m).filter(k=>/^\d{4}-\d{2}$/.test(k)&&k<=ym).sort();
+  if(!chaves.length) return {valor:0,mes:null};
+  const k=chaves[chaves.length-1];
+  return {valor:Number(m[k])||0,mes:k};
+}
+// Aceita do jeito brasileiro: 10000 · 10.000 · 10.000,50 · 10000,5 · R$ 10.000. Vazio = 0. Texto inválido = NaN.
+function metaParse(txt){
+  let t=String(txt==null?'':txt).replace(/R\$|\s/g,'');
+  if(t==='') return 0;
+  if(!/^[\d.,]+$/.test(t)||(t.match(/,/g)||[]).length>1) return NaN;
+  if(t.includes(',')) t=t.replace(/\./g,'').replace(',','.');
+  else if(/^\d{1,3}(\.\d{3})+$/.test(t)) t=t.replace(/\./g,'');
+  const n=parseFloat(t);
+  return isNaN(n)||n<0?NaN:n;
+}
+function metaRealizadoMes(){
+  const mesAtual=today().slice(0,7);
+  return state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data.startsWith(mesAtual)).reduce((s,v)=>s+v.total,0);
+}
 function salvarMeta(){
-  const val=parseFloat(document.getElementById('dash-meta-input').value)||0;
+  const val=metaParse(document.getElementById('dash-meta-input').value);
+  if(isNaN(val)) return; // texto ainda inválido (ex.: letras): não mexe na meta já salva
   const mesAtual=today().slice(0,7);
   if(!state.metas) state.metas={};
-  state.metas[mesAtual]=val;
+  state.metas[mesAtual]=Math.round(val*100)/100;
   marcarAlterado();
   salvarMetaDebounced();
-  const vendasMes=state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data.startsWith(mesAtual));
-  renderMetaVendas(vendasMes.reduce((s,v)=>s+v.total,0));
+  renderMetaVendas(metaRealizadoMes());
 }
 const salvarMetaDebounced=debounce(salvarDados,500);
 function salvarMetaAgora(){
@@ -186,14 +210,16 @@ function salvarMetaAgora(){
   // sempre roda o salvamento automático de saída (beforeunload) a tempo.
   marcarAlterado();
   salvarDados();
+  renderMetaVendas(metaRealizadoMes()); // reformata o campo (10.000) e descarta texto inválido
 }
 function renderMetaVendas(realizado){
   const mesAtual=today().slice(0,7);
   if(!state.metas) state.metas={};
-  const meta=state.metas[mesAtual]||0;
+  const vig=metaVigente(mesAtual);
+  const meta=vig.valor;
   // populate input
   const inp=document.getElementById('dash-meta-input');
-  if(inp&&(document.activeElement!==inp)) inp.value=meta||'';
+  if(inp&&(document.activeElement!==inp)) inp.value=meta?meta.toLocaleString('pt-BR',{maximumFractionDigits:2}):'';
   // periodo label
   const [y,m]=mesAtual.split('-');
   const nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -209,7 +235,8 @@ function renderMetaVendas(realizado){
     bar.style.width=pct+'%';
     bar.style.background=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--blue)';
   }
-  if(lbl) lbl.textContent=fmt(realizado)+' de '+(meta>0?fmt(meta):'— defina uma meta acima');
+  const herdada=(meta>0&&vig.mes&&vig.mes!==mesAtual)?' · mantida de '+nomes[parseInt(vig.mes.slice(5),10)-1].toLowerCase():'';
+  if(lbl) lbl.textContent=fmt(realizado)+' de '+(meta>0?fmt(meta):'— defina uma meta acima')+herdada;
   if(pctEl){
     pctEl.textContent=meta>0?pct.toFixed(1)+'%':'—';
     pctEl.style.color=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--navy)';
