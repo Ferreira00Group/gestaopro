@@ -830,3 +830,58 @@ nav a .icon{stroke-width:1.75}
 .bk-drop{display:block;border:1px dashed var(--border);border-radius:12px;padding:18px;text-align:center;cursor:pointer;margin-bottom:6px}
 .bk-drop:hover{border-color:rgba(201,162,75,.5);background:var(--gold-soft)}
 @media print{#page-banco .bk-btns,#page-banco .actions-cell{display:none!important}}
+
+/* ============ v5.53 — DASHBOARD EM VIDRO (cards translúcidos) ============
+   Só na tela inicial. Os cards ficam quase transparentes, com desfoque do que
+   está atrás; as luzes douradas/coloridas ficam num fundo fixo (::before). */
+#page-dashboard{isolation:isolate}
+#page-dashboard::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(260px 260px at 8% 22%,rgba(201,162,75,.34),transparent 70%),
+    radial-gradient(220px 220px at 96% 14%,rgba(229,96,79,.26),transparent 70%),
+    radial-gradient(230px 230px at 92% 46%,rgba(76,195,138,.20),transparent 70%),
+    radial-gradient(260px 260px at 14% 78%,rgba(201,162,75,.24),transparent 70%)}
+#page-dashboard .card-hero,
+#page-dashboard .card-hero.red,#page-dashboard .card-hero.green,
+#page-dashboard .card-hero.blue,#page-dashboard .card-hero.yellow,
+#page-dashboard .card-compacto,
+#page-dashboard .table-card,
+#page-dashboard .pilula,
+#page-dashboard .stat-card,
+#page-dashboard .chart-card,
+#page-dashboard .qa-ic{
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.13);
+  border-top-color:rgba(255,255,255,.28);
+  box-shadow:0 8px 24px rgba(0,0,0,.28);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+#page-dashboard .card-hero{padding:14px}
+#page-dashboard .card-hero::before{display:none}
+#page-dashboard .card-hero .label,
+#page-dashboard .card-compacto .info .label,
+#page-dashboard .pilula .label{color:#B9B3A3}
+#page-dashboard .card-hero .sub,
+#page-dashboard .card-compacto .info .sub,
+#page-dashboard .pilula .sub{color:#9A9484}
+#page-dashboard .card-hero.red .value{color:#F08A7B}
+#page-dashboard .card-hero.green .value{color:#6FD6A3}
+#page-dashboard .qa-ic{background:rgba(255,255,255,.055)}
+#page-dashboard .qa-btn:active .qa-ic{border-color:var(--gold-2)}
+#page-dashboard .dash-section-title{border-bottom-color:rgba(255,255,255,.10)}
+/* Sem suporte a desfoque (ou transparência reduzida no sistema): vidro mais opaco, sem perder a leitura */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  #page-dashboard .card-hero,#page-dashboard .card-compacto,#page-dashboard .table-card,
+  #page-dashboard .pilula,#page-dashboard .stat-card,#page-dashboard .chart-card,#page-dashboard .qa-ic{background:rgba(27,27,29,.92)}
+}
+@media (prefers-reduced-transparency:reduce){
+  #page-dashboard::before{display:none}
+  #page-dashboard .card-hero,#page-dashboard .card-compacto,#page-dashboard .table-card,
+  #page-dashboard .pilula,#page-dashboard .stat-card,#page-dashboard .chart-card,#page-dashboard .qa-ic{
+    background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media print{
+  #page-dashboard::before{display:none}
+  #page-dashboard .card-hero,#page-dashboard .card-compacto,#page-dashboard .table-card,
+  #page-dashboard .pilula,#page-dashboard .stat-card,#page-dashboard .chart-card,#page-dashboard .qa-ic{
+    background:#fff!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important}
+}
