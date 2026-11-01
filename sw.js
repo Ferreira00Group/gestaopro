@@ -98,6 +98,8 @@ self.addEventListener('fetch', (event)=>{
         caches.open(CACHE_NAME).then(cache=>cache.put(req, res.clone()));
       }
       return res;
-    }).catch(()=>caches.match(req))
+    // ignoreSearch: o index.html pede "?v=..." e o precache guarda "?v=APP_VERSION"; se os dois divergirem
+    // (ex.: versão nova instalada e o aparelho ficou offline), sem isso o app abria sem CSS e sem JS.
+    }).catch(()=>caches.match(req).then(hit=>hit||caches.match(req,{ignoreSearch:true})))
   );
 });
