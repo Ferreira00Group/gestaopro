@@ -831,57 +831,68 @@ nav a .icon{stroke-width:1.75}
 .bk-drop:hover{border-color:rgba(201,162,75,.5);background:var(--gold-soft)}
 @media print{#page-banco .bk-btns,#page-banco .actions-cell{display:none!important}}
 
-/* ============ v5.53 — DASHBOARD EM VIDRO (cards translúcidos) ============
-   Só na tela inicial. Os cards ficam quase transparentes, com desfoque do que
-   está atrás; as luzes douradas/coloridas ficam num fundo fixo (::before). */
-#page-dashboard{isolation:isolate}
-#page-dashboard::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+/* ============ v5.53 — VIDRO NO APP TODO ============
+   Fundo: luzes douradas/coloridas fixas atrás de tudo (body::before).
+   Cards: vidro leve (quase transparente) em cartões e indicadores.
+   Tabelas, painéis, filtros e listas: vidro mais denso, para ler bem.
+   Formulários, campos e modais continuam sólidos. */
+body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
-    radial-gradient(260px 260px at 8% 22%,rgba(201,162,75,.34),transparent 70%),
-    radial-gradient(220px 220px at 96% 14%,rgba(229,96,79,.26),transparent 70%),
-    radial-gradient(230px 230px at 92% 46%,rgba(76,195,138,.20),transparent 70%),
-    radial-gradient(260px 260px at 14% 78%,rgba(201,162,75,.24),transparent 70%)}
-#page-dashboard .card-hero,
-#page-dashboard .card-hero.red,#page-dashboard .card-hero.green,
-#page-dashboard .card-hero.blue,#page-dashboard .card-hero.yellow,
-#page-dashboard .card-compacto,
-#page-dashboard .table-card,
-#page-dashboard .pilula,
-#page-dashboard .stat-card,
-#page-dashboard .chart-card,
-#page-dashboard .qa-ic{
+    radial-gradient(260px 260px at 8% 22%,rgba(201,162,75,.30),transparent 70%),
+    radial-gradient(220px 220px at 96% 14%,rgba(229,96,79,.22),transparent 70%),
+    radial-gradient(230px 230px at 92% 46%,rgba(76,195,138,.17),transparent 70%),
+    radial-gradient(260px 260px at 14% 78%,rgba(201,162,75,.22),transparent 70%)}
+
+/* vidro leve */
+.card-hero,.card-hero.red,.card-hero.green,.card-hero.blue,.card-hero.yellow,
+.card-compacto,.pilula,.stat-card,.chart-card,.qa-ic,.bk-sum>div{
   background:rgba(255,255,255,.055);
   border:1px solid rgba(255,255,255,.13);
   border-top-color:rgba(255,255,255,.28);
   box-shadow:0 8px 24px rgba(0,0,0,.28);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
-#page-dashboard .card-hero{padding:14px}
-#page-dashboard .card-hero::before{display:none}
-#page-dashboard .card-hero .label,
-#page-dashboard .card-compacto .info .label,
-#page-dashboard .pilula .label{color:#B9B3A3}
-#page-dashboard .card-hero .sub,
-#page-dashboard .card-compacto .info .sub,
-#page-dashboard .pilula .sub{color:#9A9484}
-#page-dashboard .card-hero.red .value{color:#F08A7B}
-#page-dashboard .card-hero.green .value{color:#6FD6A3}
-#page-dashboard .qa-ic{background:rgba(255,255,255,.055)}
-#page-dashboard .qa-btn:active .qa-ic{border-color:var(--gold-2)}
-#page-dashboard .dash-section-title{border-bottom-color:rgba(255,255,255,.10)}
-/* Sem suporte a desfoque (ou transparência reduzida no sistema): vidro mais opaco, sem perder a leitura */
+.card-hero{padding:14px}
+.card-hero::before{display:none}
+.card-hero .label,.card-compacto .info .label,.pilula .label,.stat-card .label{color:#B9B3A3}
+.card-hero .sub,.card-compacto .info .sub,.pilula .sub,.stat-card .sub{color:#9A9484}
+.card-hero.red .value{color:#F08A7B}
+.card-hero.green .value{color:#6FD6A3}
+.qa-btn:active .qa-ic{border-color:var(--gold-2)}
+
+/* vidro denso (leitura): tabelas, painéis, filtros, listas e colunas */
+.table-card,.detail-panel,.relatorio-filtros,.bk-card,.crm-col,.crm-card,.crm-item,
+.crm-funil-card,.parcelas-resumo,.orc-total-box,.table-cards tr{
+  background:rgba(20,20,21,.66);
+  border:1px solid rgba(255,255,255,.11);
+  border-top-color:rgba(255,255,255,.22);
+  box-shadow:0 8px 24px rgba(0,0,0,.26);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.table-card th{background:rgba(255,255,255,.04)}
+tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
+.table-cards tfoot tr{background:rgba(27,27,29,.78)}
+.page-header{background:rgba(11,11,12,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.dash-section-title{border-bottom-color:rgba(255,255,255,.10)}
+
+/* Sem suporte a desfoque: fundo mais opaco, sem perder a leitura */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  #page-dashboard .card-hero,#page-dashboard .card-compacto,#page-dashboard .table-card,
-  #page-dashboard .pilula,#page-dashboard .stat-card,#page-dashboard .chart-card,#page-dashboard .qa-ic{background:rgba(27,27,29,.92)}
+  .card-hero,.card-compacto,.pilula,.stat-card,.chart-card,.qa-ic,.bk-sum>div{background:rgba(27,27,29,.92)}
+  .table-card,.detail-panel,.relatorio-filtros,.bk-card,.crm-col,.crm-card,.crm-item,
+  .crm-funil-card,.parcelas-resumo,.orc-total-box,.table-cards tr{background:rgba(20,20,21,.96)}
+  .page-header{background:var(--bg)}
 }
+/* Transparência reduzida no sistema: volta ao visual sólido */
 @media (prefers-reduced-transparency:reduce){
-  #page-dashboard::before{display:none}
-  #page-dashboard .card-hero,#page-dashboard .card-compacto,#page-dashboard .table-card,
-  #page-dashboard .pilula,#page-dashboard .stat-card,#page-dashboard .chart-card,#page-dashboard .qa-ic{
+  body::before{display:none}
+  .card-hero,.card-compacto,.pilula,.stat-card,.chart-card,.qa-ic,.bk-sum>div,
+  .table-card,.detail-panel,.relatorio-filtros,.bk-card,.crm-col,.crm-card,.crm-item,
+  .crm-funil-card,.parcelas-resumo,.orc-total-box,.table-cards tr,.page-header{
     background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media print{
-  #page-dashboard::before{display:none}
-  #page-dashboard .card-hero,#page-dashboard .card-compacto,#page-dashboard .table-card,
-  #page-dashboard .pilula,#page-dashboard .stat-card,#page-dashboard .chart-card,#page-dashboard .qa-ic{
+  body::before{display:none}
+  .card-hero,.card-compacto,.pilula,.stat-card,.chart-card,.qa-ic,.bk-sum>div,
+  .table-card,.detail-panel,.relatorio-filtros,.bk-card,.crm-col,.crm-card,.crm-item,
+  .crm-funil-card,.parcelas-resumo,.orc-total-box,.table-cards tr,.page-header{
     background:#fff!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important}
+  tbody tr:nth-child(even) td,.table-card th{background:#fff!important}
 }
