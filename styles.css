@@ -801,8 +801,6 @@ nav a .icon{stroke-width:1.75}
 
 .dash-date-line{margin:0 0 8px;font-size:12px;color:var(--muted);text-transform:capitalize}
 
-/* v5.50.2 — teclado aberto: evita faixa preta/cabeçalho sumindo (repintura no Android) */
+/* v5.50.2 — campo de busca (type=search) sem ícones nativos do Chrome */
 #busca-global-input::-webkit-search-decoration,#busca-global-input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
 #busca-global-input{-webkit-appearance:none;appearance:none;min-width:0}
-#main{min-height:calc(100vh - 108px)}
-@supports(height:100dvh){body{min-height:100dvh}#main{min-height:calc(100dvh - 108px)}}

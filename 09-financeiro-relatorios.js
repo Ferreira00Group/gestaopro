@@ -315,7 +315,10 @@ function gerarDRE(){
   // mesma limitação que getCustoFixoPorUnidade já carrega em Precificação.
   const comprasMA=state.compras.filter(c=>c.data.startsWith(maStr)).reduce((s,c)=>s+c.total,0);
   const outrasDespesasMA=state.financeiro.filter(f=>f.tipo==='saida'&&!f.compraId&&!f.retirada&&f.data.startsWith(maStr)).reduce((s,f)=>s+f.valor,0);
-  const custoTotalMA=comprasMA+totalCF+outrasDespesasMA;
+  // retiradas do mês anterior entram no custo do mês anterior (custos fixos cadastrados são iguais nos dois lados)
+  const retiradasMA=state.financeiro.filter(f=>f.retirada&&f.data.startsWith(maStr)).reduce((s,f)=>s+f.valor,0);
+  const totalCFMA=(totalCF-retiradasMes)+retiradasMA;
+  const custoTotalMA=comprasMA+totalCFMA+outrasDespesasMA;
   const varCustoTotal=custoTotalMA>0?((custoTotalMes-custoTotalMA)/custoTotalMA*100):null;
   const alavancagem=(varReceita!=null&&varCustoTotal!=null)?(varReceita-varCustoTotal):null;
 
