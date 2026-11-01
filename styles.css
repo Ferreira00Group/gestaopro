@@ -836,12 +836,14 @@ nav a .icon{stroke-width:1.75}
    Cards: vidro leve (quase transparente) em cartões e indicadores.
    Tabelas, painéis, filtros e listas: vidro mais denso, para ler bem.
    Formulários, campos e modais continuam sólidos. */
+html{background:var(--bg)}
+body{background:transparent}
 body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
-    radial-gradient(260px 260px at 8% 22%,rgba(201,162,75,.30),transparent 70%),
-    radial-gradient(220px 220px at 96% 14%,rgba(229,96,79,.22),transparent 70%),
-    radial-gradient(230px 230px at 92% 46%,rgba(76,195,138,.17),transparent 70%),
-    radial-gradient(260px 260px at 14% 78%,rgba(201,162,75,.22),transparent 70%)}
+    radial-gradient(300px 300px at 8% 20%,rgba(201,162,75,.40),transparent 70%),
+    radial-gradient(260px 260px at 98% 12%,rgba(229,96,79,.30),transparent 70%),
+    radial-gradient(270px 270px at 94% 46%,rgba(76,195,138,.24),transparent 70%),
+    radial-gradient(300px 300px at 12% 78%,rgba(201,162,75,.32),transparent 70%)}
 
 /* vidro leve */
 .card-hero,.card-hero.red,.card-hero.green,.card-hero.blue,.card-hero.yellow,
