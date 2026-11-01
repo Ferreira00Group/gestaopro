@@ -38,6 +38,7 @@ function toggleNovoClienteInline(){
   var wrap=document.getElementById('novo-cliente-inline');
   var isOpen=wrap.style.display==='block';
   wrap.style.display=isOpen?'none':'block';
+  var _dd=document.getElementById('venda-cliente-resultados'); if(_dd) _dd.style.display='none'; // lista de busca não cobre o mini-form
   if(!isOpen){
     document.getElementById('nci-nome').value='';
     document.getElementById('nci-tel').value='';
@@ -47,6 +48,18 @@ function toggleNovoClienteInline(){
     setTimeout(function(){document.getElementById('nci-nome').focus();},50);
   }
 }
+// v5.51.5: a lista de resultados da busca ficava por cima do mini-form (escondia nome/telefone/endereço).
+// Foco num campo do mini-form fecha a lista; foco na busca com o mini-form vazio fecha o mini-form.
+document.addEventListener('focusin',function(e){
+  var t=e.target; if(!t||!t.id) return;
+  var form=document.getElementById('novo-cliente-inline'); if(!form||form.style.display!=='block') return;
+  var dd=document.getElementById('venda-cliente-resultados');
+  if(t.id.indexOf('nci-')===0){ if(dd) dd.style.display='none'; return; }
+  if(t.id==='venda-cliente-busca'){
+    var vazio=!['nci-nome','nci-tel','nci-end','nci-referencia'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();});
+    if(vazio) form.style.display='none';
+  }
+});
 function cancelarNovoClienteInline(){
   document.getElementById('novo-cliente-inline').style.display='none';
 }
