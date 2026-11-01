@@ -104,7 +104,7 @@ const DEFAULT_STATE = {
   movEstoque:[],
   semiacabados:[],
   renegociacoes:[],
-  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1,crmNotas:1,crmModelos:6,crmFunis:2,crmEtapas:1,crmSegmentos:1,crmAutomacoes:1,crmFila:1},
+  nextId:{clientes:4,produtos:9,materias:15,vendas:6,pagamentos:2,producoes:2,financeiro:4,fornecedores:4,compras:1,baixasEstoque:1,semiacabados:1,entradasEstoque:1,rotas:3,pagamentosFornecedor:1,movEstoque:1,crmLeads:1,crmNegocios:1,crmAtividades:1,crmNotas:1,crmModelos:6,crmFunis:2,crmEtapas:1,crmSegmentos:1,crmAutomacoes:1,crmFila:1,bancoContas:1,bancoTransacoes:1},
   crmNotas:[],
   crmModelos:crmModelosSemente(),
   crmFunis:crmFunisPadrao(),
@@ -113,6 +113,9 @@ const DEFAULT_STATE = {
   crmSegmentos:[],
   crmAutomacoes:[],
   crmFila:[],
+  bancoContas:[],
+  bancoTransacoes:[],
+  bancoAtivo:false,
   crmAutoLimite:20,
   crmLeads:[],
   crmNegocios:[],
@@ -232,9 +235,11 @@ let _avisouFalhaGravacao = false;
 //   19 → CRM: state.crmFunis (vários funis, etapas com probabilidade); negócios ganham funilId, itens e proxAcao — v5.47.
 //   20 → negócios ganham historico:[{etapa,data}] e origem; state.automacaoDisparos {chave:data} — v5.48.
 //   21 → state.crmSegmentos (segmentos de clientes salvos e combináveis) — v5.48.1.
-//   22 → (versão atual) automações do CRM: state.crmAutomacoes (regras segmento + cadência), state.crmFila (fila de envio)
+//   22 → automações do CRM: state.crmAutomacoes (regras segmento + cadência), state.crmFila (fila de envio)
 //        e state.crmAutoLimite (envios por dia) — v5.49.
-const SCHEMA_VERSION = 22;
+//   23 → (versão atual) aba Banco: state.bancoContas, state.bancoTransacoes e state.bancoAtivo (aba escondida
+//        do menu até ser ativada em Backup e manutenção) — v5.52. Listas nascem vazias.
+const SCHEMA_VERSION = 23;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -404,6 +409,16 @@ const MIGRATIONS = {
     if(!(d.nextId.crmFila>0)) d.nextId.crmFila = d.crmFila.reduce((m,i)=>Math.max(m,i.id||0),0)+1;
     return d;
   },
+  // v22 → v23: aba Banco (v5.52) — contas e extrato começam vazios; a aba nasce escondida
+  22: (d) => {
+    if(!Array.isArray(d.bancoContas)) d.bancoContas = [];
+    if(!Array.isArray(d.bancoTransacoes)) d.bancoTransacoes = [];
+    if(typeof d.bancoAtivo!=='boolean') d.bancoAtivo = false;
+    d.nextId = { ...(d.nextId||{}) };
+    if(!(d.nextId.bancoContas>0)) d.nextId.bancoContas = d.bancoContas.reduce((m,c)=>Math.max(m,c.id||0),0)+1;
+    if(!(d.nextId.bancoTransacoes>0)) d.nextId.bancoTransacoes = d.bancoTransacoes.reduce((m,t)=>Math.max(m,t.id||0),0)+1;
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -425,7 +440,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object',automacaoDisparos:'object',crmSegmentos:'array',crmAutomacoes:'array',crmFila:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array'};
+  fichas:'object',nextId:'object',automacaoDisparos:'object',crmSegmentos:'array',crmAutomacoes:'array',crmFila:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array',bancoContas:'array',bancoTransacoes:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){

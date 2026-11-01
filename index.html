@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.51.6">
+<link rel="stylesheet" href="styles.css?v=5.52.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -120,6 +120,7 @@
     <a onclick="goto('planejamento')" data-page="planejamento"><i data-lucide="calculator" class="icon"></i> Planejamento</a>
     <a onclick="goto('precificacao')" data-page="precificacao"><i data-lucide="tag" class="icon"></i> Precificação</a>
     <a onclick="goto('financeiro')" data-page="financeiro"><i data-lucide="trending-up" class="icon"></i> Financeiro</a>
+    <a id="nav-banco" onclick="goto('banco')" data-page="banco" style="display:none"><i data-lucide="landmark" class="icon"></i> Banco</a>
     <a onclick="goto('relatorio')" data-page="relatorio"><i data-lucide="calendar-days" class="icon"></i> Relatório por Período</a>
   </nav>
 
@@ -136,6 +137,7 @@
         </label>
         <a onclick="closeSidebar();abrirConfigPix()" class="footer-action-link"><i data-lucide="qr-code" class="ic"></i>Configurar Pix</a>
         <a onclick="closeSidebar();abrirConfigEncargos()" class="footer-action-link"><i data-lucide="percent" class="ic"></i>Configurar encargos</a>
+        <a onclick="bancoAlternarAba()" class="footer-action-link"><i data-lucide="landmark" class="ic"></i><span id="banco-toggle-label">Ativar aba Banco</span></a>
         <a id="link-restaurar-anterior" onclick="closeSidebar();restaurarEstadoAnterior()" class="footer-action-link" style="display:none"><i data-lucide="undo-2" class="ic"></i>Restaurar estado anterior</a>
         <a id="link-baixar-recuperacao" onclick="baixarCopiaRecuperacao()" class="footer-action-link" style="color:var(--red);display:none"><i data-lucide="life-buoy" class="ic"></i>Baixar cópia de recuperação</a>
         <a id="drive-status-btn" onclick="cliqueBotaoDrive()" class="footer-action-link" style="display:none"></a>
@@ -742,6 +744,23 @@
 </div>
 
 <!-- RELATÓRIO -->
+<!-- BANCO (v5.52) — escondida no menu até ser ativada em Backup e manutenção -->
+<div id="page-banco" class="page">
+  <div class="print-header"><h1>GestãoPRO — Banco</h1><p id="print-date-banco"></p></div>
+  <div class="page-header">
+    <div><h2>Banco</h2><p>Contas, extrato e conciliação</p></div>
+    <div class="page-header-actions">
+      <button class="btn btn-primary" onclick="bancoAbrirImportar()">Importar extrato</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-bk="contas" onclick="bancoTab('contas',this)">Contas</button>
+    <button class="tab" data-bk="extrato" onclick="bancoTab('extrato',this)">Extrato</button>
+    <button class="tab" data-bk="conciliar" onclick="bancoTab('conciliar',this)">A conciliar<span id="bk-badge"></span></button>
+  </div>
+  <div id="banco-conteudo"></div>
+</div>
+
 <div id="page-relatorio" class="page">
   <div class="print-header"><h1>GestãoPRO — Relatórios</h1><p id="print-date-relatorio"></p></div>
   <div class="page-header">
@@ -986,6 +1005,67 @@
         <button class="btn btn-outline" onclick="closeModal('modal-importar-clientes')">Cancelar</button>
         <button class="btn btn-primary" id="importar-clientes-btn" onclick="confirmarImportarClientes()" disabled>Importar 0 clientes</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANCO: modais (v5.52) -->
+<div class="modal-overlay" id="modal-banco-conta">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3 id="bk-conta-titulo">Nova conta</h3><button class="modal-close" onclick="closeModal('modal-banco-conta')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="bk-conta-id">
+      <div class="form-group"><label>Nome da conta</label><input class="form-control" id="bk-conta-nome" maxlength="40" placeholder="Ex.: Nubank PJ"></div>
+      <div class="form-group"><label>Tipo</label>
+        <select class="form-control" id="bk-conta-tipo"><option value="corrente">Conta corrente</option><option value="poupanca">Poupança</option><option value="digital">Conta digital</option><option value="caixa">Dinheiro (caixa)</option></select></div>
+      <div class="form-group"><label>Saldo inicial (R$)</label><input class="form-control" id="bk-conta-saldo" type="number" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+      <div style="font-size:11px;color:var(--muted)">É o saldo antes do primeiro lançamento do extrato que você vai importar. O saldo da conta é este valor mais os lançamentos.</div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-banco-conta')">Cancelar</button><button class="btn btn-green" onclick="bancoSalvarConta()">Salvar</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-banco-lanc">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>Lançamento manual</h3><button class="modal-close" onclick="closeModal('modal-banco-lanc')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Conta</label><select class="form-control" id="bk-lanc-conta"></select></div>
+      <div class="form-row">
+        <div class="form-group"><label>Tipo</label><select class="form-control" id="bk-lanc-tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>
+        <div class="form-group"><label>Valor (R$)</label><input class="form-control" id="bk-lanc-valor" type="number" step="0.01" inputmode="decimal"></div>
+      </div>
+      <div class="form-group"><label>Data</label><input class="form-control" id="bk-lanc-data" type="date"></div>
+      <div class="form-group"><label>Descrição</label><input class="form-control" id="bk-lanc-desc" maxlength="80" placeholder="Ex.: Depósito em dinheiro"></div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-banco-lanc')">Cancelar</button><button class="btn btn-green" onclick="bancoSalvarLanc()">Salvar</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-banco-importar">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><h3>Importar extrato</h3><button class="modal-close" onclick="closeModal('modal-banco-importar')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Conta</label><select class="form-control" id="bk-imp-conta" onchange="bancoImpConta()"></select></div>
+      <label class="bk-drop"><i data-lucide="file-up" style="width:26px;height:26px;color:var(--gold)"></i>
+        <div id="bk-imp-nome" style="margin-top:4px">Escolher arquivo OFX ou CSV</div>
+        <input type="file" id="bk-imp-arquivo" accept=".ofx,.csv,.txt,text/csv,application/x-ofx" style="display:none" onchange="bancoImpArquivo(this)">
+      </label>
+      <div id="bk-imp-previa"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Importar o mesmo arquivo de novo não duplica nada. Baixe o extrato no app ou site do seu banco (OFX é o mais completo).</div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-banco-importar')">Cancelar</button><button class="btn btn-green" id="bk-imp-ok" onclick="bancoImpConfirmar()">Importar</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-banco-conc">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><h3>Conciliar</h3><button class="modal-close" onclick="closeModal('modal-banco-conc')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="bk-conc-id">
+      <div class="bk-card" id="bk-conc-resumo"></div>
+      <div class="form-group"><label>O que fazer com esta transação</label><select class="form-control" id="bk-conc-acao" onchange="bancoConcCampos()"></select></div>
+      <div id="bk-conc-campos"></div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-banco-conc')">Cancelar</button><button class="btn btn-green" onclick="bancoConcConfirmar()">Conciliar</button></div>
     </div>
   </div>
 </div>
@@ -2034,29 +2114,30 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.51.6"></script>
-<script src="00-core.js?v=5.51.6"></script>
-<script src="01-ui-nav.js?v=5.51.6"></script>
-<script src="02-dashboard.js?v=5.51.6"></script>
-<script src="03-clientes.js?v=5.51.6"></script>
-<script src="04-vendas.js?v=5.51.6"></script>
-<script src="04b-pix-extrato.js?v=5.51.6"></script>
-<script src="11b-meu-dia.js?v=5.51.6"></script>
-<script src="11c-promessa-reneg.js?v=5.51.6"></script>
-<script src="11d-aprovar-lote.js?v=5.51.6"></script>
-<script src="05-producao.js?v=5.51.6"></script>
-<script src="06-estoque.js?v=5.51.6"></script>
-<script src="07-precificacao.js?v=5.51.6"></script>
-<script src="08-compras-fornecedores.js?v=5.51.6"></script>
-<script src="09-financeiro-relatorios.js?v=5.51.6"></script>
-<script src="10-fab-inline.js?v=5.51.6"></script>
-<script src="10b-planejamento.js?v=5.51.6"></script>
-<script src="13-crm.js?v=5.51.6"></script>
-<script src="14-relacionamento.js?v=5.51.6"></script>
-<script src="15-cliente360.js?v=5.51.6"></script>
-<script src="16-automacoes.js?v=5.51.6"></script>
-<script src="12-drive-backup.js?v=5.51.6"></script>
-<script src="11-app-init.js?v=5.51.6"></script>
+<script src="00a-config.js?v=5.52.0"></script>
+<script src="00-core.js?v=5.52.0"></script>
+<script src="01-ui-nav.js?v=5.52.0"></script>
+<script src="02-dashboard.js?v=5.52.0"></script>
+<script src="03-clientes.js?v=5.52.0"></script>
+<script src="04-vendas.js?v=5.52.0"></script>
+<script src="04b-pix-extrato.js?v=5.52.0"></script>
+<script src="11b-meu-dia.js?v=5.52.0"></script>
+<script src="11c-promessa-reneg.js?v=5.52.0"></script>
+<script src="11d-aprovar-lote.js?v=5.52.0"></script>
+<script src="05-producao.js?v=5.52.0"></script>
+<script src="06-estoque.js?v=5.52.0"></script>
+<script src="07-precificacao.js?v=5.52.0"></script>
+<script src="08-compras-fornecedores.js?v=5.52.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.52.0"></script>
+<script src="10-fab-inline.js?v=5.52.0"></script>
+<script src="10b-planejamento.js?v=5.52.0"></script>
+<script src="13-crm.js?v=5.52.0"></script>
+<script src="14-relacionamento.js?v=5.52.0"></script>
+<script src="15-cliente360.js?v=5.52.0"></script>
+<script src="16-automacoes.js?v=5.52.0"></script>
+<script src="17-banco.js?v=5.52.0"></script>
+<script src="12-drive-backup.js?v=5.52.0"></script>
+<script src="11-app-init.js?v=5.52.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

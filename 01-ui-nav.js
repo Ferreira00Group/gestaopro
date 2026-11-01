@@ -691,6 +691,7 @@ function confirmarAcao(texto,callback){
 // ============ RENDER DISPATCHER ============
 function render(page){
   if(typeof atualizarAlertBells==='function') atualizarAlertBells();
+  if(typeof bancoAplicarFlag==='function') bancoAplicarFlag();
   if(page==='dashboard'){renderDashboard();renderChartDash();renderChart30Dias();}
   if(page==='clientes')renderClientes();
   if(page==='vendas')renderVendas();
@@ -716,6 +717,7 @@ function render(page){
     renderFechamentoHistorico();
   }
   if(page==='relatorio')initRelatorio();
+  if(page==='banco'&&typeof renderBanco==='function')renderBanco();
 }
 
 
