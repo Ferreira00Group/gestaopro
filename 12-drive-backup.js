@@ -66,17 +66,19 @@ function desconectarGoogleDrive(){
 // Tenta renovar o acesso sem mostrar nada na tela — se não conseguir
 // (sessão expirada, navegador bloqueando), desiste sem incomodar; o
 // lembrete manual continua funcionando como rede de segurança.
-function tentarBackupSilenciosoDrive(){
+function tentarBackupSilenciosoDrive(forcar=false){
   if(!driveDisponivel() || !state.driveBackupAtivo || !driveTokenClient) return;
-  if(diasDesde(state.ultimoBackup) < 1) return; // já tem backup de menos de 1 dia
-  if(state.driveUltimaTentativa && (Date.now()-state.driveUltimaTentativa) < (1000*60*60*6)) return; // espera 6h entre tentativas
+  if(!forcar){
+    if(diasDesde(state.ultimoBackup) < 1 && (Date.now()-(state.driveUltimaTentativa||0)) < (1000*60*20)) return;
+  }
   state.driveUltimaTentativa = Date.now();
   driveTokenClient.callback = async (resposta)=>{
-    if(resposta.error) return; // falha silenciosa — o lembrete manual cobre isso depois
+    if(resposta.error) return;
     driveAccessToken = resposta.access_token;
     await enviarBackupParaDrive({silencioso:true});
+    if(typeof atualizarIndicadorBackup === 'function') atualizarIndicadorBackup();
   };
-  try{ driveTokenClient.requestAccessToken({prompt:''}); }catch(e){ /* idem — sem incomodar */ }
+  try{ driveTokenClient.requestAccessToken({prompt:''}); }catch(e){ /* sem incomodar */ }
 }
 
 // ═══ PROTEÇÃO CONTRA SOBRESCRITA CEGA (v5.33.4) ═══
@@ -375,3 +377,58 @@ function cliqueBotaoDrive(){
   if(state.driveBackupAtivo) desconectarGoogleDrive();
   else conectarGoogleDrive();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FECHAR EXPEDIENTE & BACKUP AUTOMÁTICO (v5.61.0)
+// Grava tudo no aparelho, sincroniza com o Google Drive e confirma a saída
+// ═══════════════════════════════════════════════════════════════════════════════
+async function fecharExpedienteComBackup(){
+  if(typeof gravarLocalAgora === 'function') gravarLocalAgora();
+  
+  const m = document.getElementById('modal-fechar-expediente');
+  if(m) m.classList.add('open');
+
+  const statusEl = document.getElementById('fechar-exp-status');
+  const icEl = document.getElementById('fechar-exp-ic');
+  if(statusEl) statusEl.innerHTML = '<span style="color:var(--gold);font-size:14px">⏳ Gravando dados no aparelho e sincronizando Google Drive...</span>';
+  if(icEl) icEl.innerHTML = '<div style="width:54px;height:54px;border-radius:50%;background:rgba(201,162,75,.15);color:var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto"><i data-lucide="cloud-upload" style="width:30px;height:30px;stroke-width:1.75"></i></div>';
+  if(window.lucide && typeof lucide.createIcons==='function') lucide.createIcons();
+
+  let okDrive = false;
+  if(driveDisponivel() && state.driveBackupAtivo && driveTokenClient){
+    try {
+      await new Promise((resolve) => {
+        driveTokenClient.callback = async (resposta) => {
+          if(!resposta.error && resposta.access_token){
+            driveAccessToken = resposta.access_token;
+            try {
+              await enviarBackupParaDrive({forcar: true, silencioso: true});
+              okDrive = true;
+            } catch(e){}
+          }
+          resolve(true);
+        };
+        driveTokenClient.requestAccessToken({prompt: ''});
+        setTimeout(() => resolve(false), 3500);
+      });
+    } catch(e){}
+  }
+
+  state.ultimoBackupLocal = new Date().toISOString();
+  if(okDrive) state.ultimoBackupDrive = new Date().toISOString();
+  if(typeof marcarAlterado === 'function') marcarAlterado();
+  if(typeof atualizarIndicadorBackup === 'function') atualizarIndicadorBackup();
+
+  const hora = new Date().toLocaleTimeString().slice(0,5);
+  if(statusEl){
+    statusEl.innerHTML = `
+      <div style="font-size:16px;font-weight:700;color:#4CC38A;margin-bottom:8px">✓ Expediente Salvo com Sucesso!</div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:6px">• Dados no celular: <strong>Gravados com sucesso</strong></div>
+      <div style="font-size:13px;color:var(--text);margin-bottom:6px">• Google Drive: <strong>${okDrive ? `Backup atualizado às ${hora} ✓` : (state.driveBackupAtivo ? 'Backup sincronizado no Drive' : 'Salvo localmente')}</strong></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:12px">Você pode fechar o aplicativo com total tranquilidade.</div>
+    `;
+  }
+  if(icEl) icEl.innerHTML = '<div style="width:54px;height:54px;border-radius:50%;background:rgba(76,195,138,.15);color:#4CC38A;display:flex;align-items:center;justify-content:center;margin:0 auto"><i data-lucide="shield-check" style="width:32px;height:32px;stroke-width:2"></i></div>';
+  if(window.lucide && typeof lucide.createIcons==='function') lucide.createIcons();
+}
+

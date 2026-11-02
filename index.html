@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.60.0">
+<link rel="stylesheet" href="styles.css?v=5.61.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -53,12 +53,14 @@
   <button id="hamburger" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div id="topbar-title">GestãoPRO <span>Powered by Ferreira Group</span></div>
   <div class="topbar-alerts">
+    <button class="alert-bell" id="topbar-btn-pix" onclick="abrirConfigPix()" title="Configurar Chave Pix (Offline)"><i data-lucide="qr-code" class="ic"></i></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
     <button class="alert-bell bell-estoque" id="topbar-bell-estoque" onclick="toggleAlertDrop('drop-estoque')" title="Estoque baixo"><i data-lucide="package" class="ic"></i><span class="badge-dot"></span></button>
     <button class="alert-bell bell-cobranca" id="topbar-bell-cobranca" onclick="toggleAlertDrop('drop-cobranca')" title="A receber"><i data-lucide="wallet" class="ic"></i><span class="badge-dot"></span></button>
     <button class="alert-bell bell-pagar" id="topbar-bell-pagar" onclick="toggleAlertDrop('drop-pagar')" title="A pagar"><i data-lucide="credit-card" class="ic"></i><span class="badge-dot"></span></button>
     <button id="topbar-print" onclick="abrirEscolhaImpressao()" title="Imprimir"><i data-lucide="printer" class="ic"></i></button>
     <button id="topbar-save" onclick="salvarDados()" title="Salvar"><i data-lucide="save" class="ic ic-save"></i><i data-lucide="check" class="ic ic-ok"></i></button>
+    <button class="btn btn-outline btn-sm" id="topbar-btn-fechar" onclick="fecharExpedienteComBackup()" style="border-color:rgba(201,162,75,.45);color:var(--gold);display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font-size:11.5px;font-weight:700;margin-left:4px" title="Salvar e fechar expediente com backup"><i data-lucide="log-out" class="ic"></i> Sair & Backup</button>
   </div>
 </div>
 
@@ -128,6 +130,7 @@
   </nav>
 
   <div class="sidebar-footer">
+    <a onclick="fecharExpedienteComBackup()" class="footer-action-link" style="color:var(--gold);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><i data-lucide="log-out" class="ic"></i> Sair & Fazer Backup</a>
     <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
     <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
       <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>
@@ -157,6 +160,9 @@
 <div id="page-dashboard" class="page active">
   <div class="print-header"><h1>GestãoPRO — Dashboard</h1><p id="print-date-dashboard"></p></div>
   <p id="dash-date" class="dash-date-line">Resumo geral do negócio</p>
+
+  <!-- BANNER DINÂMICO PIX OFFLINE -->
+  <div id="dash-pix-banner" style="margin-bottom:10px"></div>
 
   <!-- META DO MÊS (barra no topo) -->
   <div class="table-card" style="margin-bottom:10px;padding:10px 14px">
@@ -189,6 +195,7 @@
   <div class="qa-grid">
     <button type="button" class="qa-btn" onclick="abrirMenuNovaVenda()"><span class="qa-ic"><i data-lucide="circle-plus"></i></span><span class="qa-lb">Nova venda</span></button>
     <button type="button" class="qa-btn" onclick="openModal('modal-cliente')"><span class="qa-ic"><i data-lucide="user-plus"></i><span class="qa-count" id="qa-clientes-count" title="Clientes cadastrados">0</span></span><span class="qa-lb">Novo cliente</span></button>
+    <button type="button" class="qa-btn" onclick="abrirConfigPix()"><span class="qa-ic"><i data-lucide="qr-code"></i></span><span class="qa-lb">Pix Offline</span></button>
     <button type="button" class="qa-btn" onclick="abrirNovoGasto()"><span class="qa-ic"><i data-lucide="receipt"></i></span><span class="qa-lb">Novo gasto</span></button>
     <button type="button" class="qa-btn" onclick="goto('receber')"><span class="qa-ic"><i data-lucide="wallet"></i></span><span class="qa-lb">Receber</span></button>
   </div>
@@ -1152,14 +1159,84 @@
 
 <!-- CONFIGURAR PIX -->
 <div class="modal-overlay" id="modal-config-pix">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-header"><h3>Configurar Pix</h3><button class="modal-close" onclick="closeModal('modal-config-pix')"><i data-lucide="x" class="ic"></i></button></div>
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div>
+        <h3 style="display:flex;align-items:center;gap:6px">
+          <i data-lucide="qr-code" class="ic" style="color:var(--gold)"></i> Configurar Pix (100% Offline)
+        </h3>
+        <span style="font-size:11.5px;color:var(--muted)">Gere QR Code e Pix Copia e Cola instantâneo nas cobranças</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-config-pix')"><i data-lucide="x" class="ic"></i></button>
+    </div>
     <div class="modal-body">
-      <div class="form-group"><label>Celular (chave Pix)</label><input class="form-control" id="pix-celular" type="tel" placeholder="DDD + número"></div>
-      <div class="form-group"><label>Nome do titular</label><input class="form-control" id="pix-nome" maxlength="25" placeholder="Como aparece no banco"></div>
-      <div class="form-group"><label>Cidade</label><input class="form-control" id="pix-cidade" maxlength="15"></div>
-      <div style="font-size:11px;color:var(--muted)">Fica só neste aparelho e no backup. Deixe tudo vazio para remover.</div>
-      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-config-pix')">Cancelar</button><button class="btn btn-green" onclick="salvarConfigPix()">Salvar</button></div>
+      <!-- Seletor de Tipo de Chave Pix -->
+      <div class="form-group" style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Tipo de Chave Pix</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px;margin-top:4px">
+          <button type="button" class="pix-tipo-btn btn btn-outline btn-sm" data-tipo="celular" onclick="pixMudarTipo('celular')" style="font-size:11.5px;padding:6px 4px;font-weight:700">📱 Celular</button>
+          <button type="button" class="pix-tipo-btn btn btn-outline btn-sm" data-tipo="cpf" onclick="pixMudarTipo('cpf')" style="font-size:11.5px;padding:6px 4px;font-weight:700">👤 CPF</button>
+          <button type="button" class="pix-tipo-btn btn btn-outline btn-sm" data-tipo="cnpj" onclick="pixMudarTipo('cnpj')" style="font-size:11.5px;padding:6px 4px;font-weight:700">🏢 CNPJ</button>
+          <button type="button" class="pix-tipo-btn btn btn-outline btn-sm" data-tipo="email" onclick="pixMudarTipo('email')" style="font-size:11.5px;padding:6px 4px;font-weight:700">✉️ E-mail</button>
+          <button type="button" class="pix-tipo-btn btn btn-outline btn-sm" data-tipo="aleatoria" onclick="pixMudarTipo('aleatoria')" style="font-size:11.5px;padding:6px 4px;font-weight:700">🔑 Aleatória</button>
+        </div>
+      </div>
+
+      <!-- Campo da Chave Pix -->
+      <div class="form-group">
+        <label id="pix-label-chave">Celular com DDD</label>
+        <input class="form-control" id="pix-chave" name="pix-chave" placeholder="DDD + número (ex: 11999998888)" oninput="pixAtualizarPrevia()">
+        <input type="hidden" id="pix-celular">
+        <div id="pix-dica-chave" style="font-size:11px;color:var(--muted);margin-top:4px">Digite com 2 dígitos de DDD + 9 dígitos de celular.</div>
+      </div>
+
+      <!-- Nome do Titular e Cidade -->
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>Nome do Titular <span style="font-weight:400;color:var(--muted)">(como no banco)</span></label>
+          <input class="form-control" id="pix-nome" maxlength="25" placeholder="Ex: JOAO DA SILVA" oninput="pixAtualizarPrevia()">
+          <div style="font-size:10.5px;color:var(--muted);margin-top:3px">Bacen: <strong id="pix-titular-sanitizado" style="color:var(--gold)">—</strong></div>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Cidade</label>
+          <input class="form-control" id="pix-cidade" maxlength="15" placeholder="Ex: SAO PAULO" oninput="pixAtualizarPrevia()">
+        </div>
+      </div>
+
+      <!-- Card de Prévia Dinâmica e Teste Offline -->
+      <div id="pix-preview-box" style="background:rgba(255,255,255,.03);border:1px dashed var(--border);border-radius:10px;padding:12px;margin:12px 0;transition:opacity .2s">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Prévia Offline (Padrão Banco Central)</span>
+          <div id="pix-preview-status" style="font-size:11px"></div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center">
+          <div id="pix-preview-qr" style="flex-shrink:0;background:#fff;padding:6px;border-radius:8px;line-height:0"></div>
+          <div style="min-width:0;flex:1">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Código Pix Copia e Cola (teste de R$ 10,00):</div>
+            <div id="pix-preview-payload" style="font-family:monospace;font-size:10px;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 8px;max-height:60px;overflow-y:auto;word-break:break-all;line-height:1.3">
+              Aguardando chave válida...
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px;padding:3px 8px" onclick="copiarPixPrevia()">
+              <i data-lucide="copy" class="ic ic-sm"></i> Copiar Código Teste
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:12px">
+        💡 <strong>100% Seguro & Privado:</strong> Sua chave não passa por servidores externos nem depende de internet. O código QR e o payload de pagamento são gerados diretamente no seu dispositivo seguindo o padrão oficial do Banco Central (EMV QRCPS).
+      </div>
+
+      <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+        <button type="button" class="btn btn-outline btn-sm" style="color:var(--red);border-color:rgba(231,76,60,.3)" onclick="removerConfigPix()">
+          Desativar Pix
+        </button>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-config-pix')">Cancelar</button>
+          <button type="button" class="btn btn-primary" style="font-weight:700" onclick="salvarConfigPix()">✓ Salvar Chave Pix</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2182,33 +2259,34 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.60.0"></script>
-<script src="00-core.js?v=5.60.0"></script>
-<script src="01-ui-nav.js?v=5.60.0"></script>
-<script src="02-dashboard.js?v=5.60.0"></script>
-<script src="03-clientes.js?v=5.60.0"></script>
-<script src="04-vendas.js?v=5.60.0"></script>
-<script src="04b-pix-extrato.js?v=5.60.0"></script>
-<script src="11b-meu-dia.js?v=5.60.0"></script>
-<script src="11c-promessa-reneg.js?v=5.60.0"></script>
-<script src="11d-aprovar-lote.js?v=5.60.0"></script>
-<script src="05-producao.js?v=5.60.0"></script>
-<script src="06-estoque.js?v=5.60.0"></script>
-<script src="07-precificacao.js?v=5.60.0"></script>
-<script src="08-compras-fornecedores.js?v=5.60.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.60.0"></script>
-<script src="10-fab-inline.js?v=5.60.0"></script>
-<script src="10b-planejamento.js?v=5.60.0"></script>
-<script src="13-crm.js?v=5.60.0"></script>
-<script src="14-relacionamento.js?v=5.60.0"></script>
-<script src="15-cliente360.js?v=5.60.0"></script>
-<script src="16-automacoes.js?v=5.60.0"></script>
-<script src="17-banco.js?v=5.60.0"></script>
-<script src="18-credito.js?v=5.60.0"></script>
-<script src="19-conectores.js?v=5.60.0"></script>
-<script src="20-cartoes.js?v=5.60.0"></script>
-<script src="12-drive-backup.js?v=5.60.0"></script>
-<script src="11-app-init.js?v=5.60.0"></script>
+<script src="00a-config.js?v=5.61.0"></script>
+<script src="00-core.js?v=5.61.0"></script>
+<script src="lib-qrcode.js?v=5.61.0"></script>
+<script src="01-ui-nav.js?v=5.61.0"></script>
+<script src="02-dashboard.js?v=5.61.0"></script>
+<script src="03-clientes.js?v=5.61.0"></script>
+<script src="04-vendas.js?v=5.61.0"></script>
+<script src="04b-pix-extrato.js?v=5.61.0"></script>
+<script src="11b-meu-dia.js?v=5.61.0"></script>
+<script src="11c-promessa-reneg.js?v=5.61.0"></script>
+<script src="11d-aprovar-lote.js?v=5.61.0"></script>
+<script src="05-producao.js?v=5.61.0"></script>
+<script src="06-estoque.js?v=5.61.0"></script>
+<script src="07-precificacao.js?v=5.61.0"></script>
+<script src="08-compras-fornecedores.js?v=5.61.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.61.0"></script>
+<script src="10-fab-inline.js?v=5.61.0"></script>
+<script src="10b-planejamento.js?v=5.61.0"></script>
+<script src="13-crm.js?v=5.61.0"></script>
+<script src="14-relacionamento.js?v=5.61.0"></script>
+<script src="15-cliente360.js?v=5.61.0"></script>
+<script src="16-automacoes.js?v=5.61.0"></script>
+<script src="17-banco.js?v=5.61.0"></script>
+<script src="18-credito.js?v=5.61.0"></script>
+<script src="19-conectores.js?v=5.61.0"></script>
+<script src="20-cartoes.js?v=5.61.0"></script>
+<script src="12-drive-backup.js?v=5.61.0"></script>
+<script src="11-app-init.js?v=5.61.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -2426,6 +2504,29 @@
         </button>
         <button class="btn btn-outline" style="padding:10px" onclick="closeModal('modal-backup-status');abrirBackupModal()">
           <i data-lucide="cloud" class="ic"></i> Gerenciar Google Drive
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL FECHAR EXPEDIENTE & BACKUP AUTOMÁTICO -->
+<div class="modal-overlay" id="modal-fechar-expediente">
+  <div class="modal" style="max-width:400px;text-align:center">
+    <div class="modal-header">
+      <h3 style="display:flex;align-items:center;gap:6px"><i data-lucide="shield-check" class="ic" style="color:#4CC38A"></i> Fechar Expediente</h3>
+      <button class="modal-close" onclick="closeModal('modal-fechar-expediente')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body" style="padding:22px 18px">
+      <div id="fechar-exp-ic" style="margin-bottom:14px"></div>
+      <div id="fechar-exp-status" style="margin-bottom:18px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="baixarBackupRapido()">
+          <i data-lucide="download" class="ic"></i> Baixar cópia extra (JSON)
+        </button>
+        <button class="btn btn-primary" onclick="closeModal('modal-fechar-expediente')">
+          Concluir e Voltar
         </button>
       </div>
     </div>

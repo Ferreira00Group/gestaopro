@@ -84,6 +84,7 @@ function renderDashboard(){
   dashSet('dash-orc-pendentes',orcPend.length);
   dashSet('dash-orc-sub',orcPend.filter(o=>o.statusOrc==='rascunho').length+' rascunho · '+orcPend.filter(o=>o.statusOrc==='aprovado').length+' aprovado');
   renderAlertasBanner();
+  renderDashPixBanner();
   // Contas vencidas e vencem hoje (por parcela)
   const flatFiado=getUnidadesFiadoFlat();
   const pendentesFiado=flatFiado.filter(u=>u.status!=='pago'&&u.vencimento);
@@ -301,3 +302,43 @@ function dashVencimentosHtml(itens,hoje){
   if(mostrados<itens.length) html+=`<div class="dash-mais">+ ${itens.length-mostrados} cliente${itens.length-mostrados>1?'s':''} — <a onclick="goto('receber')">ver todas</a></div>`;
   return html;
 }
+
+function renderDashPixBanner(){
+  const el = document.getElementById('dash-pix-banner');
+  if(!el) return;
+  const p = typeof getPixCfg === 'function' ? getPixCfg() : { chave: '' };
+  const disp = typeof pixDisponivel === 'function' && pixDisponivel();
+  if(!disp){
+    el.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(246,181,42,.15),rgba(201,162,75,.05));border:1.5px dashed rgba(246,181,42,.5);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer" onclick="abrirConfigPix()">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:9px;background:rgba(246,181,42,.2);color:#F6B52A;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            ⚡
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#fff">Configurar Chave Pix (100% Offline)</div>
+            <div style="font-size:11.5px;color:var(--muted)">Automatize a geração de QR Code e Pix Copia e Cola em cobranças e vendas.</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" style="white-space:nowrap;padding:6px 12px;font-weight:700">
+          Configurar Chave ➜
+        </button>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div style="background:rgba(76,195,138,.07);border:1px solid rgba(76,195,138,.3);border-radius:10px;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="display:inline-flex;width:8px;height:8px;border-radius:50%;background:#4CC38A;box-shadow:0 0 8px #4CC38A"></span>
+          <span style="font-size:12px;color:var(--text)">
+            Pix Offline Ativo: <strong style="color:#fff">${typeof pixTipoNome === 'function' ? pixTipoNome() : 'Chave'} (${typeof pixChaveExibicao === 'function' ? pixChaveExibicao() : p.chave})</strong> · <span style="color:var(--muted)">${escapeHtml(p.nome)}</span>
+          </span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px" onclick="abrirConfigPix()">
+            Editar Pix
+          </button>
+        </div>
+      </div>`;
+  }
+}
+

@@ -98,7 +98,40 @@ inicializarIconesLucide();
   }).observe(document.body,{childList:true,subtree:true});
 })();
 initGoogleDriveClient();
-setTimeout(tentarBackupSilenciosoDrive, 1000);
-setTimeout(verificarLembreteBackup, 3000);
+// Backup automático ao ENTRAR no app (v5.61.0)
+setTimeout(()=>{ if(typeof tentarBackupSilenciosoDrive==='function') tentarBackupSilenciosoDrive(true); }, 1200);
+setTimeout(verificarLembreteBackup, 3500);
+
+// Sincronização ao voltar para o app e gravação ao sair/minimizar
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible'){
+    if(typeof tentarBackupSilenciosoDrive==='function') tentarBackupSilenciosoDrive(false);
+  } else if(document.visibilityState === 'hidden'){
+    if(typeof gravarLocalAgora==='function') gravarLocalAgora();
+  }
+});
+
 // v5.49: avalia as automações do CRM (inscreve clientes nas cadências e cancela passos de quem saiu do segmento)
 setTimeout(()=>{ if(typeof autoExecutar==='function'){ try{ autoExecutar(true); }catch(e){ console.warn('[GestãoPRO] Automações:',e); } } }, 1500);
+
+// Abertura automática e remota do modal de configuração de Pix
+function checarAberturaPix(){
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    const semPix = typeof pixDisponivel === 'function' && !pixDisponivel();
+    if(params.get('modal') === 'pix' || hash === '#pix' || hash === '#config-pix' || semPix){
+      setTimeout(()=>{ if(typeof abrirConfigPix === 'function') abrirConfigPix(); }, 350);
+    }
+  } catch(e) {
+    console.warn('[GestãoPRO] Checar Pix:', e);
+  }
+}
+setTimeout(checarAberturaPix, 350);
+
+// Escuta mensagem da janela pai (wrapper React) para acionar o modal Pix
+window.addEventListener('message', (ev) => {
+  if(ev && ev.data && (ev.data.action === 'abrirConfigPix' || ev.data === 'abrirConfigPix')){
+    if(typeof abrirConfigPix === 'function') abrirConfigPix();
+  }
+});

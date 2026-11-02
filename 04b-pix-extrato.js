@@ -9,13 +9,48 @@ function getPixCfg(){return Object.assign({},PIX_PADRAO,state.pix||{});}
 function encargosCfg(){return Object.assign({},ENCARGOS_PADRAO,state.encargos||{});}
 const round2=v=>Math.round((Number(v)||0)*100)/100;
 
-// ───────── Pix "copia e cola" (BR Code estático) ─────────
-function pixNormalizarCelular(raw){
-  let d=String(raw||'').replace(/\D/g,'');
-  if(d.startsWith('55')&&(d.length===12||d.length===13)) d=d.slice(2);
-  if(d.length<10||d.length>11) return '';
-  return '+55'+d;
+// ───────── Pix "copia e cola" (BR Code estático e offline) ─────────
+function pixNormalizarChave(tipo, raw){
+  tipo = tipo || 'celular';
+  let s = String(raw || '').trim();
+  if(tipo === 'cpf'){
+    let d = s.replace(/\D/g, '');
+    if(d.length === 11) return d;
+    return '';
+  }
+  if(tipo === 'cnpj'){
+    let d = s.replace(/\D/g, '');
+    if(d.length === 14) return d;
+    return '';
+  }
+  if(tipo === 'email'){
+    if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return s.toLowerCase();
+    return '';
+  }
+  if(tipo === 'aleatoria'){
+    let clean = s.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+    if(clean.length >= 30 && clean.length <= 36) return clean;
+    return '';
+  }
+  // Celular (padrão Bacen: +55 + DDD + 9 dígitos)
+  let d = s.replace(/\D/g, '');
+  if(d.startsWith('55') && (d.length === 12 || d.length === 13)) d = d.slice(2);
+  if(d.length < 10 || d.length > 11) return '';
+  return '+55' + d;
 }
+function pixNormalizarCelular(raw){ return pixNormalizarChave('celular', raw); }
+
+function pixTipoNome(t){
+  t = t || (getPixCfg().tipo || 'celular');
+  switch(t){
+    case 'cpf': return 'CPF';
+    case 'cnpj': return 'CNPJ';
+    case 'email': return 'E-mail';
+    case 'aleatoria': return 'Chave Aleatória';
+    case 'celular': default: return 'Celular';
+  }
+}
+
 function pixSemAcento(s,max){
   return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9 ]/g,'').replace(/\s+/g,' ').trim().toUpperCase().slice(0,max);
 }
@@ -30,7 +65,7 @@ function pixCrc16(str){
 function pixCampo(id,val){val=String(val);return id+String(val.length).padStart(2,'0')+val;}
 function pixDisponivel(){
   const p=getPixCfg();
-  return !!(p.chave&&pixSemAcento(p.nome,25)&&pixSemAcento(p.cidade,15));
+  return !!(p.chave&&pixSemAcento(p.nome,25)&&pixSemAcento(p.cidade||'BRASIL',15));
 }
 function pixValorTxt(v){return (Math.round((Number(v)||0)*100)/100).toFixed(2);} // sempre com ponto e 2 casas
 function pixPayload(valor){
@@ -38,19 +73,37 @@ function pixPayload(valor){
   const conta=pixCampo('00','br.gov.bcb.pix')+pixCampo('01',p.chave);
   let s=pixCampo('00','01')+pixCampo('01','11')+pixCampo('26',conta)+pixCampo('52','0000')+pixCampo('53','986');
   if(valor>0.009) s+=pixCampo('54',pixValorTxt(valor));
-  s+=pixCampo('58','BR')+pixCampo('59',pixSemAcento(p.nome,25))+pixCampo('60',pixSemAcento(p.cidade,15))+pixCampo('62',pixCampo('05','***'));
+  s+=pixCampo('58','BR')+pixCampo('59',pixSemAcento(p.nome,25))+pixCampo('60',pixSemAcento(p.cidade||'BRASIL',15))+pixCampo('62',pixCampo('05','***'));
   s+='6304';
   return s+pixCrc16(s);
 }
 function pixChaveExibicao(){
-  const d=String(getPixCfg().chave||'').replace(/\D/g,'').replace(/^55/,'');
-  if(d.length===11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
-  if(d.length===10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
-  return getPixCfg().chave;
+  const p = getPixCfg();
+  const t = p.tipo || 'celular';
+  const c = String(p.chave || '');
+  if(!c) return '';
+  if(t === 'celular'){
+    const d = c.replace(/\D/g, '').replace(/^55/, '');
+    if(d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+    if(d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+    return c;
+  }
+  if(t === 'cpf'){
+    const d = c.replace(/\D/g, '');
+    if(d.length === 11) return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
+    return c;
+  }
+  if(t === 'cnpj'){
+    const d = c.replace(/\D/g, '');
+    if(d.length === 14) return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+    return c;
+  }
+  return c;
 }
 function pixBloco(valor){
   if(!pixDisponivel()) return '';
-  return `💳 *Pix* (celular): ${pixChaveExibicao()}${valor>0.009?`\nValor: ${fmt(valor)}`:''}\n\nPix copia e cola:\n${pixPayload(valor)}`;
+  const p = getPixCfg();
+  return `💳 *Pix* (${pixTipoNome()}): ${pixChaveExibicao()}${p.nome?`\nTitular: ${p.nome}`:''}${valor>0.009?`\nValor: ${fmt(valor)}`:''}\n\nPix copia e cola:\n${pixPayload(valor)}`;
 }
 function pixValorCobranca(clienteId){
   const saldo=getSaldoCliente(clienteId);
@@ -86,29 +139,220 @@ function enviarWhatsOuCopiar(c,msg){
   else{copiarTexto(msg,'Cliente sem telefone — texto copiado');}
 }
 
-// ───────── Configurar Pix ─────────
-function abrirConfigPix(){
-  const p=getPixCfg();
-  const d=String(p.chave||'').replace(/\D/g,'').replace(/^55/,'');
-  document.getElementById('pix-celular').value=d;
-  document.getElementById('pix-nome').value=p.nome||'';
-  document.getElementById('pix-cidade').value=p.cidade||'';
-  document.getElementById('modal-config-pix').classList.add('open');
-}
-function salvarConfigPix(){
-  const nome=document.getElementById('pix-nome').value.trim();
-  const cidade=document.getElementById('pix-cidade').value.trim();
-  const bruto=document.getElementById('pix-celular').value.trim();
-  if(!bruto&&!nome&&!cidade){ // tudo vazio = remover Pix
-    state.pix={...PIX_PADRAO};marcarAlterado();closeModal('modal-config-pix');showToast('Pix removido','green');return;
+// ───────── Configurar Pix com Suporte Multi-Chaves e Prévia em Tempo Real ─────────
+let _pixTipoAtual = 'celular';
+
+function pixMudarTipo(tipo){
+  _pixTipoAtual = tipo;
+  const inputChave = document.getElementById('pix-chave') || document.getElementById('pix-celular');
+  const labelChave = document.getElementById('pix-label-chave');
+  const dicaChave = document.getElementById('pix-dica-chave');
+  
+  // Atualiza botões visuais de tipo
+  document.querySelectorAll('.pix-tipo-btn').forEach(btn => {
+    if(btn.dataset.tipo === tipo){
+      btn.style.background = 'var(--gold)';
+      btn.style.color = '#000';
+      btn.style.borderColor = 'var(--gold)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--text)';
+      btn.style.borderColor = 'var(--border)';
+    }
+  });
+
+  if(inputChave){
+    if(tipo === 'celular'){
+      inputChave.type = 'tel';
+      inputChave.placeholder = 'DDD + número (ex: 11999998888)';
+      if(labelChave) labelChave.textContent = 'Celular com DDD';
+      if(dicaChave) dicaChave.textContent = 'Digite com 2 dígitos de DDD + 9 dígitos de celular.';
+    } else if(tipo === 'cpf'){
+      inputChave.type = 'text';
+      inputChave.placeholder = '000.000.000-00 (11 dígitos)';
+      if(labelChave) labelChave.textContent = 'CPF do titular';
+      if(dicaChave) dicaChave.textContent = 'Apenas números ou com pontos e traço.';
+    } else if(tipo === 'cnpj'){
+      inputChave.type = 'text';
+      inputChave.placeholder = '00.000.000/0000-00 (14 dígitos)';
+      if(labelChave) labelChave.textContent = 'CNPJ da empresa';
+      if(dicaChave) dicaChave.textContent = '14 dígitos da sua empresa.';
+    } else if(tipo === 'email'){
+      inputChave.type = 'email';
+      inputChave.placeholder = 'seuemail@exemplo.com';
+      if(labelChave) labelChave.textContent = 'E-mail cadastrado no Pix';
+      if(dicaChave) dicaChave.textContent = 'E-mail exatamente como cadastrado no seu banco.';
+    } else if(tipo === 'aleatoria'){
+      inputChave.type = 'text';
+      inputChave.placeholder = 'Cole a chave aleatória (EVP de 32-36 caracteres)';
+      if(labelChave) labelChave.textContent = 'Chave Aleatória (EVP)';
+      if(dicaChave) dicaChave.textContent = 'Cole o código gerado no app do seu banco.';
+    }
   }
-  const chave=pixNormalizarCelular(bruto);
-  if(!chave){showToast('Celular inválido — digite DDD + número','red');return;}
-  if(!pixSemAcento(nome,25)){showToast('Informe o nome do titular','red');return;}
-  if(!pixSemAcento(cidade,15)){showToast('Informe a cidade','red');return;}
-  state.pix={chave,tipo:'celular',nome,cidade};
+  pixAtualizarPrevia();
+}
+
+function abrirConfigPix(){
+  const p = getPixCfg();
+  _pixTipoAtual = p.tipo || 'celular';
+  
+  const inputChave = document.getElementById('pix-chave') || document.getElementById('pix-celular');
+  const inputNome = document.getElementById('pix-nome');
+  const inputCidade = document.getElementById('pix-cidade');
+
+  if(inputNome) inputNome.value = p.nome || '';
+  if(inputCidade) inputCidade.value = p.cidade || 'SAO PAULO';
+  
+  if(inputChave){
+    if(_pixTipoAtual === 'celular'){
+      inputChave.value = String(p.chave || '').replace(/\D/g, '').replace(/^55/, '');
+    } else {
+      inputChave.value = p.chave || '';
+    }
+  }
+
+  pixMudarTipo(_pixTipoAtual);
+  document.getElementById('modal-config-pix').classList.add('open');
+  pixAtualizarPrevia();
+  
+  setTimeout(() => {
+    if(inputChave) inputChave.focus();
+  }, 150);
+}
+
+function pixAtualizarPrevia(){
+  const inputChave = document.getElementById('pix-chave') || document.getElementById('pix-celular');
+  const inputNome = document.getElementById('pix-nome');
+  const inputCidade = document.getElementById('pix-cidade');
+  const previewBox = document.getElementById('pix-preview-box');
+  const previewStatus = document.getElementById('pix-preview-status');
+  const previewPayload = document.getElementById('pix-preview-payload');
+  const previewQr = document.getElementById('pix-preview-qr');
+  const titularSanitizado = document.getElementById('pix-titular-sanitizado');
+
+  if(!inputChave || !inputNome) return;
+
+  const bruto = inputChave.value.trim();
+  const nome = inputNome.value.trim();
+  const cidade = (inputCidade ? inputCidade.value.trim() : '') || 'SAO PAULO';
+
+  if(titularSanitizado){
+    titularSanitizado.textContent = pixSemAcento(nome, 25) || '(sem titular)';
+  }
+
+  const chaveNorm = pixNormalizarChave(_pixTipoAtual, bruto);
+
+  if(!chaveNorm){
+    if(previewStatus) previewStatus.innerHTML = '<span style="color:var(--muted)">⚠️ Digite uma chave válida acima para gerar a prévia offline</span>';
+    if(previewBox) previewBox.style.opacity = '0.5';
+    if(previewPayload) previewPayload.textContent = 'Aguardando chave válida...';
+    if(previewQr) previewQr.innerHTML = '<div style="width:120px;height:120px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">QR Code</div>';
+    return;
+  }
+
+  if(previewBox) previewBox.style.opacity = '1';
+  if(previewStatus) previewStatus.innerHTML = `<span style="color:#4CC38A;font-weight:700">✓ Chave válida (${pixTipoNome(_pixTipoAtual)}) · Padrão BACEN</span>`;
+
+  // Payload temporário de teste
+  const fakeCfg = { chave: chaveNorm, tipo: _pixTipoAtual, nome: nome || 'MEU NOME', cidade: cidade || 'BRASIL' };
+  const conta = pixCampo('00', 'br.gov.bcb.pix') + pixCampo('01', fakeCfg.chave);
+  let s = pixCampo('00', '01') + pixCampo('01', '11') + pixCampo('26', conta) + pixCampo('52', '0000') + pixCampo('53', '986');
+  s += pixCampo('54', '10.00'); // Teste R$ 10,00
+  s += pixCampo('58', 'BR') + pixCampo('59', pixSemAcento(fakeCfg.nome, 25)) + pixCampo('60', pixSemAcento(fakeCfg.cidade, 15)) + pixCampo('62', pixCampo('05', '***'));
+  s += '6304';
+  const payloadTeste = s + pixCrc16(s);
+
+  if(previewPayload) previewPayload.textContent = payloadTeste;
+
+  if(previewQr){
+    if(typeof QR !== 'undefined' && typeof QR.svg === 'function'){
+      try {
+        previewQr.innerHTML = QR.svg(payloadTeste, 120);
+      } catch(e) {
+        if(window.QRCode && typeof QRCode.toString === 'function'){
+          QRCode.toString(payloadTeste, { type: 'svg', width: 120 }, (err, svgStr) => {
+            if(!err && svgStr) previewQr.innerHTML = svgStr;
+          });
+        }
+      }
+    }
+  }
+}
+
+function salvarConfigPix(){
+  const inputChave = document.getElementById('pix-chave') || document.getElementById('pix-celular');
+  const inputNome = document.getElementById('pix-nome');
+  const inputCidade = document.getElementById('pix-cidade');
+
+  const bruto = inputChave ? inputChave.value.trim() : '';
+  const nome = inputNome ? inputNome.value.trim() : '';
+  const cidade = inputCidade ? inputCidade.value.trim() : '';
+
+  if(!bruto && !nome && !cidade){ // tudo vazio = remover Pix
+    state.pix = { ...PIX_PADRAO };
+    marcarAlterado();
+    closeModal('modal-config-pix');
+    showToast('Pix removido com sucesso', 'green');
+    if(typeof renderDashPixBanner === 'function') renderDashPixBanner();
+    return;
+  }
+
+  const chave = pixNormalizarChave(_pixTipoAtual, bruto);
+  if(!chave){
+    if(_pixTipoAtual === 'celular') showToast('Celular inválido — digite DDD + número (ex: 11999998888)', 'red');
+    else if(_pixTipoAtual === 'cpf') showToast('CPF inválido — digite os 11 dígitos', 'red');
+    else if(_pixTipoAtual === 'cnpj') showToast('CNPJ inválido — digite os 14 dígitos', 'red');
+    else if(_pixTipoAtual === 'email') showToast('E-mail inválido — digite um e-mail válido', 'red');
+    else showToast('Chave aleatória inválida — cole a chave completa de 32 a 36 caracteres', 'red');
+    return;
+  }
+
+  if(!pixSemAcento(nome, 25)){
+    showToast('Informe o nome do titular (como aparece no banco)', 'red');
+    return;
+  }
+
+  const cidadeFinal = cidade || 'SAO PAULO';
+  if(!pixSemAcento(cidadeFinal, 15)){
+    showToast('Informe a cidade (máx. 15 caracteres)', 'red');
+    return;
+  }
+
+  state.pix = {
+    chave,
+    tipo: _pixTipoAtual,
+    nome: nome,
+    cidade: cidadeFinal
+  };
+
   marcarAlterado();
-  closeModal('modal-config-pix');showToast('Pix salvo!','green');
+  closeModal('modal-config-pix');
+  showToast('✅ Chave Pix configurada! Códigos offline ativados.', 'green');
+
+  if(typeof renderDashPixBanner === 'function') renderDashPixBanner();
+  const pg = document.querySelector('.page.active');
+  if(pg && pg.id === 'page-dashboard' && typeof renderDashboard === 'function') renderDashboard();
+}
+
+function removerConfigPix(){
+  confirmarAcao('Deseja realmente remover os dados da chave Pix?', () => {
+    state.pix = { ...PIX_PADRAO };
+    marcarAlterado();
+    closeModal('modal-config-pix');
+    showToast('Chave Pix desativada', 'green');
+    if(typeof renderDashPixBanner === 'function') renderDashPixBanner();
+    const pg = document.querySelector('.page.active');
+    if(pg && pg.id === 'page-dashboard' && typeof renderDashboard === 'function') renderDashboard();
+  });
+}
+
+function copiarPixPrevia(){
+  const previewPayload = document.getElementById('pix-preview-payload');
+  if(previewPayload && previewPayload.textContent && !previewPayload.textContent.includes('Aguardando')){
+    copiarTexto(previewPayload.textContent, 'Código Pix Copia e Cola copiado com sucesso!');
+  } else {
+    showToast('Digite uma chave e titular válidos primeiro', 'red');
+  }
 }
 
 // ───────── Encargos de atraso (informativos) ─────────
