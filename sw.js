@@ -57,6 +57,7 @@ const ASSETS = [
   './17-banco.js' + v,
   './18-credito.js' + v,
   './19-conectores.js' + v,
+  './20-cartoes.js' + v,
   './12-drive-backup.js' + v,
   './11-app-init.js' + v,
   './manifest.json',

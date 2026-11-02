@@ -719,6 +719,7 @@ function render(page){
   if(page==='relatorio')initRelatorio();
   if(page==='banco'&&typeof renderBanco==='function')renderBanco();
   if(page==='conectores'&&typeof renderConectores==='function')renderConectores();
+  if(page==='cartoes'&&typeof renderCartoes==='function')renderCartoes();
 }
 
 

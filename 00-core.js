@@ -449,7 +449,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object',credito:'object',automacaoDisparos:'object',crmSegmentos:'array',crmAutomacoes:'array',crmFila:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array',bancoContas:'array',bancoTransacoes:'array'};
+  fichas:'object',nextId:'object',credito:'object',cartoes:'object',automacaoDisparos:'object',crmSegmentos:'array',crmAutomacoes:'array',crmFila:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array',bancoContas:'array',bancoTransacoes:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){
@@ -485,6 +485,7 @@ function carregarDados(){
       state = { ...DEFAULT_STATE, ...parsed };
       limparFiltrosDeTela(state);
       state.nextId      = { ...DEFAULT_STATE.nextId, ...parsed.nextId };
+      if(!state.cartoes||typeof state.cartoes!=='object'||Array.isArray(state.cartoes)) state.cartoes={total:100,vinculos:{}}; // cartões QR dos clientes (v5.56)
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
       if(!Array.isArray(state.renegociacoes)) state.renegociacoes=[];
