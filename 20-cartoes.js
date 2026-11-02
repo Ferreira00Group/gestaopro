@@ -253,8 +253,8 @@ function renderCartoes(mantemBusca){
     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px;font-size:13px">Imprimir do nº
       <input class="form-control" id="cartoes-de" type="number" min="1" value="${_cartoesDe}" style="width:80px" oninput="_cartoesDe=this.value"> até
       <input class="form-control" id="cartoes-ate" type="number" min="1" value="${_cartoesAte||Math.min(st.total,CARTOES_LOTE)}" style="width:80px" oninput="_cartoesAte=this.value">
-      <button class="btn btn-outline btn-sm" onclick="cartoesImprimirUI()"><i data-lucide="printer" class="ic"></i> Imprimir</button>
-      <span style="color:var(--muted);font-size:12px">10 cartões por folha A4</span></div>
+      <button class="btn btn-outline btn-sm" onclick="cartoesImprimirUI()"><i data-lucide="printer" class="ic"></i> Gerar PDF</button>
+      <span style="color:var(--muted);font-size:12px">PDF A4 • 10 cartões por folha • salva em Downloads</span></div>
     <div class="tabs" style="margin-bottom:10px">${aba('todos','Todos')}${aba('livres','Livres')}${aba('vinculados','Vinculados')}</div>
     <input class="form-control" id="cartoes-busca" placeholder="Buscar por nº do cartão ou nome do cliente" value="${escapeHtml(_cartoesBusca)}" oninput="cartoesBuscar(this.value)" style="margin-bottom:10px" autocomplete="off">
     <div class="table-card table-cards"><div class="table-scroll"><table>
@@ -313,24 +313,118 @@ const CARTOES_CSS_BASE=`
 `;
 // "u" não existe em CSS: troca "<número>u" por calc(var(--u)*<número>) (no CSS e nos style inline)
 const cartoesCssU=t=>t.replace(/(-?\d*\.?\d+)u(?![a-z%])/g,(m,v)=>`calc(var(--u)*${v})`);
-function cartoesImprimir(de,ate){
-  let st=document.getElementById('cartoes-print-css');
-  if(!st){ st=document.createElement('style'); st.id='cartoes-print-css'; document.head.appendChild(st); }
-  st.textContent=`#cartoes-print{display:none}
-@media print{
-  @page{size:A4;margin:1cm}
-  body.imprimindo-cartoes>*:not(#cartoes-print){display:none!important}
-  body.imprimindo-cartoes #cartoes-print{display:grid!important;grid-template-columns:repeat(2,8.5cm);gap:.3cm .4cm;justify-content:center;background:#fff;color:#000}
-  ${cartoesCssU(CARTOES_CSS_BASE)}
-}`;
-  let box=document.getElementById('cartoes-print'); if(!box){ box=document.createElement('div'); box.id='cartoes-print'; document.body.appendChild(box); }
-  let h=''; for(let n=de;n<=ate;n++) h+=cartoesCssU(cartoesHtmlCartao(n));
-  box.innerHTML=h;
-  document.body.classList.add('imprimindo-cartoes');
-  const fim=()=>{ document.body.classList.remove('imprimindo-cartoes'); box.innerHTML=''; window.removeEventListener('afterprint',fim); };
-  window.addEventListener('afterprint',fim);
-  setTimeout(()=>window.print(),150);
+
+// ---------- geração de PDF local (sem janela de impressão) ----------
+// O PDF é montado em vetor: QR nítido, textos e formas. Funciona offline.
+function cartoesPDFAscii(s){
+  return String(s).replace(/[^\x20-\x7E]/g,'?');
 }
+function cartoesPDFBuild(de,ate){
+  const W=595.276, H=841.89, mm=72/25.4;
+  const cw=85*mm, ch=48.57*mm, gapX=4*mm, gapY=3*mm;
+  const cols=2, porPagina=10;
+  const total=ate-de+1, paginas=[];
+  const fmt=n=>Number(n).toFixed(2);
+  const rect=(x,y,w,h,fill,stroke=null,lw=1)=>{
+    let q=`${fmt(x)} ${fmt(y)} ${fmt(w)} ${fmt(h)} re `;
+    if(fill&&stroke) q+=`B`;
+    else if(fill) q+=`f`;
+    else q+=`S`;
+    return `${fill?`${fill} rg `:''}${stroke?`${stroke} RG ${fmt(lw)} w `:''}${q}\n`;
+  };
+  const line=(x1,y1,x2,y2,color,width=1)=>`${color} RG ${fmt(width)} w ${fmt(x1)} ${fmt(y1)} m ${fmt(x2)} ${fmt(y2)} l S\n`;
+  const txt=(x,y,size,str,color='1 1 1',font='F2')=>`BT /${font} ${fmt(size)} Tf ${color} rg ${fmt(x)} ${fmt(y)} Td (${cartoesPDFAscii(str).replace(/([\\()])/g,'\\$1')}) Tj ET\n`;
+  for(let base=de;base<=ate;base+=porPagina){
+    let c='';
+    const nFim=Math.min(ate,base+porPagina-1);
+    for(let n=base;n<=nFim;n++){
+      const idx=n-base, col=idx%cols, row=Math.floor(idx/cols);
+      const x=(W-(cols*cw+(cols-1)*gapX))/2+col*(cw+gapX);
+      const y=H-10*mm-ch-row*(ch+gapY);
+      // cartão preto com moldura dourada e detalhes geométricos
+      c+='q\n';
+      c+=rect(x,y,cw,ch,'0.015 0.015 0.018','0.91 0.64 0.10',1.35);
+      c+=line(x+8,y+ch-23,x+cw-8,y+ch-23,'0.70 0.47 0.08',0.8);
+      c+=line(x+cw*.61,y+8,x+cw*.61,y+ch-30,'0.95 0.67 0.16',1.2);
+      // faixas angulares douradas nas extremidades
+      c+=`0.82 0.56 0.08 rg ${fmt(x)} ${fmt(y+ch-3)} m ${fmt(x+cw*.32)} ${fmt(y+ch)} l ${fmt(x+cw*.25)} ${fmt(y+ch)} l ${fmt(x)} ${fmt(y+ch-9)} l f\n`;
+      c+=`0.72 0.48 0.06 rg ${fmt(x+cw*.78)} ${fmt(y)} m ${fmt(x+cw)} ${fmt(y+ch*.22)} l ${fmt(x+cw)} ${fmt(y+ch*.30)} l ${fmt(x+cw*.72)} ${fmt(y)} l f\n`;
+      c+=txt(x+13,y+ch-19,12,'Gestao','1 1 1','F2');
+      c+=txt(x+48,y+ch-19,12,'PRO','0.99 0.72 0.18','F2');
+      c+=txt(x+cw-48,y+ch-20,18,cartoesNum(n),'1 1 1','F2');
+      // QR em vetor com zona de silencio de 4 modulos
+      const mat=QR.codificar(cartoesLink(n)), q=mat.length, quiet=4;
+      const qrSize=ch*.66, module=qrSize/(q+quiet*2), qx=x+10, qy=y+12;
+      c+=rect(qx-3,qy-3,qrSize+6,qrSize+6,'1 1 1','0.91 0.64 0.10',0.8);
+      c+='0 0 0 rg\n';
+      for(let r=0;r<q;r++){
+        let cc=0;
+        while(cc<q){
+          if(mat[r][cc]){
+            let end=cc+1; while(end<q&&mat[r][end]) end++;
+            const rx=qx+(cc+quiet)*module;
+            const ry=qy+(q-1-r+quiet)*module;
+            c+=`${fmt(rx)} ${fmt(ry)} ${fmt((end-cc)*module)} ${fmt(module)} re f\n`;
+            cc=end;
+          }else cc++;
+        }
+      }
+      // três campos para preenchimento manual, com pictogramas simples
+      const fx=x+cw*.66, fw=cw*.29, fh=13;
+      for(let k=0;k<3;k++){
+        const fy=y+ch-43-k*24;
+        c+=rect(fx,fy,fw,fh,'1 1 1','0.91 0.64 0.10',0.75);
+        c+=`0.99 0.72 0.18 RG 1.25 w ${fmt(x+cw*.635)} ${fmt(fy+fh/2)} m ${fmt(x+cw*.65)} ${fmt(fy+fh/2)} l S\n`;
+      }
+      c+='Q\n';
+    }
+    paginas.push(c);
+  }
+  const objs=[];
+  const add=o=>(objs.push(o),objs.length);
+  const catalog=add(''), pagesObj=add(''), f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'), f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+  const pageIds=[];
+  for(const content of paginas){
+    const stream=content;
+    const contentId=add(`<< /Length ${stream.length} >>\nstream\n${stream}endstream`);
+    const pageId=add(`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    pageIds.push(pageId);
+  }
+  objs[catalog-1]=`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
+  objs[pagesObj-1]=`<< /Type /Pages /Kids [${pageIds.map(id=>id+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;
+  let pdf='%PDF-1.4\n%GestaoPRO\n', offsets=[0];
+  for(let i=0;i<objs.length;i++){ offsets.push(pdf.length); pdf+=`${i+1} 0 obj\n${objs[i]}\nendobj\n`; }
+  const xref=pdf.length;
+  pdf+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++) pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  pdf+=`trailer\n<< /Size ${objs.length+1} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return pdf;
+}
+function cartoesGerarPDF(de,ate){
+  de=parseInt(de,10); ate=parseInt(ate,10);
+  if(!Number.isInteger(de)||!Number.isInteger(ate)||de<1||ate<de||ate-de>999){
+    showToast('Informe um intervalo válido de cartões (máximo 1.000 por arquivo)','red'); return;
+  }
+  try{
+    const pdf=cartoesPDFBuild(de,ate);
+    const blob=new Blob([pdf],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=`GestaoPRO-Cartoes-${cartoesNum(de)}-${cartoesNum(ate)}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    showToast(`PDF gerado: ${ate-de+1} cartão(ões). Verifique a pasta Downloads.`,'green');
+  }catch(e){
+    console.error('Falha ao gerar PDF dos cartões:',e);
+    showToast('Não foi possível gerar o PDF: '+(e.message||'erro inesperado'),'red');
+  }
+}
+function cartoesImprimir(de,ate){ cartoesGerarPDF(de,ate); }
+function cartoesImprimirUI(){
+  const de=document.getElementById('cartoes-de')?.value;
+  const ate=document.getElementById('cartoes-ate')?.value;
+  cartoesGerarPDF(de,ate);
+}
+
 
 // ---------- integrações com o resto do app ----------
 // 1) Cadastro iniciado a partir de um cartão livre: vincula o cliente novo ao salvar.
@@ -352,16 +446,101 @@ if(typeof salvarCliente==='function'){
   const m=document.getElementById('modal-cliente'); if(!m) return;
   new MutationObserver(()=>{ if(!m.classList.contains('open')) _cartaoPendente=null; }).observe(m,{attributes:true,attributeFilter:['class']});
 })();
-// 2) Ficha 360 mostra o número do cartão do cliente.
+// 2) Ficha 360: nº do cartão, ações rápidas (venda, pagamento, cartão) e cartões anteriores.
 if(typeof c360Render==='function'){
   const _c360Orig=c360Render;
   c360Render=function(){
     _c360Orig.apply(this,arguments);
     try{
-      const n=cartoesDoCliente(c360Id), b=document.getElementById('c360-corpo');
-      if(n!=null&&b) b.insertAdjacentHTML('afterbegin',`<div style="margin-bottom:6px"><span class="badge badge-blue">Cartão nº ${cartoesNum(n)}</span></div>`);
+      const c=state.clientes.find(x=>x.id===c360Id), b=document.getElementById('c360-corpo'); if(!c||!b) return;
+      const n=cartoesDoCliente(c.id), ant=(c.cartoesAntigos||[]).filter(x=>x!==n);
+      b.insertAdjacentHTML('afterbegin',`<div style="margin-bottom:8px">
+        ${n!=null?`<span class="badge badge-blue">Cartão nº ${cartoesNum(n)}</span>`:''}
+        ${ant.length?`<span style="font-size:11px;color:var(--muted);margin-left:6px">já teve o cartão ${ant.map(cartoesNum).join(', ')}</span>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn btn-primary btn-sm" onclick="c360Acao(()=>cartoesNovaVendaPara(${c.id}))">Nova venda</button>
+          <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>abrirPagamento(${c.id}))">Receber pagamento</button>
+          ${n!=null?`<button class="btn btn-outline btn-sm" onclick="c360Acao(()=>cartoesImprimir(${n},${n}))">Imprimir cartão</button>`:''}
+        </div></div>`);
     }catch(e){}
   };
 }
+function cartoesNovaVendaPara(id){ goto('vendas'); setTimeout(()=>{ abrirNovaVenda(); selecionarClienteVenda(id); },200); }
 // 3) Link do cartão aberto pela câmera do celular (espera o app terminar de carregar os dados).
 setTimeout(cartoesTratarLink,900);
+
+// ═══ v5.57 — número do cartão segue a ficha: menor livre, libera ao arquivar/excluir, histórico, migração ═══
+let _cartoesNorm=false, _cartoesSemAuto=false;
+function cartoesMenorLivre(st){
+  for(let n=1;n<=st.total;n++){ if(st.vinculos[n]==null) return n; }
+  const n=st.total+1; st.total+=CARTOES_LOTE; return n; // acabou o lote: abre outro (imprimir depois)
+}
+function cartoesNormalizar(st){
+  let mudou=false;
+  if(!st.migradoV){ // 1ª execução: guarda cópia dos vínculos antes de mexer (vai junto no backup do app)
+    st.backupPreMigracao={em:today(),vinculos:Object.assign({},st.vinculos),total:st.total}; st.migradoV=1; mudou=true;
+  }
+  for(const n in st.vinculos){ // arquivado/excluído libera o número e fica no histórico da ficha
+    const c=state.clientes.find(x=>x.id==st.vinculos[n]);
+    if(c&&estaAtivo(c)) continue;
+    if(c){ c.cartoesAntigos=Array.isArray(c.cartoesAntigos)?c.cartoesAntigos:[]; if(!c.cartoesAntigos.includes(Number(n))) c.cartoesAntigos.push(Number(n)); }
+    delete st.vinculos[n]; mudou=true;
+  }
+  if(_cartaoPendente==null&&!_cartoesSemAuto){ // ativo sem cartão → menor livre, por ordem de cadastro
+    const tem=new Set(Object.values(st.vinculos).map(String));
+    state.clientes.filter(c=>estaAtivo(c)&&!tem.has(String(c.id))).sort((a,b)=>a.id-b.id).forEach(c=>{
+      st.vinculos[cartoesMenorLivre(st)]=c.id; mudou=true;
+    });
+  }
+  if(mudou&&typeof marcarAlterado==='function') marcarAlterado();
+}
+(function(){
+  const base=cartoesState;
+  cartoesState=function(){
+    const st=base();
+    if(!_cartoesNorm&&Array.isArray(state.clientes)){ _cartoesNorm=true; try{ cartoesNormalizar(st); }finally{ _cartoesNorm=false; } }
+    return st;
+  };
+})();
+// só cliente ativo "tem" o cartão
+cartoesClienteDe=function(n){
+  const id=cartoesState().vinculos[n]; if(id==null) return null;
+  const c=state.clientes.find(x=>x.id==id); return c&&estaAtivo(c)?c:null;
+};
+// cliente novo cadastrado a partir de um cartão livre: tira o número automático (se já houver) e fica com o do cartão
+(function(){
+  if(typeof salvarCliente!=='function') return;
+  const orig=salvarCliente;
+  salvarCliente=function(){
+    const pend=_cartaoPendente, antes=state.clientes.length;
+    orig.apply(this,arguments);
+    if(pend!=null&&state.clientes.length>antes){
+      const novo=state.clientes[state.clientes.length-1], v=cartoesState().vinculos;
+      for(const n in v){ if(v[n]==novo.id&&Number(n)!==pend) delete v[n]; }
+    }
+  };
+})();
+// reativar: volta ao número antigo se ainda estiver livre; senão pega o menor livre e avisa para reimprimir
+(function(){
+  if(typeof reativarCliente!=='function') return;
+  const orig=reativarCliente;
+  reativarCliente=function(id){
+    let aviso=null;
+    _cartoesSemAuto=true;
+    try{
+      orig.apply(this,arguments);
+      const c=state.clientes.find(x=>x.id===id);
+      if(c&&estaAtivo(c)){
+        const st=cartoesState();
+        if(cartoesDoCliente(id)==null){
+          const ant=c.cartoesAntigos||[], ult=ant.length?ant[ant.length-1]:null;
+          if(ult!=null&&ult<=st.total&&st.vinculos[ult]==null){ st.vinculos[ult]=id; aviso={n:ult,igual:true}; }
+          else { const n=cartoesMenorLivre(st); st.vinculos[n]=id; aviso={n,igual:false,ult}; }
+          if(typeof marcarAlterado==='function') marcarAlterado();
+        }
+      }
+    }finally{ _cartoesSemAuto=false; }
+    if(aviso&&aviso.igual) showToast('Cartão nº '+cartoesNum(aviso.n)+' mantido','green');
+    else if(aviso) confirmarAcao('Novo cartão nº '+cartoesNum(aviso.n)+(aviso.ult!=null?' (o '+cartoesNum(aviso.ult)+' já foi para outro cliente)':'')+'. Imprima o cartão novo e descarte o antigo. Imprimir agora?',()=>cartoesImprimir(aviso.n,aviso.n));
+  };
+})();
