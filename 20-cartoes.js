@@ -405,7 +405,7 @@ function cartoesHtmlCartao(n){
   const rotaObj = (cli && cli.rotaId && typeof getRota === 'function') ? getRota(cli.rotaId) : null;
   const rotaFmt = cli ? formatarRotaCartao(rotaObj ? rotaObj.nome : '') : '';
   return `<div class="cartao-print">
-    <div class="cp-logo">Gestão<span>PRO</span></div>
+    <div class="cp-logo"><img src="logo.png" alt="GestãoPro" style="height:9.5u;max-width:38u;object-fit:contain;vertical-align:middle;display:inline-block"></div>
     <div class="cp-n">${cartoesNum(n)}</div>
     <div class="cp-qr">${QR.svg(cartoesLink(n))}</div>
     <div class="cp-div"></div>

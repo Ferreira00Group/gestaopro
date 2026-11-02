@@ -68,17 +68,22 @@ function pixDisponivel(){
   return !!(p.chave&&pixSemAcento(p.nome,25)&&pixSemAcento(p.cidade||'BRASIL',15));
 }
 function pixValorTxt(v){return (Math.round((Number(v)||0)*100)/100).toFixed(2);} // sempre com ponto e 2 casas
-function pixPayload(valor){
-  const p=getPixCfg();
-  const conta=pixCampo('00','br.gov.bcb.pix')+pixCampo('01',p.chave);
-  let s=pixCampo('00','01')+pixCampo('01','11')+pixCampo('26',conta)+pixCampo('52','0000')+pixCampo('53','986');
-  if(valor>0.009) s+=pixCampo('54',pixValorTxt(valor));
-  s+=pixCampo('58','BR')+pixCampo('59',pixSemAcento(p.nome,25))+pixCampo('60',pixSemAcento(p.cidade||'BRASIL',15))+pixCampo('62',pixCampo('05','***'));
-  s+='6304';
-  return s+pixCrc16(s);
+function pixPayload(valor, customCfg){
+  const p = customCfg || getPixCfg();
+  const conta = pixCampo('00','br.gov.bcb.pix') + pixCampo('01', p.chave);
+  let s = pixCampo('00','01') + pixCampo('01','11') + pixCampo('26', conta) + pixCampo('52','0000') + pixCampo('53','986');
+  
+  // Tag 54 (Transaction Amount): Omitida quando valor livre (conforme padrão BACEN / EMV QRCPS)
+  const numVal = parseFloat(valor);
+  if(!isNaN(numVal) && numVal > 0.009){
+    s += pixCampo('54', pixValorTxt(numVal));
+  }
+  s += pixCampo('58','BR') + pixCampo('59',pixSemAcento(p.nome,25)) + pixCampo('60',pixSemAcento(p.cidade||'BRASIL',15)) + pixCampo('62',pixCampo('05','***'));
+  s += '6304';
+  return s + pixCrc16(s);
 }
-function pixChaveExibicao(){
-  const p = getPixCfg();
+function pixChaveExibicao(customCfg){
+  const p = customCfg || getPixCfg();
   const t = p.tipo || 'celular';
   const c = String(p.chave || '');
   if(!c) return '';
@@ -100,10 +105,12 @@ function pixChaveExibicao(){
   }
   return c;
 }
-function pixBloco(valor){
-  if(!pixDisponivel()) return '';
-  const p = getPixCfg();
-  return `💳 *Pix* (${pixTipoNome()}): ${pixChaveExibicao()}${p.nome?`\nTitular: ${p.nome}`:''}${valor>0.009?`\nValor: ${fmt(valor)}`:''}\n\nPix copia e cola:\n${pixPayload(valor)}`;
+function pixBloco(valor, customCfg){
+  const p = customCfg || getPixCfg();
+  if(!p.chave) return '';
+  const numVal = parseFloat(valor) || 0;
+  const isLivre = numVal <= 0.009;
+  return `💳 *Pix* (${pixTipoNome(p.tipo)}): ${pixChaveExibicao(p)}${p.nome?`\nTitular: ${p.nome}`:''}${p.cidade?`\nCidade: ${p.cidade}`:''}\nValor: ${isLivre ? '✨ Valor livre (digite o valor no seu banco)' : fmt(numVal)}\n\nPix copia e cola:\n${pixPayload(numVal, p)}`;
 }
 function pixValorCobranca(clienteId){
   const saldo=getSaldoCliente(clienteId);
@@ -137,6 +144,78 @@ function enviarWhatsOuCopiar(c,msg){
   const tel=(c.tel||'').replace(/\D/g,'');
   if(tel) window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
   else{copiarTexto(msg,'Cliente sem telefone — texto copiado');}
+}
+
+// ───────── Renderizador de QR Code SVG Offline ─────────
+function renderizarQrSvg(conteudo, tamanho, elementoOuCb){
+  tamanho = tamanho || 200;
+  if(window.QRCode && typeof QRCode.toString === 'function'){
+    try {
+      QRCode.toString(conteudo, { type: 'svg', width: tamanho, margin: 1, errorCorrectionLevel: 'M' }, (err, svgStr) => {
+        if(!err && svgStr){
+          if(typeof elementoOuCb === 'function') elementoOuCb(svgStr);
+          else if(elementoOuCb) elementoOuCb.innerHTML = svgStr;
+          return;
+        }
+        fallbackQr();
+      });
+      return;
+    } catch(e){}
+  }
+  fallbackQr();
+
+  function fallbackQr(){
+    try {
+      if(typeof QR !== 'undefined' && typeof QR.svg === 'function'){
+        const svg = QR.svg(conteudo, tamanho);
+        if(typeof elementoOuCb === 'function') elementoOuCb(svg);
+        else if(elementoOuCb) elementoOuCb.innerHTML = svg;
+      }
+    } catch(e){
+      if(typeof elementoOuCb !== 'function' && elementoOuCb){
+        elementoOuCb.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:12px;text-align:center">QR Code indisponível</div>';
+      }
+    }
+  }
+}
+
+// ───────── Compartilhar Pix no WhatsApp (v5.63.0) ─────────
+function pixCompartilharWhatsapp(valor, clienteOuTel, customCfg){
+  const p = customCfg || getPixCfg();
+  if(!p.chave){
+    showToast('Configure e salve sua chave Pix primeiro', 'red');
+    abrirConfigPix();
+    return;
+  }
+  const vNum = parseFloat(valor) || 0;
+  const isLivre = vNum <= 0.009;
+  const payload = pixPayload(vNum, p);
+  
+  let msg = `💳 *Cobrança Pix — GestãoPRO*\n\n`;
+  msg += `*Titular:* ${p.nome || 'TITULAR'}\n`;
+  msg += `*Cidade:* ${p.cidade || 'BRASIL'}\n`;
+  msg += `*Chave (${pixTipoNome(p.tipo)}):* ${pixChaveExibicao(p)}\n`;
+  if(isLivre){
+    msg += `*Valor:* ✨ *Valor livre* (digite o valor combinado no seu banco)\n`;
+  } else {
+    msg += `*Valor:* *${fmt(vNum)}*\n`;
+  }
+  msg += `\n*Pix Copia e Cola:*\n${payload}\n\n`;
+  msg += `_Abra o app do seu banco, escolha Pix Copia e Cola e confirme os dados._\nObrigado! 😊`;
+
+  let tel = '';
+  if(clienteOuTel && typeof clienteOuTel === 'object'){
+    tel = (clienteOuTel.tel || '').replace(/\D/g, '');
+  } else if(clienteOuTel){
+    tel = String(clienteOuTel).replace(/\D/g, '');
+  }
+
+  if(tel){
+    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+  } else {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+  showToast('WhatsApp aberto com os dados do Pix!', 'green');
 }
 
 // ───────── Configurar Pix com Suporte Multi-Chaves e Prévia em Tempo Real ─────────
@@ -220,6 +299,53 @@ function abrirConfigPix(){
   }, 150);
 }
 
+// ───────── Controle de Prévia (Valor Livre vs Editável) ─────────
+let _pixPreviaModo = 'livre'; // 'livre' | 'valor'
+let _pixPreviaValor = 10.00;
+
+function pixPreviaMudarModo(modo){
+  _pixPreviaModo = modo;
+  const wrapValor = document.getElementById('pix-previa-valor-wrap');
+  const btnLivre = document.getElementById('pix-previa-btn-livre');
+  const btnValor = document.getElementById('pix-previa-btn-valor');
+
+  if(wrapValor) wrapValor.style.display = modo === 'valor' ? 'flex' : 'none';
+
+  if(btnLivre && btnValor){
+    if(modo === 'livre'){
+      btnLivre.style.background = 'var(--gold)';
+      btnLivre.style.color = '#000';
+      btnLivre.style.borderColor = 'var(--gold)';
+      btnValor.style.background = 'transparent';
+      btnValor.style.color = 'var(--text)';
+      btnValor.style.borderColor = 'var(--border)';
+    } else {
+      btnValor.style.background = 'var(--gold)';
+      btnValor.style.color = '#000';
+      btnValor.style.borderColor = 'var(--gold)';
+      btnLivre.style.background = 'transparent';
+      btnLivre.style.color = 'var(--text)';
+      btnLivre.style.borderColor = 'var(--border)';
+    }
+  }
+  pixAtualizarPrevia();
+}
+
+function pixPreviaAjustarValor(delta){
+  _pixPreviaModo = 'valor';
+  _pixPreviaValor = Math.max(0.01, round2((_pixPreviaValor || 0) + delta));
+  const inp = document.getElementById('pix-previa-valor-input');
+  if(inp) inp.value = _pixPreviaValor.toFixed(2);
+  pixAtualizarPrevia();
+}
+
+function pixPreviaDigitarValor(valStr){
+  _pixPreviaModo = 'valor';
+  const n = parseFloat(String(valStr).replace(',', '.')) || 0;
+  _pixPreviaValor = round2(n);
+  pixAtualizarPrevia();
+}
+
 function pixAtualizarPrevia(){
   const inputChave = document.getElementById('pix-chave') || document.getElementById('pix-celular');
   const inputNome = document.getElementById('pix-nome');
@@ -228,6 +354,7 @@ function pixAtualizarPrevia(){
   const previewStatus = document.getElementById('pix-preview-status');
   const previewPayload = document.getElementById('pix-preview-payload');
   const previewQr = document.getElementById('pix-preview-qr');
+  const previewTituloCod = document.getElementById('pix-preview-titulo-cod');
   const titularSanitizado = document.getElementById('pix-titular-sanitizado');
 
   if(!inputChave || !inputNome) return;
@@ -251,30 +378,199 @@ function pixAtualizarPrevia(){
   }
 
   if(previewBox) previewBox.style.opacity = '1';
-  if(previewStatus) previewStatus.innerHTML = `<span style="color:#4CC38A;font-weight:700">✓ Chave válida (${pixTipoNome(_pixTipoAtual)}) · Padrão BACEN</span>`;
+  
+  const isLivre = (_pixPreviaModo === 'livre');
+  if(previewStatus){
+    if(isLivre){
+      previewStatus.innerHTML = `<span style="color:var(--gold);font-weight:700">✨ Pix Livre (cliente digita valor) · Bacen</span>`;
+    } else {
+      previewStatus.innerHTML = `<span style="color:#4CC38A;font-weight:700">✓ Pix Fixo (${fmt(_pixPreviaValor)}) · Bacen</span>`;
+    }
+  }
 
-  // Payload temporário de teste
+  if(previewTituloCod){
+    previewTituloCod.textContent = isLivre ? 'Código Pix Livre (Tag 54 omitida):' : `Código Pix (R$ ${_pixPreviaValor.toFixed(2)}):`;
+  }
+
+  // Payload configurado
   const fakeCfg = { chave: chaveNorm, tipo: _pixTipoAtual, nome: nome || 'MEU NOME', cidade: cidade || 'BRASIL' };
-  const conta = pixCampo('00', 'br.gov.bcb.pix') + pixCampo('01', fakeCfg.chave);
-  let s = pixCampo('00', '01') + pixCampo('01', '11') + pixCampo('26', conta) + pixCampo('52', '0000') + pixCampo('53', '986');
-  s += pixCampo('54', '10.00'); // Teste R$ 10,00
-  s += pixCampo('58', 'BR') + pixCampo('59', pixSemAcento(fakeCfg.nome, 25)) + pixCampo('60', pixSemAcento(fakeCfg.cidade, 15)) + pixCampo('62', pixCampo('05', '***'));
-  s += '6304';
-  const payloadTeste = s + pixCrc16(s);
+  const valorParaPayload = isLivre ? 0 : _pixPreviaValor;
+  const payloadTeste = pixPayload(valorParaPayload, fakeCfg);
 
   if(previewPayload) previewPayload.textContent = payloadTeste;
 
   if(previewQr){
-    if(typeof QR !== 'undefined' && typeof QR.svg === 'function'){
-      try {
-        previewQr.innerHTML = QR.svg(payloadTeste, 120);
-      } catch(e) {
-        if(window.QRCode && typeof QRCode.toString === 'function'){
-          QRCode.toString(payloadTeste, { type: 'svg', width: 120 }, (err, svgStr) => {
-            if(!err && svgStr) previewQr.innerHTML = svgStr;
-          });
-        }
-      }
+    renderizarQrSvg(payloadTeste, 120, previewQr);
+  }
+}
+
+function pixPreviaMostrarNaTela(){
+  const inputChave = document.getElementById('pix-chave') || document.getElementById('pix-celular');
+  const inputNome = document.getElementById('pix-nome');
+  const inputCidade = document.getElementById('pix-cidade');
+  const bruto = inputChave ? inputChave.value.trim() : '';
+  const nome = inputNome ? inputNome.value.trim() : '';
+  const cidade = inputCidade ? inputCidade.value.trim() : '';
+  const chave = pixNormalizarChave(_pixTipoAtual, bruto);
+
+  if(!chave || !pixSemAcento(nome, 25)){
+    showToast('Informe chave e nome do titular válidos primeiro', 'red');
+    return;
+  }
+
+  const cfgTemp = { chave, tipo: _pixTipoAtual, nome, cidade: cidade || 'SAO PAULO' };
+  const v = _pixPreviaModo === 'livre' ? 0 : _pixPreviaValor;
+  pixMostrarNaTela(v, { customCfg: cfgTemp });
+}
+
+function pixPreviaCompartilharWhats(){
+  const inputChave = document.getElementById('pix-chave') || document.getElementById('pix-celular');
+  const inputNome = document.getElementById('pix-nome');
+  const inputCidade = document.getElementById('pix-cidade');
+  const bruto = inputChave ? inputChave.value.trim() : '';
+  const nome = inputNome ? inputNome.value.trim() : '';
+  const cidade = inputCidade ? inputCidade.value.trim() : '';
+  const chave = pixNormalizarChave(_pixTipoAtual, bruto);
+
+  if(!chave || !pixSemAcento(nome, 25)){
+    showToast('Informe chave e nome do titular válidos primeiro', 'red');
+    return;
+  }
+
+  const cfgTemp = { chave, tipo: _pixTipoAtual, nome, cidade: cidade || 'SAO PAULO' };
+  const v = _pixPreviaModo === 'livre' ? 0 : _pixPreviaValor;
+  pixCompartilharWhatsapp(v, null, cfgTemp);
+}
+
+// ───────── MODO APRESENTAÇÃO NA TELA DO CELULAR (Item 1 Aprovado) ─────────
+let _pixTelaValorAtual = 0; // 0 = livre
+let _pixTelaModo = 'livre'; // 'livre' | 'valor'
+let _pixTelaCliente = null;
+let _pixTelaCustomCfg = null;
+
+function pixMostrarNaTela(valorInicial, opts){
+  opts = opts || {};
+  _pixTelaCustomCfg = opts.customCfg || null;
+  const cfg = _pixTelaCustomCfg || getPixCfg();
+  if(!cfg.chave){
+    showToast('Configure e salve sua chave Pix antes de apresentar ao cliente', 'red');
+    abrirConfigPix();
+    return;
+  }
+
+  _pixTelaCliente = opts.cliente || null;
+  const num = parseFloat(valorInicial);
+  if(!isNaN(num) && num > 0.009){
+    _pixTelaValorAtual = round2(num);
+    _pixTelaModo = 'valor';
+  } else {
+    _pixTelaValorAtual = 0;
+    _pixTelaModo = 'livre';
+  }
+
+  pixAtualizarTelaCelular();
+  const m = document.getElementById('modal-pix-tela');
+  if(m) m.classList.add('open');
+  if(window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons();
+}
+
+function pixTelaMudarModo(modo, valor){
+  _pixTelaModo = modo;
+  if(modo === 'livre'){
+    _pixTelaValorAtual = 0;
+  } else if(typeof valor !== 'undefined'){
+    _pixTelaValorAtual = round2(parseFloat(valor) || 10);
+  } else if(_pixTelaValorAtual <= 0.009){
+    _pixTelaValorAtual = 10.00;
+  }
+  pixAtualizarTelaCelular();
+}
+
+function pixTelaAjustarValor(delta){
+  _pixTelaModo = 'valor';
+  _pixTelaValorAtual = Math.max(0, round2((_pixTelaValorAtual || 0) + delta));
+  if(_pixTelaValorAtual <= 0.009){
+    _pixTelaModo = 'livre';
+    _pixTelaValorAtual = 0;
+  }
+  pixAtualizarTelaCelular();
+}
+
+function pixTelaDigitarValor(valStr){
+  _pixTelaModo = 'valor';
+  const n = parseFloat(String(valStr).replace(',', '.')) || 0;
+  _pixTelaValorAtual = round2(n);
+  if(_pixTelaValorAtual <= 0.009){
+    _pixTelaModo = 'livre';
+    _pixTelaValorAtual = 0;
+  }
+  pixAtualizarTelaCelular();
+}
+
+function pixAtualizarTelaCelular(){
+  const p = _pixTelaCustomCfg || getPixCfg();
+  const isLivre = (_pixTelaModo === 'livre' || _pixTelaValorAtual <= 0.009);
+  const valorParaPayload = isLivre ? 0 : _pixTelaValorAtual;
+  const payload = pixPayload(valorParaPayload, p);
+
+  const qrEl = document.getElementById('pix-tela-qr');
+  const titularEl = document.getElementById('pix-tela-titular');
+  const cidadeEl = document.getElementById('pix-tela-cidade');
+  const chaveEl = document.getElementById('pix-tela-chave');
+  const tipoEl = document.getElementById('pix-tela-tipo');
+  const valorBadgeEl = document.getElementById('pix-tela-valor-badge');
+  const valorInputEl = document.getElementById('pix-tela-valor-input');
+  const payloadEl = document.getElementById('pix-tela-payload');
+  const ajusteBox = document.getElementById('pix-tela-ajuste-valor-box');
+
+  if(titularEl) titularEl.textContent = p.nome || 'TITULAR';
+  if(cidadeEl) cidadeEl.textContent = p.cidade || 'BRASIL';
+  if(chaveEl) chaveEl.textContent = pixChaveExibicao(p);
+  if(tipoEl) tipoEl.textContent = pixTipoNome(p.tipo);
+
+  if(ajusteBox){
+    ajusteBox.style.display = isLivre ? 'none' : 'block';
+  }
+
+  if(valorBadgeEl){
+    if(isLivre){
+      valorBadgeEl.innerHTML = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(201,162,75,.15);border:1px solid rgba(201,162,75,.4);color:var(--gold);padding:8px 16px;border-radius:24px;font-weight:700;font-size:13.5px">
+        ✨ Modo Valor Livre <span style="font-size:11px;font-weight:400;color:var(--muted)">· cliente digita no banco</span>
+      </div>`;
+    } else {
+      valorBadgeEl.innerHTML = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(76,195,138,.15);border:1px solid rgba(76,195,138,.4);color:#4CC38A;padding:8px 20px;border-radius:24px;font-weight:900;font-size:20px;letter-spacing:.3px">
+        ${fmt(_pixTelaValorAtual)}
+      </div>`;
+    }
+  }
+
+  if(valorInputEl && document.activeElement !== valorInputEl){
+    valorInputEl.value = isLivre ? '' : _pixTelaValorAtual.toFixed(2);
+  }
+
+  if(payloadEl) payloadEl.textContent = payload;
+
+  if(qrEl){
+    renderizarQrSvg(payload, 230, qrEl);
+  }
+
+  const btnLivre = document.getElementById('pix-tela-btn-livre');
+  const btnValor = document.getElementById('pix-tela-btn-valor');
+  if(btnLivre && btnValor){
+    if(isLivre){
+      btnLivre.style.background = 'var(--gold)';
+      btnLivre.style.color = '#000';
+      btnLivre.style.borderColor = 'var(--gold)';
+      btnValor.style.background = 'transparent';
+      btnValor.style.color = 'var(--text)';
+      btnValor.style.borderColor = 'var(--border)';
+    } else {
+      btnValor.style.background = 'var(--gold)';
+      btnValor.style.color = '#000';
+      btnValor.style.borderColor = 'var(--gold)';
+      btnLivre.style.background = 'transparent';
+      btnLivre.style.color = 'var(--text)';
+      btnLivre.style.borderColor = 'var(--border)';
     }
   }
 }
@@ -454,6 +750,8 @@ function abrirExtrato(clienteId){
     ${enc.total>0?`<div style="margin-top:8px;font-size:12px;color:var(--muted)">Encargos de atraso (informativo, fora do saldo): <strong>${fmt(enc.total)}</strong> — multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)}</div>`:''}
     ${mostrarPix?`<div style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;font-size:12px"><strong>Pix (celular):</strong> ${escapeHtml(pixChaveExibicao())}<br><span style="color:var(--muted)">Valor do Pix: ${fmt(pixValorCobranca(clienteId))}</span></div>`:''}`;
   document.getElementById('extrato-btn-pix').style.display=mostrarPix?'':'none';
+  const btnTelaExtrato = document.getElementById('extrato-btn-pix-tela');
+  if(btnTelaExtrato) btnTelaExtrato.style.display = mostrarPix ? '' : 'none';
   document.getElementById('modal-extrato').classList.add('open');
   if(typeof lucide!=='undefined') lucide.createIcons();
 }

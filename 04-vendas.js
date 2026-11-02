@@ -1119,7 +1119,7 @@ function abrirRecibo(id){
   ).join('') : '';
   document.getElementById('recibo-conteudo').innerHTML=`
     <div style="text-align:center;margin-bottom:10px">
-      <strong style="font-size:15px">GestãoPRO</strong><br>
+      <img src="logo.png" alt="GestãoPro" style="height:32px;display:block;margin:0 auto 4px;object-fit:contain">
       <span style="font-size:11px;color:var(--muted)">Recibo de Venda</span>
     </div>
     <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0">
@@ -1799,16 +1799,32 @@ function atualizarPixAtendimentoUI(valor){
     return;
   }
   const payload = pixPayload(valor);
+  const clienteId = parseInt(document.getElementById('at-cliente-id')?.value || 0);
+  const isLivre = !(valor > 0.009);
   box.innerHTML = `
     <div style="background:rgba(201,162,75,.06);border:1px dashed var(--gold);border-radius:10px;padding:12px;margin-top:10px;text-align:center">
-      <div style="font-size:11.5px;color:var(--gold);font-weight:700;margin-bottom:6px">PIX COPIA E COLA (${fmt(valor)})</div>
-      <div style="max-width:160px;margin:0 auto 8px">${QR.svg(payload, 160)}</div>
-      <div style="display:flex;gap:6px;justify-content:center">
+      <div style="font-size:11.5px;color:var(--gold);font-weight:700;margin-bottom:6px">
+        ${isLivre ? 'PIX OFFLINE · VALOR LIVRE' : `PIX COPIA E COLA (${fmt(valor)})`}
+      </div>
+      <div id="at-pix-qr-render" style="max-width:160px;margin:0 auto 8px;background:#fff;padding:4px;border-radius:8px;line-height:0"></div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+        <button type="button" class="btn btn-outline btn-sm" style="color:var(--gold);border-color:rgba(246,181,42,.4);font-weight:700" onclick="pixMostrarNaTela(${valor}, { cliente: getCliente(${clienteId}) })">
+          <i data-lucide="smartphone" class="ic ic-sm"></i> Mostrar no Celular
+        </button>
+        <button type="button" class="btn btn-whatsapp btn-sm" onclick="pixCompartilharWhatsapp(${valor}, ${clienteId})">
+          <i data-lucide="message-circle" class="ic ic-sm"></i> WhatsApp
+        </button>
         <button type="button" class="btn btn-outline btn-sm" onclick="copiarTexto('${payload}','Pix Copia e Cola copiado!')">
-          <i data-lucide="copy" class="ic ic-sm"></i> Copiar Código Pix
+          <i data-lucide="copy" class="ic ic-sm"></i> Copiar Código
         </button>
       </div>
     </div>`;
+  const qrBox = document.getElementById('at-pix-qr-render');
+  if(qrBox && typeof renderizarQrSvg === 'function'){
+    renderizarQrSvg(payload, 150, qrBox);
+  } else if(qrBox && typeof QR !== 'undefined'){
+    try { qrBox.innerHTML = QR.svg(payload, 150); } catch(e){}
+  }
   if(window.lucide && typeof lucide.createIcons==='function') lucide.createIcons();
 }
 
