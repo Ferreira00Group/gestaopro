@@ -254,7 +254,7 @@ function renderCartoes(mantemBusca){
       <input class="form-control" id="cartoes-de" type="number" min="1" value="${_cartoesDe}" style="width:80px" oninput="_cartoesDe=this.value"> até
       <input class="form-control" id="cartoes-ate" type="number" min="1" value="${_cartoesAte||Math.min(st.total,CARTOES_LOTE)}" style="width:80px" oninput="_cartoesAte=this.value">
       <button class="btn btn-outline btn-sm" onclick="cartoesImprimirUI()"><i data-lucide="printer" class="ic"></i> Imprimir</button>
-      <span style="color:var(--muted);font-size:12px">18 cartões por folha A4</span></div>
+      <span style="color:var(--muted);font-size:12px">10 cartões por folha A4</span></div>
     <div class="tabs" style="margin-bottom:10px">${aba('todos','Todos')}${aba('livres','Livres')}${aba('vinculados','Vinculados')}</div>
     <input class="form-control" id="cartoes-busca" placeholder="Buscar por nº do cartão ou nome do cliente" value="${escapeHtml(_cartoesBusca)}" oninput="cartoesBuscar(this.value)" style="margin-bottom:10px" autocomplete="off">
     <div class="table-card table-cards"><div class="table-scroll"><table>
@@ -273,30 +273,58 @@ function renderCartoes(mantemBusca){
   if(typeof lucide!=='undefined') lucide.createIcons();
 }
 
-// ---------- impressão (folha A4, 3 × 6 cartões por página) ----------
-function cartoesImprimirUI(){
-  const st=cartoesState();
-  const de=parseInt(document.getElementById('cartoes-de').value,10), ate=parseInt(document.getElementById('cartoes-ate').value,10);
-  if(!(de>=1)||!(ate>=de)||ate>st.total){ showToast('Informe um intervalo válido (1 a '+st.total+')','red'); return; }
-  cartoesImprimir(de,ate);
+// ---------- impressão (folha A4, 2 × 5 cartões por página) ----------
+// Modelo "GestãoPRO preto e dourado": logo, nº do cartão, QR e 3 campos em branco para preencher à mão
+// (nome, endereço/casa, localidade). Tudo em CSS/SVG (sem imagem) e medido em "u" = 1% da largura do cartão.
+const CARTOES_ICONES={
+  user:'<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+  house:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  pin:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>'
+};
+const cartoesIcone=(k,top)=>`<svg class="cp-ic" style="top:${top}u" viewBox="0 0 24 24" fill="none" stroke="#FDBE32" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${CARTOES_ICONES[k]}</svg>`;
+function cartoesHtmlCartao(n){
+  return `<div class="cartao-print">
+    <div class="cp-logo">Gestão<span>PRO</span></div>
+    <div class="cp-n">${cartoesNum(n)}</div>
+    <div class="cp-qr">${QR.svg(cartoesLink(n))}</div>
+    <div class="cp-div"></div>
+    ${cartoesIcone('user',21.2)}<div class="cp-campo" style="top:21.2u"></div>
+    ${cartoesIcone('house',29.8)}<div class="cp-campo" style="top:29.8u"></div>
+    ${cartoesIcone('pin',38.4)}<div class="cp-campo" style="top:38.4u"></div>
+  </div>`;
 }
+const CARTOES_CSS_BASE=`
+.cartao-print{--u:.085cm;position:relative;width:calc(var(--u)*100);height:calc(var(--u)*57.14);box-sizing:border-box;overflow:hidden;break-inside:avoid;page-break-inside:avoid;
+  border-radius:calc(var(--u)*2.6);border:calc(var(--u)*.35) solid #E8A71C;color:#fff;font-family:'Arial Black','Segoe UI',Arial,Helvetica,sans-serif;
+  background:
+    linear-gradient(135deg,#F6B52A 0%,#D79A18 4%,#7a5408 8%,#000 11%,#000 14%,#C98C14 15.5%,#000 17.5%,transparent 30%),
+    linear-gradient(135deg,transparent 62%,#000 63%,#8a5f0a 70%,#000 72%,#000 80%,#E5A21B 85%,#000 87%,#000 89%,#F6B52A 94%,#FFD25C 100%),
+    #000;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cartao-print *{position:absolute;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cartao-print .cp-logo{left:5.3u;top:4.2u;font-size:7.5u;line-height:1;font-weight:900;letter-spacing:-.03em;white-space:nowrap;text-shadow:0 0 .12cm #000,0 0 .2cm #000}
+.cartao-print .cp-logo span{position:static;color:#FDBE32}
+.cartao-print .cp-n{right:3.6u;top:4.4u;font-size:12u;line-height:1;font-weight:900;letter-spacing:-.02em;text-shadow:0 0 .12cm #000}
+.cartao-print .cp-qr{left:4.1u;top:17.2u;width:36.2u;height:32.2u;background:#fff;border:.4u solid #E8A71C;border-radius:3.2u;display:flex;align-items:center;justify-content:center}
+.cartao-print .cp-qr svg{position:static;width:30.6u;height:30.6u}
+.cartao-print .cp-div{left:41.6u;top:17.8u;width:.45u;height:31.7u;border-radius:1u;background:linear-gradient(#C98C14,#FDBE32,#C98C14)}
+.cartao-print .cp-ic{left:43.7u;width:7.2u;height:7.2u;margin-top:-0.05u}
+.cartao-print .cp-campo{left:51.5u;width:45.4u;height:7.1u;background:#fff;border:.35u solid #E8A71C;border-radius:3.6u}
+`;
+// "u" não existe em CSS: troca "<número>u" por calc(var(--u)*<número>) (no CSS e nos style inline)
+const cartoesCssU=t=>t.replace(/(-?\d*\.?\d+)u(?![a-z%])/g,(m,v)=>`calc(var(--u)*${v})`);
 function cartoesImprimir(de,ate){
-  if(!document.getElementById('cartoes-print-css')){
-    const s=document.createElement('style'); s.id='cartoes-print-css';
-    s.textContent=`#cartoes-print{display:none}
+  let st=document.getElementById('cartoes-print-css');
+  if(!st){ st=document.createElement('style'); st.id='cartoes-print-css'; document.head.appendChild(st); }
+  st.textContent=`#cartoes-print{display:none}
 @media print{
   @page{size:A4;margin:1cm}
   body.imprimindo-cartoes>*:not(#cartoes-print){display:none!important}
-  body.imprimindo-cartoes #cartoes-print{display:grid!important;grid-template-columns:repeat(3,6.3cm);justify-content:center;background:#fff;color:#000}
-  .cartao-print{width:6.3cm;height:4.4cm;box-sizing:border-box;border:1px dashed #999;display:flex;align-items:center;gap:.25cm;padding:.3cm;break-inside:avoid;font-family:Arial,sans-serif}
-  .cartao-print svg{width:2.9cm;height:2.9cm;flex:none}
-  .cartao-print b{display:block;font-size:11pt}.cartao-print small{font-size:7.5pt;color:#444}
-  .cartao-print .cp-n{font-size:22pt;font-weight:800;letter-spacing:1px;margin:.1cm 0}
+  body.imprimindo-cartoes #cartoes-print{display:grid!important;grid-template-columns:repeat(2,8.5cm);gap:.3cm .4cm;justify-content:center;background:#fff;color:#000}
+  ${cartoesCssU(CARTOES_CSS_BASE)}
 }`;
-    document.head.appendChild(s);
-  }
   let box=document.getElementById('cartoes-print'); if(!box){ box=document.createElement('div'); box.id='cartoes-print'; document.body.appendChild(box); }
-  let h=''; for(let n=de;n<=ate;n++) h+=`<div class="cartao-print">${QR.svg(cartoesLink(n))}<div><b>GestãoPRO</b><small>Cartão do cliente</small><div class="cp-n">${cartoesNum(n)}</div><small>Mostre este cartão<br>a cada compra</small></div></div>`;
+  let h=''; for(let n=de;n<=ate;n++) h+=cartoesCssU(cartoesHtmlCartao(n));
   box.innerHTML=h;
   document.body.classList.add('imprimindo-cartoes');
   const fim=()=>{ document.body.classList.remove('imprimindo-cartoes'); box.innerHTML=''; window.removeEventListener('afterprint',fim); };
