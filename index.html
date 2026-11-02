@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.58.0">
+<link rel="stylesheet" href="styles.css?v=5.60.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -53,6 +53,7 @@
   <button id="hamburger" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div id="topbar-title">GestãoPRO <span>Powered by Ferreira Group</span></div>
   <div class="topbar-alerts">
+    <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
     <button class="alert-bell bell-estoque" id="topbar-bell-estoque" onclick="toggleAlertDrop('drop-estoque')" title="Estoque baixo"><i data-lucide="package" class="ic"></i><span class="badge-dot"></span></button>
     <button class="alert-bell bell-cobranca" id="topbar-bell-cobranca" onclick="toggleAlertDrop('drop-cobranca')" title="A receber"><i data-lucide="wallet" class="ic"></i><span class="badge-dot"></span></button>
     <button class="alert-bell bell-pagar" id="topbar-bell-pagar" onclick="toggleAlertDrop('drop-pagar')" title="A pagar"><i data-lucide="credit-card" class="ic"></i><span class="badge-dot"></span></button>
@@ -292,11 +293,8 @@
       Mostrar arquivados
     </label>
   </div>
-  <div class="table-card table-cards">
-    <div class="table-scroll"><table>
-      <thead><tr><th>Nº</th><th>Nome</th><th>Telefone</th><th>Rota</th><th>Saldo Devedor</th><th>Última Compra</th><th>Ticket Médio</th><th>Frequência</th><th>Status</th><th>Ações</th></tr></thead>
-      <tbody id="clientes-table"></tbody>
-    </table></div>
+  <div class="clientes-cards-wrapper">
+    <div id="clientes-cards-container" class="clientes-grid"></div>
   </div>
 </div>
 
@@ -2184,33 +2182,33 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.58.0"></script>
-<script src="00-core.js?v=5.58.0"></script>
-<script src="01-ui-nav.js?v=5.58.0"></script>
-<script src="02-dashboard.js?v=5.58.0"></script>
-<script src="03-clientes.js?v=5.58.0"></script>
-<script src="04-vendas.js?v=5.58.0"></script>
-<script src="04b-pix-extrato.js?v=5.58.0"></script>
-<script src="11b-meu-dia.js?v=5.58.0"></script>
-<script src="11c-promessa-reneg.js?v=5.58.0"></script>
-<script src="11d-aprovar-lote.js?v=5.58.0"></script>
-<script src="05-producao.js?v=5.58.0"></script>
-<script src="06-estoque.js?v=5.58.0"></script>
-<script src="07-precificacao.js?v=5.58.0"></script>
-<script src="08-compras-fornecedores.js?v=5.58.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.58.0"></script>
-<script src="10-fab-inline.js?v=5.58.0"></script>
-<script src="10b-planejamento.js?v=5.58.0"></script>
-<script src="13-crm.js?v=5.58.0"></script>
-<script src="14-relacionamento.js?v=5.58.0"></script>
-<script src="15-cliente360.js?v=5.58.0"></script>
-<script src="16-automacoes.js?v=5.58.0"></script>
-<script src="17-banco.js?v=5.58.0"></script>
-<script src="18-credito.js?v=5.58.0"></script>
-<script src="19-conectores.js?v=5.58.0"></script>
-<script src="20-cartoes.js?v=5.58.0"></script>
-<script src="12-drive-backup.js?v=5.58.0"></script>
-<script src="11-app-init.js?v=5.58.0"></script>
+<script src="00a-config.js?v=5.60.0"></script>
+<script src="00-core.js?v=5.60.0"></script>
+<script src="01-ui-nav.js?v=5.60.0"></script>
+<script src="02-dashboard.js?v=5.60.0"></script>
+<script src="03-clientes.js?v=5.60.0"></script>
+<script src="04-vendas.js?v=5.60.0"></script>
+<script src="04b-pix-extrato.js?v=5.60.0"></script>
+<script src="11b-meu-dia.js?v=5.60.0"></script>
+<script src="11c-promessa-reneg.js?v=5.60.0"></script>
+<script src="11d-aprovar-lote.js?v=5.60.0"></script>
+<script src="05-producao.js?v=5.60.0"></script>
+<script src="06-estoque.js?v=5.60.0"></script>
+<script src="07-precificacao.js?v=5.60.0"></script>
+<script src="08-compras-fornecedores.js?v=5.60.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.60.0"></script>
+<script src="10-fab-inline.js?v=5.60.0"></script>
+<script src="10b-planejamento.js?v=5.60.0"></script>
+<script src="13-crm.js?v=5.60.0"></script>
+<script src="14-relacionamento.js?v=5.60.0"></script>
+<script src="15-cliente360.js?v=5.60.0"></script>
+<script src="16-automacoes.js?v=5.60.0"></script>
+<script src="17-banco.js?v=5.60.0"></script>
+<script src="18-credito.js?v=5.60.0"></script>
+<script src="19-conectores.js?v=5.60.0"></script>
+<script src="20-cartoes.js?v=5.60.0"></script>
+<script src="12-drive-backup.js?v=5.60.0"></script>
+<script src="11-app-init.js?v=5.60.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -2298,5 +2296,141 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL ATENDIMENTO DO MÊS (PASSO 1: RECEBIMENTO DO MÊS PASSADO) -->
+<div class="modal-overlay" id="modal-atendimento-mes">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div>
+        <h3 style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--gold)">⚡</span> Atendimento de Rota
+        </h3>
+        <span style="font-size:11.5px;color:var(--muted)">Passo 1 de 2: Recebimento do mês anterior</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-atendimento-mes')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="at-cliente-id">
+      
+      <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:12px;color:var(--muted)">Cliente</div>
+        <strong id="at-cliente-nome" style="font-size:15px;color:#fff"></strong>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+          <span style="font-size:13px;color:var(--muted)">Saldo a receber:</span>
+          <strong id="at-saldo-anterior" style="font-size:16px;color:var(--red)"></strong>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <label style="margin:0">Valor recebido agora (R$)</label>
+          <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="atReceberTudo()">Receber tudo</button>
+        </div>
+        <input class="form-control" type="number" step="0.01" min="0" id="at-valor-pago" placeholder="0,00" oninput="atValorAlterado(this.value)">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Forma de pagamento</label>
+          <select class="form-control" id="at-forma" onchange="atFormaAlterada(this.value)">
+            <option value="dinheiro">💵 Dinheiro</option>
+            <option value="pix">📱 Pix</option>
+            <option value="pix_maquininha">💳 Pix Maquininha</option>
+            <option value="cartao_debito">💳 Cartão Débito</option>
+            <option value="cartao_credito">💳 Cartão Crédito</option>
+            <option value="transferencia">🏦 Transferência</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data</label>
+          <input class="form-control" type="date" id="at-data">
+        </div>
+      </div>
+
+      <div id="at-pix-box" style="display:none"></div>
+
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" style="padding:12px;font-weight:700" onclick="confirmarRecebimentoAtendimentoMes()">
+          ✓ Confirmar e Abrir Catálogo do Mês Seguinte ➜
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="pularRecebimentoAtendimentoMes()">
+          Pular recebimento e ir direto ao catálogo ➜
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPROVANTE UNIFICADO DE ATENDIMENTO DO MÊS -->
+<div class="modal-overlay" id="modal-comprovante-atendimento">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div>
+        <h3 style="display:flex;align-items:center;gap:6px">
+          <span style="color:#4CC38A">✓</span> Atendimento Concluído!
+        </h3>
+        <span style="font-size:11.5px;color:var(--muted)">Resumo unificado da visita de rota</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-comprovante-atendimento')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Cliente:</div>
+      <strong id="comp-at-cliente" style="font-size:16px;color:#fff;display:block;margin-bottom:12px"></strong>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">1. Pagamento do Mês Anterior</div>
+        <div id="comp-at-recebimento" style="font-size:13px"></div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">2. Novo Pedido (Mês Seguinte)</div>
+        <div id="comp-at-pedido" style="font-size:12.5px"></div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:600">Saldo Atual Consolidado:</span>
+        <span id="comp-at-saldo-final" style="font-size:16px"></span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-whatsapp" style="padding:12px;font-weight:700" onclick="enviarComprovanteAtendimentoWhatsapp()">
+          <i data-lucide="message-circle" class="ic"></i> Enviar Comprovante no WhatsApp
+        </button>
+        <button class="btn btn-outline" onclick="closeModal('modal-comprovante-atendimento')">
+          Concluir Atendimento
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL STATUS DE BACKUP -->
+<div class="modal-overlay" id="modal-backup-status">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>Segurança & Backup</h3>
+      <button class="modal-close" onclick="closeModal('modal-backup-status')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center">
+      <div style="width:54px;height:54px;border-radius:50%;background:rgba(76,195,138,.15);color:#4CC38A;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <i data-lucide="shield-check" style="width:28px;height:28px;stroke-width:1.75"></i>
+      </div>
+      <h3 style="margin-bottom:4px">Proteção dos seus Dados</h3>
+      <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">
+        Último backup: <strong id="backup-status-data" style="color:#fff"></strong>
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" style="padding:10px" onclick="baixarBackupRapido()">
+          <i data-lucide="download" class="ic"></i> Baixar Arquivo de Backup Agora
+        </button>
+        <button class="btn btn-outline" style="padding:10px" onclick="closeModal('modal-backup-status');abrirBackupModal()">
+          <i data-lucide="cloud" class="ic"></i> Gerenciar Google Drive
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

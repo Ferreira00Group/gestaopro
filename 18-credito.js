@@ -269,3 +269,139 @@ function creditoMarcarRevisado(){
   marcarAlterado();creditoAtualizarRevisaoUI();
   showToast('Revisão registrada — próxima em 60 dias','green');
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOTOR DE SCORE DO CLIENTE (0 a 100) — v5.59.0
+// Regras do desenho:
+// 1) Pontualidade (40 pts)
+//    - Analisa se há parcelas/fiado vencidos em atraso hoje e histórico.
+//    - Parcela vencida em aberto hoje: 0 pts. Sem atraso: 40 pts.
+// 2) Saldo vs. Limite (25 pts)
+//    - Comprometimento = saldo / limite.
+//    - Comprometimento <= 30%: 25 pts. <= 60%: 20 pts. <= 85%: 15 pts. <= 100%: 10 pts. Estourado: 0 pts.
+//    - Cliente SEM LIMITE definido: Nota neutra de 15 pts.
+// 3) Frequência (20 pts)
+//    - Compras nos últimos 60 dias e compras totais.
+//    - >= 4 compras em 60d ou >= 8 no histórico: 20 pts. 3 compras: 16 pts. 2 compras: 12 pts. 1 compra: 8 pts.
+// 4) Recência (15 pts)
+//    - Dias desde a última compra: <= 15d: 15 pts; 16-30d: 11 pts; 31-60d: 7 pts; 61-90d: 4 pts; >90d: 1 pt.
+//
+// Regras especiais:
+// - "Novo" (tag cinza): menos de 3 compras no total.
+// - "Só à vista" (Nível 0 / sem fiado): os 65 pts de pontualidade + saldo/limite
+//   são redistribuídos para frequência (57 pts) e recência (43 pts), totalizando 100 pts.
+//
+// Faixas de cores:
+// - Verde: 70 a 100
+// - Amarelo: 40 a 69
+// - Vermelho: abaixo de 40
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function calcularScoreCliente(c, vendasCliente, saldo, limiteCredito, parcelasEmAberto){
+  if(!c) return { score: 0, ehNovo: true, cor: 'gray', classe: 'novo', rotulo: 'Novo', detalhes: {} };
+  const compras = Array.isArray(vendasCliente) ? vendasCliente : (state.vendas || []).filter(v => v.clienteId === c.id);
+  const totalCompras = compras.length;
+  const ehNovo = totalCompras < 3;
+  const nivel = creditoNivel(c);
+  const saldoAtual = typeof saldo === 'number' ? saldo : getSaldoCliente(c.id);
+  
+  // Identifica se é "Só à vista": nível 0 de crédito E nunca teve fiado em aberto ou compras a prazo
+  const nuncaUsouFiado = !compras.some(v => v.forma === 'fiado' || v.status === 'em-aberto');
+  const ehSoAVista = (nivel === 0 || nuncaUsouFiado) && saldoAtual === 0;
+
+  // 1. Recência (dias desde a última compra)
+  let diasUltima = 999;
+  if(compras.length > 0){
+    const ord = [...compras].filter(v => v.data).sort((a,b) => b.data.localeCompare(a.data));
+    if(ord[0]){
+      const [y,m,d] = ord[0].data.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m-1, d));
+      const hoje = new Date();
+      diasUltima = Math.max(0, Math.floor((hoje.getTime() - dt.getTime()) / (1000 * 60 * 60 * 24)));
+    }
+  }
+  let notaRec = 1;
+  if(diasUltima <= 15) notaRec = 15;
+  else if(diasUltima <= 30) notaRec = 11;
+  else if(diasUltima <= 60) notaRec = 7;
+  else if(diasUltima <= 90) notaRec = 4;
+  else notaRec = 1;
+
+  // 2. Frequência (compras nos últimos 60 dias)
+  const agora = Date.now();
+  const compras60d = compras.filter(v => {
+    if(!v.data) return false;
+    const [y,m,d] = v.data.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m-1, d)).getTime();
+    return (agora - dt) <= (60 * 24 * 60 * 60 * 1000);
+  }).length;
+
+  let notaFreq = 4;
+  if(compras60d >= 4 || totalCompras >= 8) notaFreq = 20;
+  else if(compras60d === 3) notaFreq = 16;
+  else if(compras60d === 2) notaFreq = 12;
+  else if(compras60d === 1) notaFreq = 8;
+  else if(totalCompras >= 1) notaFreq = 4;
+  else notaFreq = 0;
+
+  let scoreFinal = 0;
+  let detalhes = {};
+
+  if(ehSoAVista){
+    // 65 pontos de pontualidade + saldo vão proporcionalmente para frequência e recência
+    const freqAVista = Math.round((notaFreq / 20) * 57);
+    const recAVista = Math.round((notaRec / 15) * 43);
+    scoreFinal = freqAVista + recAVista;
+    detalhes = { tipo: 'avista', freq: freqAVista, rec: recAVista, pont: 0, saldoLim: 0, diasUltima, compras60d };
+  } else {
+    // Pontualidade (40 pts)
+    let notaPont = 40;
+    // Checa parcelas vencidas em atraso hoje
+    const infoAtraso = typeof creditoParcelasCliente === 'function' ? creditoParcelasCliente(c.id) : null;
+    const temAtrasoHoje = infoAtraso ? infoAtraso.temAtraso : (saldoAtual > 0 && diasUltima > 30);
+    if(temAtrasoHoje){
+      notaPont = 0;
+    } else {
+      notaPont = 40;
+    }
+
+    // Saldo vs. Limite (25 pts)
+    let notaSaldoLim = 15; // Nota neutra se não tiver limite configurado
+    const limObj = typeof creditoLimiteCliente === 'function' ? creditoLimiteCliente(c) : null;
+    const lim = limObj ? limObj.limite : (limiteCredito || 0);
+
+    if(lim > 0){
+      const comp = saldoAtual / lim;
+      if(comp <= 0.3) notaSaldoLim = 25;
+      else if(comp <= 0.6) notaSaldoLim = 20;
+      else if(comp <= 0.85) notaSaldoLim = 15;
+      else if(comp <= 1.0) notaSaldoLim = 10;
+      else notaSaldoLim = 0;
+    }
+    scoreFinal = notaPont + notaSaldoLim + notaFreq + notaRec;
+    detalhes = { tipo: 'credito', pont: notaPont, saldoLim: notaSaldoLim, freq: notaFreq, rec: notaRec, diasUltima, compras60d, limite: lim, saldo: saldoAtual };
+  }
+
+  scoreFinal = Math.max(0, Math.min(100, Math.round(scoreFinal)));
+
+  let cor = 'green', classe = 'verde', rotulo = 'Excelente';
+  if(scoreFinal < 40){ cor = 'red'; classe = 'vermelho'; rotulo = 'Risco'; }
+  else if(scoreFinal < 70){ cor = 'yellow'; classe = 'amarelo'; rotulo = 'Atenção'; }
+
+  return {
+    score: scoreFinal,
+    ehNovo,
+    cor,
+    classe,
+    rotulo: ehNovo ? 'Novo' : rotulo,
+    detalhes
+  };
+}
+
+function creditoScoreBadgeHtml(scoreObj){
+  if(!scoreObj) return '';
+  if(scoreObj.ehNovo){
+    return `<span class="badge-score badge-score-novo" title="Cliente novo: menos de 3 compras registradas"><span class="score-num">${scoreObj.score}</span> <span class="score-tag">Novo</span></span>`;
+  }
+  return `<span class="badge-score badge-score-${scoreObj.classe}" title="Score ${scoreObj.score}/100 · ${scoreObj.rotulo}"><span class="score-num">${scoreObj.score}</span> <span class="score-tag">${scoreObj.rotulo}</span></span>`;
+}

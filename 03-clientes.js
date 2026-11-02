@@ -10,55 +10,134 @@ function copiarListaClientes(){
   copiarTexto('CLIENTES\n'+txt,''+txt.split('\n').length+' clientes copiados');
 }
 function renderClientes(){
-  let list=state.clientes;
-  if(!state.cliente_mostrar_arquivados)list=list.filter(c=>estaAtivo(c));
-  if(state.cliente_filter)list=list.filter(c=>clienteCombinaBusca(c,state.cliente_filter));
-  if(state.cliente_status_filter==='devendo')list=list.filter(c=>getSaldoCliente(c.id)>0);
-  if(state.cliente_status_filter==='em-dia')list=list.filter(c=>getSaldoCliente(c.id)===0);
-  if(state.cliente_rota_filter==='none')list=list.filter(c=>!c.rotaId);
-  else if(state.cliente_rota_filter)list=list.filter(c=>String(c.rotaId||'')===String(state.cliente_rota_filter));
+  let list = state.clientes;
+  if(!state.cliente_mostrar_arquivados) list = list.filter(c => estaAtivo(c));
+  if(state.cliente_filter) list = list.filter(c => clienteCombinaBusca(c, state.cliente_filter));
+  if(state.cliente_status_filter === 'devendo') list = list.filter(c => getSaldoCliente(c.id) > 0);
+  if(state.cliente_status_filter === 'em-dia') list = list.filter(c => getSaldoCliente(c.id) === 0);
+  if(state.cliente_rota_filter === 'none') list = list.filter(c => !c.rotaId);
+  else if(state.cliente_rota_filter) list = list.filter(c => String(c.rotaId || '') === String(state.cliente_rota_filter));
+  
   populateRotaFiltro();
-  const chkArq=document.getElementById('clientes-mostrar-arquivados');
-  if(chkArq) chkArq.checked=!!state.cliente_mostrar_arquivados;
-  const tb=document.getElementById('clientes-table');
-  if(list.length===0){tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">Nenhum cliente encontrado</td></tr>';return;}
-  tb.innerHTML=list.map(c=>{
-    const saldo=getSaldoCliente(c.id);
-    const rota=getRota(c.rotaId);
-    const vendasCliente=state.vendas.filter(v=>v.clienteId===c.id);
-    const ultimaCompra=vendasCliente.sort((a,b)=>b.data.localeCompare(a.data))[0];
-    const ticketMedio=vendasCliente.length>0?(vendasCliente.reduce((s,v)=>s+v.total,0)/vendasCliente.length):0;
-    // frequência: intervalo médio entre compras em dias
-    let freqTxt='—';
-    if(vendasCliente.length>=2){
-      const datas=vendasCliente.map(v=>new Date(v.data)).sort((a,b)=>a-b);
-      const diffTotal=(datas[datas.length-1]-datas[0])/(1000*60*60*24);
-      const freq=Math.round(diffTotal/(datas.length-1));
-      freqTxt=`a cada ${freq}d`;
-    } else if(vendasCliente.length===1){freqTxt='1 compra';}
-    const arquivado=!estaAtivo(c);
-    return`<tr id="cliente-row-${c.id}" style="${arquivado?'opacity:.6':''}">
-      <td data-label="Nº"><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtClienteNum(c.id)}</span></td>
-      <td data-label="Nome"><strong>${escapeHtml(c.nome)}</strong>${arquivado?' <span class="badge badge-gray">Arquivado</span>':''}${typeof creditoBadgeCliente==='function'?' '+creditoBadgeCliente(c):''}<br><span class="rota-mini" style="font-size:11px;color:var(--muted)">${rota?'<i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></td>
-      <td data-label="Telefone">${escapeHtml(c.tel)}</td>
-      <td data-label="Rota">${rota?`<span class="badge badge-blue"><i data-lucide="map-pin" class="ic ic-sm"></i> ${escapeHtml(rota.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
-      <td data-label="Saldo" class="${saldo>0?'debt-amount debt-pulse':'debt-zero'}">${saldo>0?fmt(saldo):'Em dia ✓'}</td>
-      <td data-label="Última Compra">${ultimaCompra?fmtDate(ultimaCompra.data):'-'}</td>
-      <td data-label="Ticket Médio" style="font-size:13px"><strong>${ticketMedio>0?fmt(ticketMedio):'—'}</strong>${vendasCliente.length>0?`<div class="td-sub" style="font-size:11px;color:var(--muted)">${vendasCliente.length} compra(s)</div>`:''}</td>
-      <td data-label="Frequência" style="font-size:12px;color:var(--muted)">${freqTxt}</td>
-      <td data-label="Status"><span class="badge ${saldo>0?'badge-red':'badge-green'}">${saldo>0?'Devendo':'Em dia'}</span></td>
-      <td><div class="actions-cell">
-        <button class="icon-btn" onclick="abrirCliente360(${c.id})" title="Ficha 360º"><i data-lucide="contact" class="ic"></i></button>
-        <button class="icon-btn" onclick="abrirExtrato(${c.id})" title="Extrato"><i data-lucide="file-text" class="ic"></i></button>
-        ${saldo>0?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}
-        ${saldo>0?`<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})"><i data-lucide="banknote" class="ic"></i></button>`:''}
+  const chkArq = document.getElementById('clientes-mostrar-arquivados');
+  if(chkArq) chkArq.checked = !!state.cliente_mostrar_arquivados;
+
+  const cardsContainer = document.getElementById('clientes-cards-container') || document.getElementById('clientes-table');
+  if(!cardsContainer) return;
+
+  if(list.length === 0){
+    cardsContainer.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--border);border-radius:12px">Nenhum cliente encontrado</div>';
+    return;
+  }
+
+  // Renderiza em cards modernos, calculando métricas uma única vez por cliente
+  cardsContainer.innerHTML = list.map(c => {
+    const saldo = getSaldoCliente(c.id);
+    const rota = c.rotaId ? getRota(c.rotaId) : null;
+    const vendasCliente = (state.vendas || []).filter(v => v.clienteId === c.id);
+    const numCompras = vendasCliente.length;
+    const ultimaCompra = numCompras > 0 ? [...vendasCliente].sort((a,b) => (b.data||'').localeCompare(a.data||''))[0] : null;
+    const totalGasto = numCompras > 0 ? vendasCliente.reduce((s, v) => s + (v.total || 0), 0) : 0;
+    const ticketMedio = numCompras > 0 ? (totalGasto / numCompras) : 0;
+
+    let freqTxt = '—';
+    if(numCompras >= 2){
+      const datas = vendasCliente.filter(v => v.data).map(v => new Date(v.data)).sort((a,b) => a - b);
+      if(datas.length >= 2){
+        const diffTotal = (datas[datas.length - 1] - datas[0]) / (1000 * 60 * 60 * 24);
+        const freq = Math.round(diffTotal / (datas.length - 1));
+        freqTxt = `a cada ${freq}d`;
+      }
+    } else if(numCompras === 1){
+      freqTxt = '1 compra';
+    }
+
+    const nCartao = typeof cartoesDoCliente === 'function' ? cartoesDoCliente(c.id) : c.cartaoNum;
+    const scoreObj = typeof calcularScoreCliente === 'function' ? calcularScoreCliente(c, vendasCliente, saldo) : null;
+    const scoreBadge = scoreObj ? creditoScoreBadgeHtml(scoreObj) : '';
+    const arquivado = !estaAtivo(c);
+
+    return `
+    <div class="cliente-card ${arquivado ? 'arquivado' : ''}" id="cliente-card-${c.id}">
+      <div class="cliente-card-header">
+        <div class="cliente-card-title-group">
+          <div class="cliente-card-badges">
+            ${nCartao != null 
+              ? `<span class="badge-cartao-selo" title="Número único do cartão"><i data-lucide="credit-card" class="ic ic-sm"></i> #${cartoesNum(nCartao)}</span>` 
+              : `<span class="badge-cartao-sem" title="Sem cartão vinculado">Sem cartão</span>`}
+            ${scoreBadge}
+            ${arquivado ? `<span class="badge badge-gray">Arquivado</span>` : ''}
+          </div>
+          <div class="cliente-card-nome" onclick="abrirCliente360(${c.id})" title="Abrir ficha 360º de ${escapeHtml(c.nome)}">
+            ${escapeHtml(c.nome)}
+          </div>
+        </div>
+        <div class="cliente-card-status-badge">
+          ${saldo > 0 
+            ? `<span class="badge badge-red badge-pulse">Devendo ${fmt(saldo)}</span>` 
+            : `<span class="badge badge-green">Em dia ✓</span>`}
+        </div>
+      </div>
+
+      <div class="cliente-card-body">
+        <div class="cliente-card-col">
+          <div class="card-metric-item">
+            <span class="card-metric-label">Telefone</span>
+            <span class="card-metric-val">
+              ${c.tel ? `<a href="tel:${escapeHtml(c.tel)}" style="color:inherit;text-decoration:none">${escapeHtml(c.tel)}</a>` : '<span style="color:var(--muted)">—</span>'}
+            </span>
+          </div>
+          <div class="card-metric-item">
+            <span class="card-metric-label">Rota</span>
+            <span class="card-metric-val">
+              ${rota ? `<i data-lucide="map-pin" class="ic ic-sm" style="color:var(--gold)"></i> ${escapeHtml(rota.nome)}` : '<span style="color:var(--muted)">Sem rota</span>'}
+            </span>
+          </div>
+          <div class="card-metric-item">
+            <span class="card-metric-label">Saldo</span>
+            <strong class="card-metric-val ${saldo > 0 ? 'saldo-positivo' : 'saldo-zero'}">
+              ${saldo > 0 ? fmt(saldo) : 'R$ 0,00'}
+            </strong>
+          </div>
+        </div>
+
+        <div class="cliente-card-col">
+          <div class="card-metric-item">
+            <span class="card-metric-label">Última compra</span>
+            <span class="card-metric-val">${ultimaCompra ? fmtDate(ultimaCompra.data) : '<span style="color:var(--muted)">—</span>'}</span>
+          </div>
+          <div class="card-metric-item">
+            <span class="card-metric-label">Ticket médio</span>
+            <span class="card-metric-val">${ticketMedio > 0 ? fmt(ticketMedio) : '<span style="color:var(--muted)">—</span>'}${numCompras > 0 ? ` <span style="font-size:10.5px;color:var(--muted)">(${numCompras})</span>` : ''}</span>
+          </div>
+          <div class="card-metric-item">
+            <span class="card-metric-label">Frequência</span>
+            <span class="card-metric-val" style="color:var(--muted)">${freqTxt}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cliente-card-actions">
+        <button class="btn btn-sm" style="background:linear-gradient(135deg,#F6B52A,#C98C14);color:#000;font-weight:800;border:none;box-shadow:0 2px 6px rgba(201,140,20,.3)" onclick="iniciarAtendimentoMes(${c.id})" title="Atendimento Mensal de Rota (Receber + Novo Pedido)"><i data-lucide="zap" class="ic"></i> Atendimento</button>
+        <button class="btn btn-principal btn-sm" onclick="abrirCliente360(${c.id})" title="Ficha 360º"><i data-lucide="contact" class="ic"></i> Ficha</button>
+        <button class="btn btn-outline btn-sm" onclick="cartoesNovaVendaPara(${c.id})" title="Nova Venda"><i data-lucide="shopping-cart" class="ic"></i> Venda</button>
+        ${saldo > 0 
+          ? `<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})" title="Receber pagamento"><i data-lucide="banknote" class="ic"></i> Receber</button>` 
+          : `<button class="btn btn-outline btn-sm" onclick="abrirExtrato(${c.id})" title="Extrato financeiro"><i data-lucide="file-text" class="ic"></i> Extrato</button>`}
+        ${c.tel ? `<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})" title="Enviar WhatsApp"><i data-lucide="message-circle" class="ic"></i></button>` : ''}
         ${arquivado
-          ?`<button class="btn btn-outline btn-sm" onclick="reativarCliente(${c.id})">↩️ Reativar</button>`
-          :`<button class="icon-btn edit" onclick="editarCliente(${c.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
-        <button class="icon-btn del" onclick="excluirCliente(${c.id})" title="Excluir/Arquivar"><i data-lucide="trash-2" class="ic"></i></button>`}
-      </div></td>
-    </tr>`;
+          ? `<button class="btn btn-outline btn-sm" onclick="reativarCliente(${c.id})" style="margin-left:auto">↩️ Reativar</button>`
+          : `<div style="margin-left:auto;display:flex;gap:4px">
+              <button class="icon-btn edit" onclick="editarCliente(${c.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+              <button class="icon-btn del" onclick="excluirCliente(${c.id})" title="Excluir/Arquivar"><i data-lucide="trash-2" class="ic"></i></button>
+            </div>`}
+      </div>
+    </div>`;
   }).join('');
+
+  if(window.lucide && typeof lucide.createIcons === 'function') {
+    lucide.createIcons();
+  }
 }
 function populateRotaFiltro(){
   const sel=document.getElementById('clientes-rota-filter');
@@ -187,9 +266,9 @@ function salvarCliente(){
   const lat=locP?locP.lat:null, lng=locP?locP.lng:null;
   const rotaId=parseInt(document.getElementById('cliente-rota').value)||null;
   const ordemTxt=parseInt(document.getElementById('cliente-rota-ordem').value);
-  const rotaOrdem=(rotaId&&ordemTxt>0)?ordemTxt:null; // ordem de visita só faz sentido com rota
+  const rotaOrdem=(rotaId&&ordemTxt>0)?ordemTxt:null;
   if(!nome){showToast('Informe o nome do cliente','red');return;}
-  const cred=(typeof creditoLerFormCliente==='function')?creditoLerFormCliente():null; // nível e limite do fiado (18-credito.js)
+  const cred=(typeof creditoLerFormCliente==='function')?creditoLerFormCliente():null;
   if(cred&&cred.erro){showToast(cred.erro,'red');return;}
   if(eid){
     const c=state.clientes.find(c=>c.id==eid);
@@ -197,8 +276,22 @@ function salvarCliente(){
     if(cred){c.nivelCredito=cred.nivel;c.limiteCredito=cred.limite;}
     showToast('Cliente atualizado','green');
   } else {
-    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,lat,lng,locLink,rotaId,rotaOrdem,ativo:true,dataCadastro:today(),...(cred?{nivelCredito:cred.nivel,limiteCredito:cred.limite}:{})});
-    showToast('Cliente cadastrado','green');
+    const st=(typeof cartoesState==='function')?cartoesState():null;
+    let nCartao=_cartaoPendente;
+    if(nCartao==null&&st){ nCartao=cartoesMenorLivre(st); }
+    const novoCli={
+      id:nextId('clientes'),
+      nome,tel,end,referencia,lat,lng,locLink,rotaId,rotaOrdem,
+      ativo:true,
+      dataCadastro:today(),
+      cartaoNum:nCartao,
+      cartoesAntigos:[],
+      ...(cred?{nivelCredito:cred.nivel,limiteCredito:cred.limite}:{})
+    };
+    state.clientes.push(novoCli);
+    if(nCartao!=null&&st&&st.vinculos) st.vinculos[nCartao]=novoCli.id;
+    _cartaoPendente=null;
+    showToast('Cliente cadastrado (Cartão #'+cartoesNum(nCartao)+')','green');
   }
   if(locLink) showToast('Link curto salvo: abre no mapa, mas não entra na otimização. Cole o link longo, as coordenadas ou use o GPS','red');
   marcarAlterado();
@@ -288,24 +381,56 @@ function excluirCliente(id){
   if(!c) return;
   const temHistorico=state.vendas.some(v=>v.clienteId===id)||state.pagamentos.some(p=>p.clienteId===id)||(state.renegociacoes||[]).some(r=>r.clienteId===id);
   if(temHistorico){
-    confirmarAcao('Este cliente já tem vendas ou pagamentos registrados — excluir de verdade apagaria esse histórico dos relatórios. Em vez disso ele será arquivado: some da lista e não pode mais receber vendas novas, mas todo o histórico financeiro continua intacto (e você pode reativá-lo a qualquer momento). Continuar?',()=>{
+    confirmarAcao('Este cliente já tem vendas ou pagamentos registrados — excluir de verdade apagaria esse histórico dos relatórios. Em vez disso ele será arquivado: o cartão é liberado na hora para outro cliente e o histórico fica salvo. Continuar?',()=>{
       c.ativo=false;
+      if(c.cartaoNum!=null){
+        c.cartoesAntigos=Array.isArray(c.cartoesAntigos)?c.cartoesAntigos:[];
+        if(!c.cartoesAntigos.includes(c.cartaoNum)) c.cartoesAntigos.push(c.cartaoNum);
+        if(state.cartoes&&state.cartoes.vinculos) delete state.cartoes.vinculos[c.cartaoNum];
+        c.cartaoNum=null;
+      }
       marcarAlterado();salvarDados();
-      showToast('Cliente arquivado ✓','green');renderClientes();renderDashboard();
+      showToast('Cliente arquivado e cartão liberado ✓','green');renderClientes();renderDashboard();
+      if(typeof renderCartoes==='function') renderCartoes();
     });
     return;
   }
   confirmarAcao('Excluir este cliente? Ele não tem nenhuma venda ou pagamento registrado.',()=>{
+    if(c.cartaoNum!=null&&state.cartoes&&state.cartoes.vinculos) delete state.cartoes.vinculos[c.cartaoNum];
     state.clientes=state.clientes.filter(c=>c.id!==id);
     marcarAlterado();salvarDados();
-    showToast('Cliente excluído','green');renderClientes();renderDashboard();
+    showToast('Cliente excluído e cartão liberado','green');renderClientes();renderDashboard();
+    if(typeof renderCartoes==='function') renderCartoes();
   });
 }
 function reativarCliente(id){
   const c=state.clientes.find(c=>c.id===id);
   if(!c) return;
   c.ativo=true;
+  let aviso=null;
+  const st=typeof cartoesState==='function'?cartoesState():null;
+  if(st){
+    const ant=c.cartoesAntigos||[], ult=ant.length?ant[ant.length-1]:null;
+    if(ult!=null&&ult<=st.total&&st.vinculos[ult]==null){
+      st.vinculos[ult]=id;
+      c.cartaoNum=ult;
+      aviso={n:ult,igual:true};
+    } else {
+      const n=cartoesMenorLivre(st);
+      st.vinculos[n]=id;
+      c.cartaoNum=n;
+      aviso={n,igual:false,ult};
+    }
+  }
   marcarAlterado();salvarDados();
-  showToast('Cliente reativado ✓','green');renderClientes();
+  if(aviso&&aviso.igual){
+    showToast('Cliente reativado · Cartão nº '+cartoesNum(aviso.n)+' mantido ✓','green');
+  } else if(aviso){
+    confirmarAcao('Cliente reativado com Novo Cartão nº '+cartoesNum(aviso.n)+(aviso.ult!=null?' (o '+cartoesNum(aviso.ult)+' já foi para outro cliente)':'')+'. Deseja imprimir o novo cartão agora?',()=>cartoesImprimir(aviso.n,aviso.n));
+  } else {
+    showToast('Cliente reativado ✓','green');
+  }
+  renderClientes();
+  if(typeof renderCartoes==='function') renderCartoes();
 }
 

@@ -77,6 +77,49 @@ const QR = (function(){
 // Cliente excluído deixa o cartão livre sozinho; cliente arquivado mantém o vínculo até você liberar.
 const CARTOES_URL_BASE='https://ferreira00group.github.io/gestaopro/';
 const CARTOES_LOTE=100;
+// ═══ CONFIGURAÇÃO CENTRALIZADA DE FORMATAÇÃO DO CARTÃO (v5.59.0) ═══
+const CONECTIVOS_NOME = new Set(["de", "da", "do", "dos", "das", "e", "d'"]);
+const PREFIXOS_ENDERECO = new Set([
+  "rua", "r.", "r", "avenida", "av.", "av", "travessa", "trav", "tr.",
+  "alameda", "al.", "rodovia", "rod.", "estrada", "est.", "praca", "praça",
+  "pc.", "pça", "vila", "v.", "bairro", "jd.", "jardim", "quadra", "qd.", "lote", "lt."
+]);
+
+function formatarNomeCartao(nome){
+  if(!nome) return "";
+  const palavras = String(nome).trim().split(/\s+/);
+  const res = [];
+  let termos = 0;
+  for(let i = 0; i < palavras.length; i++){
+    const p = palavras[i];
+    const ehConectivo = CONECTIVOS_NOME.has(p.toLowerCase());
+    res.push(p);
+    if(!ehConectivo){
+      termos++;
+      if(termos >= 2) break;
+    }
+  }
+  return res.join(" ");
+}
+
+function formatarEnderecoCartao(end){
+  if(!end) return "";
+  let parte = String(end).split(",")[0].trim();
+  let palavras = parte.split(/\s+/).filter(Boolean);
+  if(palavras.length > 0 && PREFIXOS_ENDERECO.has(palavras[0].toLowerCase())){
+    if(palavras.length - 1 >= 2){
+      palavras.shift();
+    }
+  }
+  return palavras.slice(0, 2).join(" ");
+}
+
+function formatarRotaCartao(rota){
+  if(!rota) return "";
+  let palavras = String(rota).trim().split(/\s+/).filter(p => p.toLowerCase() !== "rota");
+  return palavras[0] || "";
+}
+
 let _cartoesDe=1, _cartoesAte='', _cartoesFiltro='todos', _cartoesBusca='', _cartaoPendente=null, _scanStream=null, _scanTimer=null;
 
 function cartoesState(){
@@ -89,12 +132,28 @@ function cartoesState(){
 const cartoesNum=n=>String(n).padStart(3,'0');
 const cartoesLink=n=>CARTOES_URL_BASE+'?cartao='+n;
 function cartoesClienteDe(n){
+  n = Number(n);
+  const porFicha = (state.clientes||[]).find(c=>estaAtivo(c)&&Number(c.cartaoNum)===n);
+  if(porFicha) return porFicha;
   const id=cartoesState().vinculos[n]; if(id==null) return null;
-  return state.clientes.find(c=>c.id==id)||null; // cliente excluído → cartão livre
+  const c=(state.clientes||[]).find(x=>x.id==id);
+  if(c&&estaAtivo(c)){ c.cartaoNum=n; return c; }
+  return null;
 }
 function cartoesDoCliente(clienteId){
+  const c=(state.clientes||[]).find(x=>x.id===clienteId);
+  if(c&&c.cartaoNum!=null){
+    const st=cartoesState();
+    if(st.vinculos&&st.vinculos[c.cartaoNum]!==clienteId) st.vinculos[c.cartaoNum]=clienteId;
+    return c.cartaoNum;
+  }
   const v=cartoesState().vinculos;
-  for(const n in v){ if(v[n]==clienteId&&state.clientes.some(c=>c.id==clienteId)) return Number(n); }
+  for(const n in v){
+    if(v[n]==clienteId&&(state.clientes||[]).some(x=>x.id==clienteId)){
+      if(c&&estaAtivo(c)) c.cartaoNum=Number(n);
+      return Number(n);
+    }
+  }
   return null;
 }
 function cartoesExtrair(txt){
@@ -107,11 +166,23 @@ function cartoesExtrair(txt){
 }
 function cartoesVincular(n,clienteId){
   const st=cartoesState(), antigo=cartoesDoCliente(clienteId);
+  const c=(state.clientes||[]).find(x=>x.id===clienteId);
   const fazer=()=>{
     if(antigo!=null&&antigo!==n) delete st.vinculos[antigo];
     st.vinculos[n]=clienteId;
-    marcarAlterado(); cartoesFecharModal('modal-cartao'); renderCartoes();
-    showToast('Cartão '+cartoesNum(n)+' vinculado a '+getCliente(clienteId).nome,'green');
+    if(c){
+      if(c.cartaoNum!=null&&c.cartaoNum!==n){
+        c.cartoesAntigos=Array.isArray(c.cartoesAntigos)?c.cartoesAntigos:[];
+        if(!c.cartoesAntigos.includes(c.cartaoNum)) c.cartoesAntigos.push(c.cartaoNum);
+      }
+      c.cartaoNum=Number(n);
+    }
+    marcarAlterado();
+    cartoesFecharModal('modal-cartao');
+    if(document.getElementById('modal-cartao-sem-cliente')) cartoesFecharModal('modal-cartao-sem-cliente');
+    renderCartoes();
+    if(typeof renderClientes==='function') renderClientes();
+    showToast('Cartão '+cartoesNum(n)+' vinculado a '+(c?c.nome:'cliente'),'green');
   };
   if(antigo!=null&&antigo!==n) confirmarAcao('Este cliente já usa o cartão '+cartoesNum(antigo)+'. Passar para o cartão '+cartoesNum(n)+' e liberar o antigo?',fazer);
   else fazer();
@@ -119,7 +190,15 @@ function cartoesVincular(n,clienteId){
 function cartoesLiberar(n){
   const c=cartoesClienteDe(n);
   confirmarAcao('Liberar o cartão '+cartoesNum(n)+(c?' (hoje de '+c.nome+')':'')+'? O cartão impresso continua valendo para outro cliente.',()=>{
-    delete cartoesState().vinculos[n]; marcarAlterado(); renderCartoes(); showToast('Cartão liberado','green');
+    delete cartoesState().vinculos[n];
+    if(c&&c.cartaoNum===Number(n)){
+      c.cartoesAntigos=Array.isArray(c.cartoesAntigos)?c.cartoesAntigos:[];
+      if(!c.cartoesAntigos.includes(Number(n))) c.cartoesAntigos.push(Number(n));
+      c.cartaoNum=null;
+    }
+    marcarAlterado(); renderCartoes();
+    if(typeof renderClientes==='function') renderClientes();
+    showToast('Cartão liberado','green');
   });
 }
 function cartoesMaisUm(){
@@ -132,6 +211,16 @@ function cartoesGaranteModais(){
   if(document.getElementById('modal-cartao')) return;
   const w=document.createElement('div');
   w.innerHTML=`
+    <div class="modal-overlay" id="modal-cartao-sem-cliente"><div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>Cartão sem cliente</h3><button class="modal-close" onclick="cartoesFecharModal('modal-cartao-sem-cliente')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body cartao-sem-cliente-box">
+      <div class="cartao-sem-cliente-icon"><i data-lucide="credit-card" style="width:32px;height:32px;stroke-width:1.75"></i></div>
+      <h3 style="margin-bottom:6px">Cartão <span id="cartao-sem-num" style="color:var(--gold)">#000</span></h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Este cartão impresso ainda não está associado a nenhum cliente ativo.</p>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;padding:11px" onclick="cartoesCadastrarNovoDoSemCliente()"><i data-lucide="user-plus" class="ic"></i> Cadastrar novo cliente vinculado</button>
+      <button class="btn btn-outline" style="width:100%;padding:10px" onclick="cartoesVincularExistenteDoSemCliente()"><i data-lucide="link" class="ic"></i> Vincular a cliente já cadastrado</button>
+    </div>
+  </div></div>
   <div class="modal-overlay" id="modal-cartao"><div class="modal" style="max-width:440px">
     <div class="modal-header"><h3 id="cartao-titulo">Cartão</h3><button class="modal-close" onclick="cartoesFecharModal('modal-cartao')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
@@ -150,7 +239,7 @@ function cartoesGaranteModais(){
       <div style="display:flex;gap:8px"><input class="form-control" id="cartao-scan-num" type="number" inputmode="numeric" min="1" placeholder="ou digite o nº do cartão" style="flex:1" onkeydown="if(event.key==='Enter')cartoesAbrirDigitado()"><button class="btn btn-primary btn-sm" onclick="cartoesAbrirDigitado()">Abrir</button></div>
     </div></div></div>`;
   while(w.firstChild) document.body.appendChild(w.firstChild);
-  ['modal-cartao','modal-cartao-qr'].forEach(id=>{ const m=document.getElementById(id); m.addEventListener('click',e=>{ if(e.target===m) cartoesFecharModal(id); }); });
+  ['modal-cartao','modal-cartao-qr','modal-cartao-sem-cliente'].forEach(id=>{ const m=document.getElementById(id); m.addEventListener('click',e=>{ if(e.target===m) cartoesFecharModal(id); }); });
   const ms=document.getElementById('modal-cartao-scan'); ms.addEventListener('click',e=>{ if(e.target===ms) cartoesFecharScan(); });
 }
 function cartoesFecharModal(id){ const m=document.getElementById(id); if(m) m.classList.remove('open'); }
@@ -192,8 +281,35 @@ function cartoesAbrir(n){
   n=parseInt(n,10); const st=cartoesState();
   if(!(n>=1)||n>st.total){ showToast('Cartão '+(n||'?')+' não existe (o app tem '+st.total+' cartões)','red'); return; }
   const c=cartoesClienteDe(n);
-  if(c){ abrirCliente360(c.id); if(!estaAtivo(c)) showToast('Cliente arquivado — para reaproveitar o cartão, libere-o em Cartões QR','red'); }
+  if(c&&estaAtivo(c)){
+    abrirCliente360(c.id);
+  } else {
+    cartoesAbrirSemCliente(n);
+  }
+}
+function cartoesAbrirSemCliente(n){
+  cartoesGaranteModais();
+  _cartaoEmEdicao=n;
+  const numEl=document.getElementById('cartao-sem-num');
+  if(numEl) numEl.textContent=cartoesNum(n);
+  const m=document.getElementById('modal-cartao-sem-cliente');
+  if(m) m.classList.add('open');
   else cartoesAbrirVincular(n);
+}
+function cartoesCadastrarNovoDoSemCliente(){
+  const n=_cartaoEmEdicao;
+  cartoesFecharModal('modal-cartao-sem-cliente');
+  _cartaoPendente=n;
+  showToast('Cadastre o cliente: será vinculado ao Cartão '+cartoesNum(n),'green');
+  if(typeof clearClienteForm==='function') clearClienteForm();
+  const tit=document.getElementById('modal-cliente-title');
+  if(tit) tit.textContent='Novo Cliente · Cartão '+cartoesNum(n);
+  openModal('modal-cliente');
+}
+function cartoesVincularExistenteDoSemCliente(){
+  const n=_cartaoEmEdicao;
+  cartoesFecharModal('modal-cartao-sem-cliente');
+  cartoesAbrirVincular(n);
 }
 function cartoesAbrirDigitado(){
   const n=cartoesExtrair(document.getElementById('cartao-scan-num').value);
@@ -283,14 +399,19 @@ const CARTOES_ICONES={
 };
 const cartoesIcone=(k,top)=>`<svg class="cp-ic" style="top:${top}u" viewBox="0 0 24 24" fill="none" stroke="#FDBE32" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${CARTOES_ICONES[k]}</svg>`;
 function cartoesHtmlCartao(n){
+  const cli = cartoesClienteDe(n);
+  const nomeFmt = cli ? formatarNomeCartao(cli.nome) : '';
+  const endFmt = cli ? formatarEnderecoCartao(cli.end) : '';
+  const rotaObj = (cli && cli.rotaId && typeof getRota === 'function') ? getRota(cli.rotaId) : null;
+  const rotaFmt = cli ? formatarRotaCartao(rotaObj ? rotaObj.nome : '') : '';
   return `<div class="cartao-print">
     <div class="cp-logo">Gestão<span>PRO</span></div>
     <div class="cp-n">${cartoesNum(n)}</div>
     <div class="cp-qr">${QR.svg(cartoesLink(n))}</div>
     <div class="cp-div"></div>
-    ${cartoesIcone('user',21.2)}<div class="cp-campo" style="top:21.2u"></div>
-    ${cartoesIcone('house',29.8)}<div class="cp-campo" style="top:29.8u"></div>
-    ${cartoesIcone('pin',38.4)}<div class="cp-campo" style="top:38.4u"></div>
+    ${cartoesIcone('user',21.2)}<div class="cp-campo" style="top:21.2u;display:flex;align-items:center;padding:0 5px;font-size:3.6u;font-weight:700;color:#000;overflow:hidden;white-space:nowrap">${escapeHtml(nomeFmt)}</div>
+    ${cartoesIcone('house',29.8)}<div class="cp-campo" style="top:29.8u;display:flex;align-items:center;padding:0 5px;font-size:3.6u;font-weight:700;color:#000;overflow:hidden;white-space:nowrap">${escapeHtml(endFmt)}</div>
+    ${cartoesIcone('pin',38.4)}<div class="cp-campo" style="top:38.4u;display:flex;align-items:center;padding:0 5px;font-size:3.6u;font-weight:700;color:#000;overflow:hidden;white-space:nowrap">${escapeHtml(rotaFmt)}</div>
   </div>`;
 }
 const CARTOES_CSS_BASE=`
@@ -369,12 +490,22 @@ function cartoesPDFBuild(de,ate){
           }else cc++;
         }
       }
-      // três campos para preenchimento manual, com pictogramas simples
-      const fx=x+cw*.66, fw=cw*.29, fh=13;
-      for(let k=0;k<3;k++){
-        const fy=y+ch-43-k*24;
-        c+=rect(fx,fy,fw,fh,'1 1 1','0.91 0.64 0.10',0.75);
-        c+=`0.99 0.72 0.18 RG 1.25 w ${fmt(x+cw*.635)} ${fmt(fy+fh/2)} m ${fmt(x+cw*.65)} ${fmt(fy+fh/2)} l S\n`;
+      // três campos: se cliente ativo existir, imprime dados formatados; senão caixa em branco
+      const cli = cartoesClienteDe(n);
+      const fx = x + cw * .66, fw = cw * .29, fh = 13;
+      const campoValores = [
+        cli ? formatarNomeCartao(cli.nome) : '',
+        cli ? formatarEnderecoCartao(cli.end) : '',
+        cli ? formatarRotaCartao(cli.rotaId && typeof getRota === 'function' ? (getRota(cli.rotaId)?.nome || '') : '') : ''
+      ];
+      for(let k = 0; k < 3; k++){
+        const fy = y + ch - 43 - k * 24;
+        c += rect(fx, fy, fw, fh, '1 1 1', '0.91 0.64 0.10', 0.75);
+        c += `0.99 0.72 0.18 RG 1.25 w ${fmt(x+cw*.635)} ${fmt(fy+fh/2)} m ${fmt(x+cw*.65)} ${fmt(fy+fh/2)} l S\n`;
+        const val = campoValores[k];
+        if(val){
+          c += txt(fx + 2.5, fy + 3.8, 6.5, val.slice(0, 22), '0.08 0.08 0.08', 'F2');
+        }
       }
       c+='Q\n';
     }
@@ -458,6 +589,7 @@ if(typeof c360Render==='function'){
         ${n!=null?`<span class="badge badge-blue">Cartão nº ${cartoesNum(n)}</span>`:''}
         ${ant.length?`<span style="font-size:11px;color:var(--muted);margin-left:6px">já teve o cartão ${ant.map(cartoesNum).join(', ')}</span>`:''}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn btn-sm" style="background:linear-gradient(135deg,#F6B52A,#C98C14);color:#000;font-weight:800;border:none;box-shadow:0 2px 6px rgba(201,140,20,.3)" onclick="c360Acao(()=>iniciarAtendimentoMes(${c.id}))"><i data-lucide="zap" class="ic"></i> Atendimento do Mês</button>
           <button class="btn btn-primary btn-sm" onclick="c360Acao(()=>cartoesNovaVendaPara(${c.id}))">Nova venda</button>
           <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>abrirPagamento(${c.id}))">Receber pagamento</button>
           ${n!=null?`<button class="btn btn-outline btn-sm" onclick="c360Acao(()=>cartoesImprimir(${n},${n}))">Imprimir cartão</button>`:''}
@@ -476,23 +608,48 @@ function cartoesMenorLivre(st){
   const n=st.total+1; st.total+=CARTOES_LOTE; return n; // acabou o lote: abre outro (imprimir depois)
 }
 function cartoesNormalizar(st){
-  let mudou=false;
-  if(!st.migradoV){ // 1ª execução: guarda cópia dos vínculos antes de mexer (vai junto no backup do app)
-    st.backupPreMigracao={em:today(),vinculos:Object.assign({},st.vinculos),total:st.total}; st.migradoV=1; mudou=true;
+  let mudou = false;
+  if(!st.migradoV){
+    st.backupPreMigracao = { em: today(), vinculos: Object.assign({}, st.vinculos), total: st.total };
+    st.migradoV = 2;
+    mudou = true;
   }
-  for(const n in st.vinculos){ // arquivado/excluído libera o número e fica no histórico da ficha
-    const c=state.clientes.find(x=>x.id==st.vinculos[n]);
-    if(c&&estaAtivo(c)) continue;
-    if(c){ c.cartoesAntigos=Array.isArray(c.cartoesAntigos)?c.cartoesAntigos:[]; if(!c.cartoesAntigos.includes(Number(n))) c.cartoesAntigos.push(Number(n)); }
-    delete st.vinculos[n]; mudou=true;
+  for(const n in st.vinculos){
+    const id = st.vinculos[n];
+    const c = (state.clientes||[]).find(x => x.id == id);
+    if(c && estaAtivo(c)){
+      if(c.cartaoNum !== Number(n)){
+        c.cartaoNum = Number(n);
+        mudou = true;
+      }
+    } else {
+      if(c){
+        c.cartoesAntigos = Array.isArray(c.cartoesAntigos) ? c.cartoesAntigos : [];
+        if(!c.cartoesAntigos.includes(Number(n))) c.cartoesAntigos.push(Number(n));
+        c.cartaoNum = null;
+      }
+      delete st.vinculos[n];
+      mudou = true;
+    }
   }
-  if(_cartaoPendente==null&&!_cartoesSemAuto){ // ativo sem cartão → menor livre, por ordem de cadastro
-    const tem=new Set(Object.values(st.vinculos).map(String));
-    state.clientes.filter(c=>estaAtivo(c)&&!tem.has(String(c.id))).sort((a,b)=>a.id-b.id).forEach(c=>{
-      st.vinculos[cartoesMenorLivre(st)]=c.id; mudou=true;
+  (state.clientes||[]).forEach(c => {
+    if(estaAtivo(c) && c.cartaoNum != null){
+      if(st.vinculos[c.cartaoNum] !== c.id){
+        st.vinculos[c.cartaoNum] = c.id;
+        mudou = true;
+      }
+    }
+  });
+  if(_cartaoPendente == null && !_cartoesSemAuto){
+    const ativosSem = (state.clientes||[]).filter(c => estaAtivo(c) && (c.cartaoNum == null && cartoesDoCliente(c.id) == null)).sort((a,b) => a.id - b.id);
+    ativosSem.forEach(c => {
+      const livre = cartoesMenorLivre(st);
+      c.cartaoNum = livre;
+      st.vinculos[livre] = c.id;
+      mudou = true;
     });
   }
-  if(mudou&&typeof marcarAlterado==='function') marcarAlterado();
+  if(mudou && typeof marcarAlterado === 'function') marcarAlterado();
 }
 (function(){
   const base=cartoesState;

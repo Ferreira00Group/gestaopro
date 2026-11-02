@@ -138,7 +138,9 @@ function c360Render(){
   const ticket=x.compras?x.fat/x.compras:0;
   document.getElementById('c360-titulo').textContent=c.nome;
   const rota=(typeof getRota==='function'&&c.rotaId)?getRota(c.rotaId):null;
-  const badges=(x.seg.vip?'<span class="badge badge-yellow">VIP</span> ':'')+(x.seg.frequente?'<span class="badge badge-green">Frequente</span> ':'')+(x.seg.inativo?'<span class="badge badge-red">Inativo</span> ':'')+(x.seg.recompra?'<span class="badge badge-blue">Recompra próxima</span> ':'')+(!estaAtivo(c)?'<span class="badge badge-gray">Arquivado</span> ':'')+(typeof creditoBadgeCliente==='function'?creditoBadgeCliente(c)+' ':'');
+  const scoreObj = (typeof calcularScoreCliente === 'function') ? calcularScoreCliente(c, (state.vendas||[]).filter(v=>v.clienteId===c.id), saldo) : null;
+  const scoreBadge = scoreObj ? creditoScoreBadgeHtml(scoreObj) + ' ' : '';
+  const badges=scoreBadge+(x.seg.vip?'<span class="badge badge-yellow">VIP</span> ':'')+(x.seg.frequente?'<span class="badge badge-green">Frequente</span> ':'')+(x.seg.inativo?'<span class="badge badge-red">Inativo</span> ':'')+(x.seg.recompra?'<span class="badge badge-blue">Recompra próxima</span> ':'')+(!estaAtivo(c)?'<span class="badge badge-gray">Arquivado</span> ':'')+(typeof creditoBadgeCliente==='function'?creditoBadgeCliente(c)+' ':'');
   const tags=c360Tags(c);
   const sugestoes=c360TodasTags().filter(t=>!tags.includes(t));
   const kpi=(l,v,cor)=>`<div class="c360-kpi"><span>${l}</span><strong${cor?` style="color:var(--${cor})"`:''}>${v}</strong></div>`;
@@ -161,6 +163,23 @@ function c360Render(){
       <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>abrirExtrato(${c.id}))">Extrato</button>
       <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>editarCliente(${c.id}))">Editar</button>
     </div>
+    ${scoreObj ? `<div class="c360-secao">Score de Crédito (${scoreObj.score}/100)</div>
+    <div class="score-breakdown-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <div><strong>Score: ${scoreObj.score} / 100</strong> · <span class="badge-score badge-score-${scoreObj.classe}">${scoreObj.rotulo}</span></div>
+        <div style="font-size:12px;color:var(--muted)">${scoreObj.ehNovo ? 'Cliente Novo (<3 compras)' : (scoreObj.detalhes.tipo === 'avista' ? 'Perfil Só à Vista (Pesos adaptados)' : 'Perfil Crédito/Fiado')}</div>
+      </div>
+      <div class="score-breakdown-bar"><div class="score-breakdown-fill" style="width:${scoreObj.score}%;background:var(--${scoreObj.cor})"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;font-size:11.5px;color:var(--muted);margin-top:6px">
+        ${scoreObj.detalhes.tipo === 'avista' 
+          ? `<div>Frequência: <strong style="color:var(--text)">${scoreObj.detalhes.freq}/57 pts</strong></div>
+             <div>Recência: <strong style="color:var(--text)">${scoreObj.detalhes.rec}/43 pts</strong></div>`
+          : `<div>Pontualidade: <strong style="color:var(--text)">${scoreObj.detalhes.pont}/40 pts</strong></div>
+             <div>Saldo/Limite: <strong style="color:var(--text)">${scoreObj.detalhes.saldoLim}/25 pts</strong></div>
+             <div>Frequência: <strong style="color:var(--text)">${scoreObj.detalhes.freq}/20 pts</strong></div>
+             <div>Recência: <strong style="color:var(--text)">${scoreObj.detalhes.rec}/15 pts</strong></div>`}
+      </div>
+    </div>` : ''}
     <div class="c360-secao">Tags</div>
     <div class="c360-tags">${tags.map((t,i)=>`<span class="crm-chip">${escapeHtml(t)}<button onclick="c360RemTag(${i})" title="Remover">×</button></span>`).join('')||'<span class="crm-card-sub">Nenhuma tag</span>'}</div>
     <div style="display:flex;gap:8px;margin-top:8px"><input class="form-control" id="c360-tag-input" list="c360-tags-list" maxlength="24" placeholder="Nova tag (ex: Atacado)" onkeydown="if(event.key==='Enter'){event.preventDefault();c360AddTag()}">

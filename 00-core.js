@@ -1542,3 +1542,41 @@ function toggleAlertaEstoque(){
   renderAlertaEstoquePage();
 }
 
+
+// ── Indicador de Backup Visual (v5.60.0) ──
+function atualizarIndicadorBackup(){
+  const dot = document.getElementById('backup-badge-dot');
+  if(!dot) return;
+  const ult = (state && (state.ultimoBackupDrive || state.ultimoBackupLocal)) || null;
+  if(!ult){
+    dot.style.background = '#E5604F'; // vermelho (nenhum backup)
+    return;
+  }
+  const diffHoras = (Date.now() - new Date(ult).getTime()) / (1000 * 60 * 60);
+  if(diffHoras <= 24){
+    dot.style.background = '#4CC38A'; // verde (feito nas últimas 24h)
+  } else if(diffHoras <= 72){
+    dot.style.background = '#E3C16F'; // amarelo (2 a 3 dias sem backup)
+  } else {
+    dot.style.background = '#E5604F'; // vermelho (>3 dias)
+  }
+}
+
+function abrirBackupStatusModal(){
+  const ult = (state && (state.ultimoBackupDrive || state.ultimoBackupLocal)) || null;
+  const txt = ult ? fmtDate(ult.split('T')[0]) + ' às ' + (new Date(ult).toLocaleTimeString().slice(0,5)) : 'Nenhum backup registrado ainda';
+  const infoEl = document.getElementById('backup-status-data');
+  if(infoEl) infoEl.textContent = txt;
+  const m = document.getElementById('modal-backup-status');
+  if(m) m.classList.add('open');
+}
+
+function baixarBackupRapido(){
+  if(typeof exportarDados === 'function') exportarDados();
+  if(!state) state = {};
+  state.ultimoBackupLocal = new Date().toISOString();
+  if(typeof marcarAlterado === 'function') marcarAlterado();
+  atualizarIndicadorBackup();
+  showToast('Cópia de segurança baixada com sucesso! ✓', 'green');
+}
+setTimeout(atualizarIndicadorBackup, 1200);

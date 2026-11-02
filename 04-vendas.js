@@ -1,3 +1,4 @@
+let _atendimentoEmAndamento = null;
 // ============ VENDAS (multi-item) ============
 let vendaItensTemp=[];
 // Item avulso (v5.34.6): valor digitado na calculadora, sem produto cadastrado. Fica em
@@ -382,6 +383,20 @@ function renderVendaItensLista(){
       <label class="vc-preco">Custo un. <input type="number" step="0.01" min="0" class="form-control" value="${it.custo||''}" placeholder="opcional" oninput="vcCustoAvulso('${key}',this.value)"></label>
     </div>`;
   });
+  const cidRepetir = parseInt(document.getElementById('venda-cliente')?.value) || null;
+  if(cidRepetir && !termo && vendaItensTemp.length === 0){
+    const ultVenda = (state.vendas||[]).filter(v=>v.clienteId===cidRepetir && v.tipo!=='orcamento' && v.itens && v.itens.length).sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
+    if(ultVenda){
+      html += `<div style="margin:4px 0 10px;padding:8px 10px;background:rgba(201,162,75,.08);border:1px dashed var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:12px;color:var(--text)">
+          <strong>Cliente de Rota:</strong> Repetir cesta anterior (${ultVenda.itens.length} itens · ${fmt(ultVenda.total)})?
+        </div>
+        <button type="button" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:700;border:none;white-space:nowrap;padding:5px 10px;font-size:11.5px" onclick="repetirPedidoAnterior(${ultVenda.id})">
+          <i data-lucide="rotate-ccw" class="ic ic-sm"></i> Repetir Cesta
+        </button>
+      </div>`;
+    }
+  }
   const termo=vendaCatBusca;
   const lista=vcEntradasCatalogo().filter(e=>!termo||(e.nome+' '+e.cod).toLowerCase().includes(termo));
   lista.forEach(e=>{
@@ -390,7 +405,7 @@ function renderVendaItensLista(){
     const falta=!!it&&verEstoque&&it.qtd>e.estoque;
     html+=`<div class="vc-row${it?' sel':''}">
       <div class="vc-info"><p class="vc-nome">${escapeHtml(e.nome)}</p>
-        <p class="vc-sub">${escapeHtml(e.cod)} · ${fmt(e.preco)} · est: ${e.estoque}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
+        <p class="vc-sub">${escapeHtml(e.cod)} · <strong>${fmt(e.preco)}</strong> · ${e.estoque > 5 ? `<span style="color:#4CC38A;font-weight:600">✓ ${e.estoque} em estoque</span>` : (e.estoque > 0 ? `<span style="color:#E3C16F;font-weight:600">⚠️ Apenas ${e.estoque} un</span>` : `<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`)}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
       ${it?vcStepper(key,it.qtd,falta):`<button type="button" class="stp-btn stp-plus vc-add" onclick="vcAjustar('${key}',1)" aria-label="Adicionar">${_VC_MAIS}</button>`}
       ${it?`<label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>`:''}
     </div>`;
@@ -981,6 +996,11 @@ function salvarVenda(){
   if(creditoOn&&valorFiado>0.009) creditoRegistrarInicio();                // começa a contar os 60 dias de revisão
   marcarAlterado();
   closeModal('modal-venda');renderVendas();renderDashboard();renderEstoque();
+  if(_atendimentoEmAndamento && _atendimentoEmAndamento.clienteId === clienteId){
+    const at = _atendimentoEmAndamento;
+    _atendimentoEmAndamento = null;
+    setTimeout(() => mostrarComprovanteAtendimentoMes(at, vendaSalva), 200);
+  }
 }
 function editarVenda(id){
   const v=state.vendas.find(v=>v.id===id);
@@ -1693,3 +1713,279 @@ function copiarCodigosParaIA(){
   copiarTexto(txt,'Instruções + códigos copiados. Cole no chat da IA');
 }
 const prevImportarPedidosDebounced=debounce(prevImportarPedidos);
+
+function repetirPedidoAnterior(vendaId){
+  const v = (state.vendas||[]).find(x => x.id === vendaId);
+  if(!v || !v.itens || !v.itens.length){
+    showToast('Nenhum item encontrado no pedido anterior','red');
+    return;
+  }
+  vendaItensTemp = v.itens.map(it => criarLinhaItemVenda({
+    produtoId: it.produtoId,
+    varianteId: it.varianteId,
+    qtd: it.qtd,
+    preco: vcPrecoCatalogo(it.produtoId) || it.preco,
+    avulso: !!it.avulso,
+    nome: it.nome || '',
+    custo: it.avulso ? (it.custoFichaUn || 0) : 0
+  }));
+  renderVendaItensLista();
+  showToast(`${v.itens.length} itens do mês anterior carregados no carrinho!`,'green');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FLUXO DE ATENDIMENTO DE ROTA / CICLO MENSAL (v5.60.0)
+// Passo 1: Cobrança do saldo do mês anterior (dinheiro, Pix copia e cola, etc.)
+// Passo 2: Abertura do catálogo para o novo pedido com baixa real de estoque
+// Passo 3: Vencimento automático programado para +30 dias (mês seguinte)
+// Passo 4: Comprovante único consolidado no WhatsApp
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function iniciarAtendimentoMes(clienteId){
+  const c = getCliente(clienteId);
+  if(!c){ showToast('Cliente não encontrado','red'); return; }
+  const saldo = getSaldoCliente(clienteId);
+  
+  if(saldo <= 0.009){
+    // Sem dívida anterior: vai direto para o novo pedido do mês seguinte!
+    showToast(`${c.nome} está em dia! Abrindo catálogo para o pedido do mês seguinte.`,'green');
+    abrirNovaVendaParaAtendimento(clienteId, 0, 'em_dia');
+    return;
+  }
+
+  // Preenche dados do Passo 1 no modal de atendimento
+  document.getElementById('at-cliente-id').value = clienteId;
+  document.getElementById('at-cliente-nome').textContent = c.nome + (c.cartaoNum ? ` (Cartão #${cartoesNum(c.cartaoNum)})` : '');
+  document.getElementById('at-saldo-anterior').textContent = fmt(saldo);
+  document.getElementById('at-valor-pago').value = saldo.toFixed(2);
+  document.getElementById('at-forma').value = 'dinheiro';
+  document.getElementById('at-data').value = today();
+  
+  // Atualiza bloco Pix do atendimento
+  atualizarPixAtendimentoUI(saldo);
+  
+  document.getElementById('modal-atendimento-mes').classList.add('open');
+}
+
+function atReceberTudo(){
+  const cid = parseInt(document.getElementById('at-cliente-id').value);
+  const saldo = getSaldoCliente(cid);
+  document.getElementById('at-valor-pago').value = saldo.toFixed(2);
+  atualizarPixAtendimentoUI(saldo);
+}
+
+function atValorAlterado(v){
+  const n = parseFloat(v) || 0;
+  atualizarPixAtendimentoUI(n);
+}
+
+function atFormaAlterada(forma){
+  const box = document.getElementById('at-pix-box');
+  if(!box) return;
+  if(forma === 'pix' || forma === 'pix_maquininha'){
+    box.style.display = 'block';
+    const val = parseFloat(document.getElementById('at-valor-pago').value) || 0;
+    atualizarPixAtendimentoUI(val);
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+function atualizarPixAtendimentoUI(valor){
+  const box = document.getElementById('at-pix-box');
+  if(!box) return;
+  if(!pixDisponivel()){
+    box.innerHTML = '<div style="font-size:11.5px;color:var(--muted)">Configure sua chave Pix em <em>Configurações › Pix</em> para gerar QR Code e Pix Copia e Cola.</div>';
+    return;
+  }
+  const payload = pixPayload(valor);
+  box.innerHTML = `
+    <div style="background:rgba(201,162,75,.06);border:1px dashed var(--gold);border-radius:10px;padding:12px;margin-top:10px;text-align:center">
+      <div style="font-size:11.5px;color:var(--gold);font-weight:700;margin-bottom:6px">PIX COPIA E COLA (${fmt(valor)})</div>
+      <div style="max-width:160px;margin:0 auto 8px">${QR.svg(payload, 160)}</div>
+      <div style="display:flex;gap:6px;justify-content:center">
+        <button type="button" class="btn btn-outline btn-sm" onclick="copiarTexto('${payload}','Pix Copia e Cola copiado!')">
+          <i data-lucide="copy" class="ic ic-sm"></i> Copiar Código Pix
+        </button>
+      </div>
+    </div>`;
+  if(window.lucide && typeof lucide.createIcons==='function') lucide.createIcons();
+}
+
+function confirmarRecebimentoAtendimentoMes(){
+  const clienteId = parseInt(document.getElementById('at-cliente-id').value);
+  const valor = parseFloat(document.getElementById('at-valor-pago').value) || 0;
+  const forma = document.getElementById('at-forma').value;
+  const data = document.getElementById('at-data').value || today();
+  const saldoAnterior = getSaldoCliente(clienteId);
+
+  if(valor < 0){ showToast('O valor não pode ser negativo','red'); return; }
+  if(valor > saldoAnterior + 0.01){ showToast('Valor maior que o saldo devedor anterior','red'); return; }
+
+  let pagId = null;
+  if(valor > 0.009){
+    pagId = nextId('pagamentos');
+    state.pagamentos.push({
+      id: pagId,
+      clienteId,
+      valor,
+      forma,
+      obs: 'Recebimento Ciclo Mensal / Rota',
+      data
+    });
+    state.financeiro.push({
+      id: nextId('financeiro'),
+      tipo: 'entrada',
+      desc: `Pagamento mês anterior — ${getCliente(clienteId).nome}`,
+      valor,
+      data,
+      pagamentoId: pagId
+    });
+    marcarAlterado();
+  }
+
+  const saldoRestante = getSaldoCliente(clienteId);
+  _atendimentoEmAndamento = {
+    clienteId,
+    valorPago: valor,
+    formaPago: forma,
+    saldoAnterior,
+    saldoRestante,
+    pagId
+  };
+
+  closeModal('modal-atendimento-mes');
+  showToast(valor > 0 ? `Recebimento de ${fmt(valor)} registrado com sucesso!` : 'Etapa de recebimento concluída!', 'green');
+
+  // Abre imediatamente o catálogo de produtos com vencimento para 30 dias
+  abrirNovaVendaParaAtendimento(clienteId, valor, forma);
+}
+
+function pularRecebimentoAtendimentoMes(){
+  const clienteId = parseInt(document.getElementById('at-cliente-id').value);
+  const saldoAnterior = getSaldoCliente(clienteId);
+  _atendimentoEmAndamento = {
+    clienteId,
+    valorPago: 0,
+    formaPago: 'nenhum',
+    saldoAnterior,
+    saldoRestante: saldoAnterior
+  };
+  closeModal('modal-atendimento-mes');
+  abrirNovaVendaParaAtendimento(clienteId, 0, 'nenhum');
+}
+
+function abrirNovaVendaParaAtendimento(clienteId, valorPago, formaPago){
+  abrirNovaVenda();
+  selecionarClienteVenda(clienteId);
+  
+  // Data da venda = hoje
+  const dVenda = today();
+  document.getElementById('venda-data').value = dVenda;
+  
+  // Vencimento sugerido para +30 dias (próxima rota / mês seguinte)
+  const dtVenc = creditoAddDias(dVenda, 30);
+  document.getElementById('venda-vencimento').value = dtVenc;
+  document.getElementById('venda-forma').value = 'fiado';
+  
+  const c = getCliente(clienteId);
+  const tit = document.getElementById('modal-venda-title');
+  if(tit){
+    tit.innerHTML = `Atendimento do Mês · ${escapeHtml(c.nome)} <span class="badge badge-yellow" style="font-size:11px;margin-left:6px">Venc: ${fmtDate(dtVenc)}</span>`;
+  }
+  
+  renderVendaItensLista();
+}
+
+function mostrarComprovanteAtendimentoMes(at, vendaSalva){
+  const c = getCliente(at.clienteId);
+  const saldoFinal = getSaldoCliente(at.clienteId);
+  
+  document.getElementById('comp-at-cliente').textContent = c.nome + (c.cartaoNum ? ` (Cartão #${cartoesNum(c.cartaoNum)})` : '');
+  
+  // Bloco recebimento
+  const boxRec = document.getElementById('comp-at-recebimento');
+  if(at.valorPago > 0.009){
+    boxRec.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+      <span>Saldo anterior: <strong>${fmt(at.saldoAnterior)}</strong></span>
+      <span class="badge badge-green">Pago: ${fmt(at.valorPago)} (${formaLabel(at.formaPago)})</span>
+    </div>`;
+  } else {
+    boxRec.innerHTML = `<div style="color:var(--muted)">Nenhum pagamento registrado nesta visita.</div>`;
+  }
+
+  // Bloco novo pedido
+  const boxPed = document.getElementById('comp-at-pedido');
+  if(vendaSalva && vendaSalva.itens && vendaSalva.itens.length){
+    const itensStr = vendaSalva.itens.map(it => `<div>• ${it.qtd}x ${escapeHtml(nomeItemVenda(it))} — <strong>${fmt(it.total||(it.qtd*it.preco))}</strong></div>`).join('');
+    boxPed.innerHTML = `
+      <div style="margin-bottom:6px">${itensStr}</div>
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed var(--border);padding-top:6px;margin-top:6px">
+        <span>Total do Pedido:</span>
+        <strong style="color:var(--gold)">${fmt(vendaSalva.total)}</strong>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
+        📅 Vencimento programado: <strong>${vendaSalva.vencimento ? fmtDate(vendaSalva.vencimento) : '30 dias'}</strong>
+      </div>`;
+  } else {
+    boxPed.innerHTML = '<div style="color:var(--muted)">Sem produtos adicionados.</div>';
+  }
+
+  // Saldo consolidado
+  const elSaldo = document.getElementById('comp-at-saldo-final');
+  if(elSaldo){
+    elSaldo.textContent = fmt(saldoFinal);
+    elSaldo.className = saldoFinal > 0 ? 'text-red font-bold' : 'text-green font-bold';
+  }
+
+  // Guarda dados para envio WhatsApp
+  window._ultimoComprovanteAtendimento = {
+    c,
+    at,
+    vendaSalva,
+    saldoFinal
+  };
+
+  document.getElementById('modal-comprovante-atendimento').classList.add('open');
+}
+
+function enviarComprovanteAtendimentoWhatsapp(){
+  const d = window._ultimoComprovanteAtendimento;
+  if(!d || !d.c){ showToast('Comprovante não disponível','red'); return; }
+  const c = d.c;
+  if(!c.tel){ showToast('Cliente não possui telefone cadastrado','red'); return; }
+
+  let msg = `*GestãoPRO — Atendimento Mensal Realizado*\n`;
+  msg += `Cliente: *_${c.nome}_*\n\n`;
+
+  if(d.at.valorPago > 0.009){
+    msg += `✅ *PAGAMENTO RECEBIDO (Mês Anterior):*\n`;
+    msg += `Valor recebido: *${fmt(d.at.valorPago)}* (${formaLabel(d.at.formaPago)})\n\n`;
+  }
+
+  if(d.vendaSalva && d.vendaSalva.itens && d.vendaSalva.itens.length){
+    msg += `📦 *NOVO PEDIDO (Mês Seguinte):*\n`;
+    d.vendaSalva.itens.forEach(it => {
+      msg += `- ${it.qtd}x ${nomeItemVenda(it)}: ${fmt(it.total||(it.qtd*it.preco))}\n`;
+    });
+    msg += `Total do Pedido: *${fmt(d.vendaSalva.total)}*\n`;
+    if(d.vendaSalva.vencimento){
+      msg += `Vencimento programado: *${fmtDate(d.vendaSalva.vencimento)}*\n`;
+    }
+    msg += `\n`;
+  }
+
+  msg += `💰 *SALDO ATUAL CONSOLIDADO: ${fmt(d.saldoFinal)}*\n\n`;
+  
+  if(d.saldoFinal > 0.009 && pixDisponivel()){
+    msg += `💳 *Chave Pix (celular):* ${pixChaveExibicao()}\n`;
+    msg += `Pix Copia e Cola:\n${pixPayload(d.saldoFinal)}\n\n`;
+  }
+
+  msg += `Obrigado pela preferência e parceria!`;
+
+  const num = c.tel.replace(/\D/g,'');
+  const ddi = num.length <= 11 ? '55' + num : num;
+  const url = 'https://api.whatsapp.com/send?phone=' + ddi + '&text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
+}
