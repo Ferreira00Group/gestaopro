@@ -39,7 +39,7 @@ function renderClientes(){
     const arquivado=!estaAtivo(c);
     return`<tr id="cliente-row-${c.id}" style="${arquivado?'opacity:.6':''}">
       <td data-label="Nº"><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtClienteNum(c.id)}</span></td>
-      <td data-label="Nome"><strong>${escapeHtml(c.nome)}</strong>${arquivado?' <span class="badge badge-gray">Arquivado</span>':''}<br><span class="rota-mini" style="font-size:11px;color:var(--muted)">${rota?'<i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></td>
+      <td data-label="Nome"><strong>${escapeHtml(c.nome)}</strong>${arquivado?' <span class="badge badge-gray">Arquivado</span>':''}${typeof creditoBadgeCliente==='function'?' '+creditoBadgeCliente(c):''}<br><span class="rota-mini" style="font-size:11px;color:var(--muted)">${rota?'<i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></td>
       <td data-label="Telefone">${escapeHtml(c.tel)}</td>
       <td data-label="Rota">${rota?`<span class="badge badge-blue"><i data-lucide="map-pin" class="ic ic-sm"></i> ${escapeHtml(rota.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td data-label="Saldo" class="${saldo>0?'debt-amount debt-pulse':'debt-zero'}">${saldo>0?fmt(saldo):'Em dia ✓'}</td>
@@ -172,6 +172,7 @@ function clienteLocAbrir(){
 function clearClienteForm(){
   ['cliente-edit-id','cliente-nome','cliente-tel','cliente-end','cliente-referencia','cliente-loc','cliente-rota-ordem'].forEach(id=>document.getElementById(id).value='');
   populateRotaSelect('');
+  if(typeof creditoFormCliente==='function') creditoFormCliente(null);
   document.getElementById('modal-cliente-title').textContent='Novo Cliente';
 }
 function salvarCliente(){
@@ -188,12 +189,15 @@ function salvarCliente(){
   const ordemTxt=parseInt(document.getElementById('cliente-rota-ordem').value);
   const rotaOrdem=(rotaId&&ordemTxt>0)?ordemTxt:null; // ordem de visita só faz sentido com rota
   if(!nome){showToast('Informe o nome do cliente','red');return;}
+  const cred=(typeof creditoLerFormCliente==='function')?creditoLerFormCliente():null; // nível e limite do fiado (18-credito.js)
+  if(cred&&cred.erro){showToast(cred.erro,'red');return;}
   if(eid){
     const c=state.clientes.find(c=>c.id==eid);
     c.nome=nome;c.tel=tel;c.end=end;c.referencia=referencia;c.rotaId=rotaId;c.rotaOrdem=rotaOrdem;c.lat=lat;c.lng=lng;c.locLink=locLink;
+    if(cred){c.nivelCredito=cred.nivel;c.limiteCredito=cred.limite;}
     showToast('Cliente atualizado','green');
   } else {
-    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,lat,lng,locLink,rotaId,rotaOrdem,ativo:true,dataCadastro:today()});
+    state.clientes.push({id:nextId('clientes'),nome,tel,end,referencia,lat,lng,locLink,rotaId,rotaOrdem,ativo:true,dataCadastro:today(),...(cred?{nivelCredito:cred.nivel,limiteCredito:cred.limite}:{})});
     showToast('Cliente cadastrado','green');
   }
   if(locLink) showToast('Link curto salvo: abre no mapa, mas não entra na otimização. Cole o link longo, as coordenadas ou use o GPS','red');
@@ -269,6 +273,7 @@ function editarCliente(id){
   document.getElementById('cliente-loc').value=clienteTemPin(c)?(c.lat+', '+c.lng):(c.locLink||'');
   populateRotaSelect(c.rotaId||'');
   document.getElementById('cliente-rota-ordem').value=c.rotaOrdem||'';
+  if(typeof creditoFormCliente==='function') creditoFormCliente(c);
   document.getElementById('modal-cliente-title').textContent=`Editar Cliente ${fmtClienteNum(c.id)}`;
   document.getElementById('modal-cliente').classList.add('open');
 }

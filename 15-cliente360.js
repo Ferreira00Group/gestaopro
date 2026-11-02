@@ -138,7 +138,7 @@ function c360Render(){
   const ticket=x.compras?x.fat/x.compras:0;
   document.getElementById('c360-titulo').textContent=c.nome;
   const rota=(typeof getRota==='function'&&c.rotaId)?getRota(c.rotaId):null;
-  const badges=(x.seg.vip?'<span class="badge badge-yellow">VIP</span> ':'')+(x.seg.frequente?'<span class="badge badge-green">Frequente</span> ':'')+(x.seg.inativo?'<span class="badge badge-red">Inativo</span> ':'')+(x.seg.recompra?'<span class="badge badge-blue">Recompra próxima</span> ':'')+(!estaAtivo(c)?'<span class="badge badge-gray">Arquivado</span> ':'');
+  const badges=(x.seg.vip?'<span class="badge badge-yellow">VIP</span> ':'')+(x.seg.frequente?'<span class="badge badge-green">Frequente</span> ':'')+(x.seg.inativo?'<span class="badge badge-red">Inativo</span> ':'')+(x.seg.recompra?'<span class="badge badge-blue">Recompra próxima</span> ':'')+(!estaAtivo(c)?'<span class="badge badge-gray">Arquivado</span> ':'')+(typeof creditoBadgeCliente==='function'?creditoBadgeCliente(c)+' ':'');
   const tags=c360Tags(c);
   const sugestoes=c360TodasTags().filter(t=>!tags.includes(t));
   const kpi=(l,v,cor)=>`<div class="c360-kpi"><span>${l}</span><strong${cor?` style="color:var(--${cor})"`:''}>${v}</strong></div>`;

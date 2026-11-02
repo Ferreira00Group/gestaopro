@@ -90,6 +90,7 @@ const DEFAULT_STATE = {
   pagamentosFornecedor:[],
   pix:{chave:'',tipo:'celular',nome:'',cidade:''},
   encargos:{ativo:false,multa:5,juros:3,carencia:0,pixComEncargos:false},
+  credito:{ativo:true,limites:[0,80,130,200],parcelaValor:50,parcelaDias:30,revisarDias:60,vigenteDesde:null,revisadoEm:null},
   producoes:[
     {id:1,produtoId:1,varianteId:null,qtd:50,custo:93.50,data:'2026-06-17',consumo:[{mpId:1,qtdConsumida:4},{mpId:2,qtdConsumida:2.5},{mpId:13,qtdConsumida:50}]},
   ],
@@ -237,9 +238,12 @@ let _avisouFalhaGravacao = false;
 //   21 → state.crmSegmentos (segmentos de clientes salvos e combináveis) — v5.48.1.
 //   22 → automações do CRM: state.crmAutomacoes (regras segmento + cadência), state.crmFila (fila de envio)
 //        e state.crmAutoLimite (envios por dia) — v5.49.
-//   23 → (versão atual) aba Banco: state.bancoContas, state.bancoTransacoes e state.bancoAtivo (aba escondida
+//   23 → aba Banco: state.bancoContas, state.bancoTransacoes e state.bancoAtivo (aba escondida
 //        do menu até ser ativada em Backup e manutenção) — v5.52. Listas nascem vazias.
-const SCHEMA_VERSION = 23;
+//   24 → (versão atual) crédito do fiado — v5.54: state.credito (regras ativas, limites por nível, parcela de R$ 50
+//        a cada 30 dias, datas da revisão de 60 dias). Clientes ganham nivelCredito/limiteCredito, mas sem migrar
+//        registros: campo ausente = Nível 0 (só à vista), igual às outras convenções "ausente = padrão".
+const SCHEMA_VERSION = 24;
 
 // Cada entrada descreve como migrar DA versão N para N+1.
 // Recebe o objeto parsed e retorna o objeto transformado.
@@ -419,6 +423,11 @@ const MIGRATIONS = {
     if(!(d.nextId.bancoTransacoes>0)) d.nextId.bancoTransacoes = d.bancoTransacoes.reduce((m,t)=>Math.max(m,t.id||0),0)+1;
     return d;
   },
+  // v23 → v24: crédito do fiado (v5.54) — regras nascem ATIVAS com os valores do PDF; a contagem de 60 dias só começa na 1ª venda
+  23: (d) => {
+    d.credito = { ativo:true, limites:[0,80,130,200], parcelaValor:50, parcelaDias:30, revisarDias:60, vigenteDesde:null, revisadoEm:null, ...(d.credito||{}) };
+    return d;
+  },
 };
 
 function migrarDados(parsed) {
@@ -440,7 +449,7 @@ function migrarDados(parsed) {
 // real de arquivo malformado (ex: alguém editou o JSON na mão e trocou um array por objeto).
 const CAMPOS_BACKUP_ESPERADOS={clientes:'array',produtos:'array',vendas:'array',materias:'array',
   financeiro:'array',compras:'array',fornecedores:'array',pagamentos:'array',producoes:'array',movEstoque:'array',
-  fichas:'object',nextId:'object',automacaoDisparos:'object',crmSegmentos:'array',crmAutomacoes:'array',crmFila:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array',bancoContas:'array',bancoTransacoes:'array'};
+  fichas:'object',nextId:'object',credito:'object',automacaoDisparos:'object',crmSegmentos:'array',crmAutomacoes:'array',crmFila:'array',crmLeads:'array',crmNegocios:'array',crmAtividades:'array',crmNotas:'array',crmModelos:'array',crmFunis:'array',bancoContas:'array',bancoTransacoes:'array'};
 function validarShapeBackup(obj){
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) return false;
   for(const campo in CAMPOS_BACKUP_ESPERADOS){

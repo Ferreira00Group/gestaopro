@@ -93,7 +93,7 @@ function renderVendas(){
     const sel=vendasSelecionadas.has(v.id);
     const orcBadge=v.statusOrc==='aprovado'?{cls:'badge-green',txt:'Aprovado'}:{cls:'badge-yellow',txt:'Rascunho'};
     const seloImp=(isOrc&&v.origem==='importacao')?' <span class="badge badge-blue" title="Importado por Importar Pedidos"><i data-lucide="download" class="ic ic-sm"></i></span>':'';
-    const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>${seloImp}`:`<span class="badge ${st.cls}">${st.txt}</span>${(v.renegociadaId&&typeof vendaRenegociada==='function'&&vendaRenegociada(v.id))?' <span class="badge badge-orange" title="Dívida renegociada">🔁 Renegociada</span>':''}`;
+    const statusCell=isOrc?`<span class="badge ${orcBadge.cls}">${orcBadge.txt}</span>${seloImp}`:`<span class="badge ${st.cls}">${st.txt}</span>${(v.renegociadaId&&typeof vendaRenegociada==='function'&&vendaRenegociada(v.id))?' <span class="badge badge-orange" title="Dívida renegociada">🔁 Renegociada</span>':''}${v.creditoExcecao?` <span class="badge badge-orange" title="${escapeHtml('Registrada fora das regras de crédito: '+(v.creditoExcecao.motivos||[]).join(' | '))}">Exceção de crédito</span>`:''}`;
     const pedidoCell=isOrc?'<span style="color:var(--muted);font-size:12px">—</span>':`<span class="badge ${sp.cls}">${sp.txt}</span>`;
     const acoes=isOrc
       ? `<button class="icon-btn" onclick="exportarOrcamentoWhatsapp(${v.id})" title="Enviar Proposta"><i data-lucide="send" class="ic"></i></button>
@@ -246,6 +246,7 @@ function selecionarClienteVenda(id){
   const inp=document.getElementById('venda-cliente-busca');
   if(inp) inp.value=id?getCliente(id).nome:'';
   fecharClienteResultados();
+  if(typeof atualizarPainelCredito==='function') atualizarPainelCredito();
 }
 function renderClienteComboResultados(termo){
   const el=document.getElementById('venda-cliente-resultados');
@@ -565,10 +566,12 @@ function toggleVendaEntradaShortcut(){
   const misto=document.getElementById('venda-pag-misto-check').checked;
   const wrap=document.getElementById('venda-entrada-wrap');
   if(wrap) wrap.style.display=(forma==='fiado'&&!misto)?'block':'none';
+  if(typeof atualizarPainelCredito==='function') atualizarPainelCredito();
 }
 // Esconde "Parcelar" quando há entrada: as duas coisas juntas (entrada + parcelamento do
 // restante) não são suportadas nesta versão.
 function atualizarInfoEntrada(){
+  if(typeof atualizarPainelCredito==='function') atualizarPainelCredito();
   const entrada=parseFloat(document.getElementById('venda-entrada-valor').value)||0;
   const parcelarRow=document.getElementById('venda-parcelar-check').closest('span');
   if(parcelarRow) parcelarRow.style.display=entrada>0.009?'none':'flex';
@@ -650,6 +653,7 @@ function setVendaTipo(tipo){
     btnSalvar.textContent='✓ Confirmar Venda';
     btnSalvar.className='btn btn-green';
   }
+  if(typeof atualizarPainelCredito==='function') atualizarPainelCredito();
 }
 function abrirNovaVenda(){
   selecionarClienteVenda(null);
@@ -727,6 +731,7 @@ function toggleParcelasVenda(){
   const checked = document.getElementById('venda-parcelar-check').checked;
   document.getElementById('venda-parcelas-wrap').style.display = checked ? 'block' : 'none';
   if(checked) gerarParcelasVenda();
+  if(typeof atualizarPainelCredito==='function') atualizarPainelCredito();
 }
 function gerarParcelasVenda(){
   const n = parseInt(document.getElementById('venda-num-parcelas').value) || 2;
@@ -797,7 +802,21 @@ function checarEstoqueVenda(itens,vendaAnterior){
   }
   return null;
 }
+// Entrada recebida junto da venda fiado: um pagamento normal (mesmo mecanismo de registrarPagamento em
+// Contas a Receber), na data da venda. Segue a regra FIFO de todo pagamento deste sistema — se o cliente já
+// tinha dívida mais antiga em aberto, é ela que abate primeiro (ver getUnidadesFiadoFlat em 00-core.js); não é
+// um abatimento amarrado só a esta venda, porque nenhum pagamento neste app funciona assim.
+// entradaVendaId liga o pagamento à venda que o gerou: se a venda for excluída, a entrada sai junto (pagamento +
+// lançamento no Financeiro). Fica no PAGAMENTO — e não como vendaId no lançamento — porque
+// sincronizarFinanceiroVenda() procura lançamentos por vendaId e confundiria a entrada com a parte não-fiado.
+function registrarEntradaVenda(vendaId,clienteId,valor,dataVenda){
+  const pagId=nextId('pagamentos');
+  const entradaForma=document.getElementById('venda-entrada-forma').value;
+  state.pagamentos.push({id:pagId,clienteId,valor,forma:entradaForma,obs:'Entrada na venda',data:dataVenda,entradaVendaId:vendaId});
+  state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Entrada recebida — ${getCliente(clienteId).nome}`,valor,data:dataVenda,pagamentoId:pagId});
+}
 function salvarVenda(){
+  const creditoLiberado=_creditoLiberarProxima; _creditoLiberarProxima=false; // "Registrar mesmo assim" (18-credito.js)
   const eid=document.getElementById('venda-edit-id').value;
   if(eid&&typeof vendaRenegociada==='function'&&vendaRenegociada(parseInt(eid))){showToast('Esta venda entrou numa renegociação. Desfaça a renegociação para editá-la.','red');return;}
   const clienteId=parseInt(document.getElementById('venda-cliente').value);
@@ -849,7 +868,14 @@ function salvarVenda(){
   // valida vencimento obrigatório para fiado
   const vencimento=document.getElementById('venda-vencimento').value||null;
   const temFiado=pagamentos?pagamentos.some(p=>p.forma==='fiado'):(forma==='fiado');
-  if(temFiado&&!vencimento){showToast('Informe a data de vencimento para venda fiado','red');document.getElementById('venda-vencimento').focus();return;}
+  // Regras de crédito (v5.54): em venda fiado NOVA (ou orçamento sendo convertido) o cronograma sai da regra —
+  // vencimento em branco vira "data da venda + 30 dias" e compra acima de R$ 50 se divide em parcelas de R$ 50.
+  // "Parcelar" manual continua valendo: se a pessoa marcar, o cronograma dela manda.
+  const eraOrcamento=!!(eid&&(state.vendas.find(v=>v.id==eid)||{}).tipo==='orcamento');
+  const parcelarManual=document.getElementById('venda-parcelar-check').checked;
+  const creditoOn=creditoCfg().ativo;
+  const cronogramaAuto=creditoOn&&forma==='fiado'&&!pagMisto&&(eraOrcamento||(!eid&&!parcelarManual));
+  if(temFiado&&!vencimento&&!cronogramaAuto){showToast('Informe a data de vencimento para venda fiado','red');document.getElementById('venda-vencimento').focus();return;}
 
   // valida estoque (somando itens repetidos do mesmo produto/variante). Na edição de uma venda só
   // conta o aumento de quantidade; na conversão de orçamento conta tudo (orçamento não baixou nada).
@@ -869,6 +895,17 @@ function salvarVenda(){
   // se tem qualquer parcela fiado (puro ou dentro do misto), considera em_aberto a parte fiada
   const valorFiado=pagamentos?(pagamentos.find(p=>p.forma==='fiado')?.valor||0):(forma==='fiado'?total:0);
   const status=valorFiado>0?(valorFiado>=total-0.01?'em_aberto':'parcial'):'pago';
+  // ── Travas de crédito do fiado (v5.54, 18-credito.js): nada vencido, no máx. 1 parcela em aberto, saldo+compra ≤ limite.
+  // Editar uma venda que já era fiado do mesmo cliente não é venda nova (o saldo já a contém) — não confere de novo.
+  let excecaoCredito=null;
+  if(creditoOn&&valorFiado>0.009&&!creditoVendaJaFiado(vendaAnterior,clienteId)){
+    const fiadoPuro=!pagMisto&&forma==='fiado';
+    const r=creditoConferirVenda({clienteId,compra:valorFiado,entrada:fiadoPuro?entradaValor:0,podeEntrada:fiadoPuro,liberado:creditoLiberado});
+    if(!r.pode) return;
+    excecaoCredito=r.excecao||null;
+  }
+  const cronograma=cronogramaAuto?creditoParcelas(total,dataVenda,vencimento):null;
+  let vendaSalva=null;
   const parcelar = document.getElementById('venda-parcelar-check').checked && forma==='fiado' && !pagMisto;
   const numParcelas = parcelar ? (parseInt(document.getElementById('venda-num-parcelas').value)||2) : 1;
 
@@ -886,10 +923,19 @@ function salvarVenda(){
       const valorParcela=parseFloat((total/n).toFixed(2));
       v.parcelas=v.parcelas.map((p,i)=>({vencimento:p.vencimento,valor:i===n-1?parseFloat((total-(valorParcela*(n-1))).toFixed(2)):valorParcela}));
       v.vencimento=v.parcelas[0].vencimento;
+    } else if(cronograma&&cronograma.length&&eraOrcamento){
+      // orçamento convertido em venda fiado: cronograma pela regra de crédito (parcela única ou parcelas de R$ 50)
+      v.vencimento=cronograma[0].vencimento;
+      if(cronograma.length>1){ v.parcelado=true; v.parcelas=cronograma; }
     } else {
       v.vencimento=vencimento;
     }
     v.status=status; // baseline; para fiado a situação real é sempre recalculada (getMapaSituacaoFiado)
+    vendaSalva=v;
+    // conversão de orçamento aceita a entrada como a venda nova aceita (antes era ignorada em silêncio)
+    if(eraOrcamento && forma==='fiado' && !pagMisto && entradaValor>0.009 && entradaValor<=total+0.01){
+      registrarEntradaVenda(v.id,clienteId,entradaValor,dataVenda);
+    }
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd,origemBaixa));
     const valorNaoFiadoEdit=total-valorFiado;
     const descEdit=itensFinal.map(it=>nomeItemVenda(it)).join(', ');
@@ -912,32 +958,27 @@ function salvarVenda(){
       data:dataVenda,obs,vencimento:parcelas[0].vencimento,statusPedido,canalId,descontoExtra,tipo:'venda',
       parcelado:true,parcelas
     });
+    vendaSalva=state.vendas[state.vendas.length-1];
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd,'venda'));
     showToast(`Venda parcelada em ${numParcelas}x criada! ✓`,'green');
   } else {
     const novoVendaId=nextId('vendas');
-    state.vendas.push({id:novoVendaId,clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento,statusPedido,canalId,descontoExtra,tipo:'venda'});
+    // com as regras de crédito, venda fiado vai com o cronograma da regra (parcela única ou parcelas de R$ 50)
+    const vencNova=cronograma&&cronograma.length?cronograma[0].vencimento:vencimento;
+    state.vendas.push({id:novoVendaId,clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento:vencNova,statusPedido,canalId,descontoExtra,tipo:'venda',...(cronograma&&cronograma.length>1?{parcelado:true,parcelas:cronograma}:{})});
+    vendaSalva=state.vendas[state.vendas.length-1];
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd,'venda'));
     const valorNaoFiado=total-valorFiado;
     const desc=itensFinal.map(it=>nomeItemVenda(it)).join(', ');
     sincronizarFinanceiroVenda(novoVendaId,valorNaoFiado,dataVenda,`Venda ${desc} - ${getCliente(clienteId).nome}${pagamentos?' (pagamento misto)':''}`);
-    // Atalho "Entrada": registra um pagamento normal (mesmo mecanismo de registrarPagamento em
-    // Contas a Receber), na data da venda. Segue a mesma regra FIFO de todo pagamento deste
-    // sistema — se o cliente já tinha outra dívida em aberto mais antiga, é ela que abate
-    // primeiro (ver getUnidadesFiadoFlat em 00-core.js); não é um abatimento amarrado só a
-    // esta venda específica, porque nenhum pagamento neste app funciona assim.
+    // Atalho "Entrada": ver registrarEntradaVenda() acima
     if(forma==='fiado' && entradaValor>0.009 && entradaValor<=total+0.01){
-      const pagId=nextId('pagamentos');
-      const entradaForma=document.getElementById('venda-entrada-forma').value;
-      // entradaVendaId liga este pagamento à venda que o gerou: se a venda for excluída, a entrada
-      // sai junto (pagamento + lançamento no Financeiro). Fica no PAGAMENTO — e não como vendaId no
-      // lançamento — porque sincronizarFinanceiroVenda() procura lançamentos por vendaId e confundiria
-      // a entrada com a parte não-fiado da venda.
-      state.pagamentos.push({id:pagId,clienteId,valor:entradaValor,forma:entradaForma,obs:'Entrada na venda',data:dataVenda,entradaVendaId:novoVendaId});
-      state.financeiro.push({id:nextId('financeiro'),tipo:'entrada',desc:`Entrada recebida — ${getCliente(clienteId).nome}`,valor:entradaValor,data:dataVenda,pagamentoId:pagId});
+      registrarEntradaVenda(novoVendaId,clienteId,entradaValor,dataVenda);
     }
     showToast('Venda registrada! ✓','green');
   }
+  if(vendaSalva&&excecaoCredito) vendaSalva.creditoExcecao=excecaoCredito; // registrada "mesmo assim": fica marcada na lista
+  if(creditoOn&&valorFiado>0.009) creditoRegistrarInicio();                // começa a contar os 60 dias de revisão
   marcarAlterado();
   closeModal('modal-venda');renderVendas();renderDashboard();renderEstoque();
 }

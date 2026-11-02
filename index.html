@@ -15,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.53.2">
+<link rel="stylesheet" href="styles.css?v=5.54.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -137,6 +137,7 @@
         </label>
         <a onclick="closeSidebar();abrirConfigPix()" class="footer-action-link"><i data-lucide="qr-code" class="ic"></i>Configurar Pix</a>
         <a onclick="closeSidebar();abrirConfigEncargos()" class="footer-action-link"><i data-lucide="percent" class="ic"></i>Configurar encargos</a>
+        <a onclick="closeSidebar();abrirConfigCredito()" class="footer-action-link"><i data-lucide="shield-check" class="ic"></i>Regras de crédito</a>
         <a onclick="bancoAlternarAba()" class="footer-action-link"><i data-lucide="landmark" class="ic"></i><span id="banco-toggle-label">Ativar aba Banco</span></a>
         <a id="link-restaurar-anterior" onclick="closeSidebar();restaurarEstadoAnterior()" class="footer-action-link" style="display:none"><i data-lucide="undo-2" class="ic"></i>Restaurar estado anterior</a>
         <a id="link-baixar-recuperacao" onclick="baixarCopiaRecuperacao()" class="footer-action-link" style="color:var(--red);display:none"><i data-lucide="life-buoy" class="ic"></i>Baixar cópia de recuperação</a>
@@ -930,6 +931,13 @@
         </div>
       </div>
       <div class="form-group"><label>Ordem de visita na rota (opcional)</label><input class="form-control" id="cliente-rota-ordem" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex: 1 = primeira parada"></div>
+      <div class="form-group"><label>Crédito no fiado — nível</label>
+        <select class="form-control" id="cliente-nivel"></select>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">O limite vale sobre o saldo devedor total. Os valores de cada nível ficam em “Regras de crédito”, no menu.</p>
+      </div>
+      <div class="form-group"><label>Limite personalizado (R$, opcional)</label><input class="form-control" id="cliente-limite" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Em branco = usa o limite do nível">
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">Para quem passa de R$ 200. Substitui o limite do nível; vencido e máximo de 1 parcela em aberto continuam valendo.</p>
+      </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modal-cliente')">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarCliente()">Salvar Cliente</button>
@@ -1256,7 +1264,7 @@
       <div id="venda-campos-venda">
       <div class="form-group" style="margin-top:14px">
         <label>Data da Venda</label>
-        <input class="form-control" type="date" id="venda-data">
+        <input class="form-control" type="date" id="venda-data" onchange="if(typeof atualizarPainelCredito==='function')atualizarPainelCredito()">
       </div>
       <div class="form-group">
         <label style="display:flex;justify-content:space-between;align-items:center">
@@ -1278,6 +1286,7 @@
         </div>
       </div>
       <div id="venda-fiado-wrap">
+        <div id="venda-credito-info" style="display:none"></div>
         <div class="form-group" id="venda-entrada-wrap">
           <label>Entrada recebida agora (R$, opcional)</label>
           <div style="display:flex;gap:8px">
@@ -1297,7 +1306,7 @@
               <input type="checkbox" id="venda-parcelar-check" onclick="toggleParcelasVenda()" style="width:auto;margin:0"> Parcelar
             </span>
           </label>
-          <input class="form-control" type="date" id="venda-vencimento" placeholder="Quando vence o pagamento">
+          <input class="form-control" type="date" id="venda-vencimento" placeholder="Quando vence o pagamento" onchange="if(typeof atualizarPainelCredito==='function')atualizarPainelCredito()">
         </div>
         <div id="venda-parcelas-wrap" style="display:none">
           <div class="form-group" style="margin-bottom:6px">
@@ -1336,6 +1345,51 @@
         <button class="btn btn-outline" onclick="closeModal('modal-venda')">Cancelar</button>
         <button class="btn btn-green" id="venda-btn-salvar" onclick="salvarVenda()">✓ Confirmar Venda</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- CRÉDITO: FIADO NÃO LIBERADO (fica depois do modal de venda para abrir por cima dele) -->
+<div class="modal-overlay" id="modal-credito-bloqueio">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><h3>Fiado não liberado</h3><button class="modal-close" onclick="closeModal('modal-credito-bloqueio')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <div id="credito-bloqueio-corpo"></div>
+      <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
+        <button class="btn btn-outline" onclick="closeModal('modal-credito-bloqueio')">Voltar</button>
+        <button class="btn btn-primary" id="credito-btn-entrada" style="display:none" onclick="creditoUsarEntrada()"></button>
+        <button class="btn btn-outline" style="color:var(--red)" onclick="creditoRegistrarMesmoAssim()" title="Para vendas já feitas na ficha de papel. Fica marcada como exceção.">Registrar mesmo assim</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CRÉDITO: REGRAS -->
+<div class="modal-overlay" id="modal-config-credito">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><h3>Regras de crédito (fiado)</h3><button class="modal-close" onclick="closeModal('modal-config-credito')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><input type="checkbox" id="cred-ativo" style="width:auto;margin:0"> Aplicar as regras nas vendas fiado</label>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+        O fiado só sai quando as três valem juntas: <strong>nada vencido</strong> (trava a partir do dia seguinte ao vencimento), <strong>no máximo 1 parcela em aberto</strong> antes da venda (vale para VIP também) e <strong>saldo + compra dentro do limite</strong> do nível. Estourou o limite? O cliente paga a diferença e o valor abate a dívida mais antiga.
+      </div>
+      <label style="font-size:12px;font-weight:600;color:var(--muted)">Limite por nível (R$) — vale sobre o saldo devedor total</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 4px">
+        <div class="form-group" style="margin:0"><label>Nível 1</label><input class="form-control" id="cred-l1" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="form-group" style="margin:0"><label>Nível 2</label><input class="form-control" id="cred-l2" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="form-group" style="margin:0"><label>Nível 3</label><input class="form-control" id="cred-l3" type="number" step="0.01" min="0" inputmode="decimal"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Nível 0 é sempre só à vista. Quem passa de Nível 3 usa o limite personalizado, na ficha do cliente.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="form-group" style="margin:0"><label>Valor de cada parcela (R$)</label><input class="form-control" id="cred-parc-valor" type="number" step="0.01" min="0.01" inputmode="decimal"></div>
+        <div class="form-group" style="margin:0"><label>Prazo entre parcelas (dias)</label><input class="form-control" id="cred-parc-dias" type="number" step="1" min="1" inputmode="numeric"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Compra até o valor da parcela = parcela única. Acima disso, parcelas cheias e o resto na última (ex.: R$ 80 = 50 + 30, vencendo em 30 e 60 dias).</div>
+      <div style="padding:10px 12px;background:var(--card-2);border-radius:8px;font-size:12px">
+        <div id="cred-revisao-info" style="color:var(--muted)"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="cred-btn-revisado" style="margin-top:8px;display:none" onclick="creditoMarcarRevisado()">Marcar como revisado hoje</button>
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-config-credito')">Cancelar</button><button class="btn btn-green" onclick="salvarConfigCredito()">Salvar</button></div>
     </div>
   </div>
 </div>
@@ -2114,30 +2168,31 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.53.2"></script>
-<script src="00-core.js?v=5.53.2"></script>
-<script src="01-ui-nav.js?v=5.53.2"></script>
-<script src="02-dashboard.js?v=5.53.2"></script>
-<script src="03-clientes.js?v=5.53.2"></script>
-<script src="04-vendas.js?v=5.53.2"></script>
-<script src="04b-pix-extrato.js?v=5.53.2"></script>
-<script src="11b-meu-dia.js?v=5.53.2"></script>
-<script src="11c-promessa-reneg.js?v=5.53.2"></script>
-<script src="11d-aprovar-lote.js?v=5.53.2"></script>
-<script src="05-producao.js?v=5.53.2"></script>
-<script src="06-estoque.js?v=5.53.2"></script>
-<script src="07-precificacao.js?v=5.53.2"></script>
-<script src="08-compras-fornecedores.js?v=5.53.2"></script>
-<script src="09-financeiro-relatorios.js?v=5.53.2"></script>
-<script src="10-fab-inline.js?v=5.53.2"></script>
-<script src="10b-planejamento.js?v=5.53.2"></script>
-<script src="13-crm.js?v=5.53.2"></script>
-<script src="14-relacionamento.js?v=5.53.2"></script>
-<script src="15-cliente360.js?v=5.53.2"></script>
-<script src="16-automacoes.js?v=5.53.2"></script>
-<script src="17-banco.js?v=5.53.2"></script>
-<script src="12-drive-backup.js?v=5.53.2"></script>
-<script src="11-app-init.js?v=5.53.2"></script>
+<script src="00a-config.js?v=5.54.0"></script>
+<script src="00-core.js?v=5.54.0"></script>
+<script src="01-ui-nav.js?v=5.54.0"></script>
+<script src="02-dashboard.js?v=5.54.0"></script>
+<script src="03-clientes.js?v=5.54.0"></script>
+<script src="04-vendas.js?v=5.54.0"></script>
+<script src="04b-pix-extrato.js?v=5.54.0"></script>
+<script src="11b-meu-dia.js?v=5.54.0"></script>
+<script src="11c-promessa-reneg.js?v=5.54.0"></script>
+<script src="11d-aprovar-lote.js?v=5.54.0"></script>
+<script src="05-producao.js?v=5.54.0"></script>
+<script src="06-estoque.js?v=5.54.0"></script>
+<script src="07-precificacao.js?v=5.54.0"></script>
+<script src="08-compras-fornecedores.js?v=5.54.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.54.0"></script>
+<script src="10-fab-inline.js?v=5.54.0"></script>
+<script src="10b-planejamento.js?v=5.54.0"></script>
+<script src="13-crm.js?v=5.54.0"></script>
+<script src="14-relacionamento.js?v=5.54.0"></script>
+<script src="15-cliente360.js?v=5.54.0"></script>
+<script src="16-automacoes.js?v=5.54.0"></script>
+<script src="17-banco.js?v=5.54.0"></script>
+<script src="18-credito.js?v=5.54.0"></script>
+<script src="12-drive-backup.js?v=5.54.0"></script>
+<script src="11-app-init.js?v=5.54.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
