@@ -17,6 +17,25 @@ const DRIVE_ARQUIVO_NOME = 'gestaopro-backup.json';
 let driveTokenClient = null;
 let driveAccessToken = null;
 
+function obterTokenDriveArmazenado(){
+  try {
+    const salvo = sessionStorage.getItem('gp_drive_token');
+    const expira = parseInt(sessionStorage.getItem('gp_drive_expira') || '0', 10);
+    if(salvo && expira > Date.now()){
+      return salvo;
+    }
+  } catch(e){}
+  return null;
+}
+
+function salvarTokenDrive(token, expiresIn = 3500){
+  driveAccessToken = token;
+  try {
+    sessionStorage.setItem('gp_drive_token', token);
+    sessionStorage.setItem('gp_drive_expira', String(Date.now() + (expiresIn * 1000)));
+  } catch(e){}
+}
+
 function driveDisponivel(){
   return typeof GOOGLE_CLIENT_ID === 'string' && GOOGLE_CLIENT_ID.trim().length > 0;
 }
@@ -32,6 +51,7 @@ function initGoogleDriveClient(){
     scope: DRIVE_SCOPE,
     callback: '' // definido a cada chamada, ver conectarGoogleDrive/tentarBackupSilenciosoDrive
   });
+  driveAccessToken = obterTokenDriveArmazenado();
   atualizarStatusDrive();
 }
 
@@ -40,7 +60,7 @@ function conectarGoogleDrive(){
   if(!driveTokenClient){ showToast('Carregando o Google Drive, tenta de novo em um instante','red'); return; }
   driveTokenClient.callback = async (resposta)=>{
     if(resposta.error){ showToast('Não foi possível conectar ao Google Drive','red'); return; }
-    driveAccessToken = resposta.access_token;
+    salvarTokenDrive(resposta.access_token, resposta.expires_in || 3500);
     state.driveBackupAtivo = true;
     marcarAlterado();
     atualizarStatusDrive();
@@ -56,6 +76,7 @@ function desconectarGoogleDrive(){
       google.accounts.oauth2.revoke(driveAccessToken, ()=>{});
     }
     driveAccessToken = null;
+    try { sessionStorage.removeItem('gp_drive_token'); sessionStorage.removeItem('gp_drive_expira'); } catch(e){}
     state.driveBackupAtivo = false;
     marcarAlterado();
     atualizarStatusDrive();
@@ -63,22 +84,23 @@ function desconectarGoogleDrive(){
   });
 }
 
-// Tenta renovar o acesso sem mostrar nada na tela — se não conseguir
-// (sessão expirada, navegador bloqueando), desiste sem incomodar; o
-// lembrete manual continua funcionando como rede de segurança.
+// Tenta renovar o acesso sem mostrar nada na tela — se não tiver token ativo
+// na sessão, NÃO abre pop-up para não interromper a abertura do app!
 function tentarBackupSilenciosoDrive(forcar=false){
   if(!driveDisponivel() || !state.driveBackupAtivo || !driveTokenClient) return;
+  if(!driveAccessToken){
+    driveAccessToken = obterTokenDriveArmazenado();
+  }
+  // Se não há token ativo em sessão, não interrompe o usuário ao abrir o app
+  if(!driveAccessToken) return;
+
   if(!forcar){
     if(diasDesde(state.ultimoBackup) < 1 && (Date.now()-(state.driveUltimaTentativa||0)) < (1000*60*20)) return;
   }
   state.driveUltimaTentativa = Date.now();
-  driveTokenClient.callback = async (resposta)=>{
-    if(resposta.error) return;
-    driveAccessToken = resposta.access_token;
-    await enviarBackupParaDrive({silencioso:true});
+  enviarBackupParaDrive({silencioso:true}).then(()=>{
     if(typeof atualizarIndicadorBackup === 'function') atualizarIndicadorBackup();
-  };
-  try{ driveTokenClient.requestAccessToken({prompt:''}); }catch(e){ /* sem incomodar */ }
+  }).catch(()=>{});
 }
 
 // ═══ PROTEÇÃO CONTRA SOBRESCRITA CEGA (v5.33.4) ═══
@@ -397,20 +419,28 @@ async function fecharExpedienteComBackup(){
   let okDrive = false;
   if(driveDisponivel() && state.driveBackupAtivo && driveTokenClient){
     try {
-      await new Promise((resolve) => {
-        driveTokenClient.callback = async (resposta) => {
-          if(!resposta.error && resposta.access_token){
-            driveAccessToken = resposta.access_token;
-            try {
-              await enviarBackupParaDrive({forcar: true, silencioso: true});
-              okDrive = true;
-            } catch(e){}
-          }
-          resolve(true);
-        };
-        driveTokenClient.requestAccessToken({prompt: ''});
-        setTimeout(() => resolve(false), 3500);
-      });
+      if(!driveAccessToken) driveAccessToken = obterTokenDriveArmazenado();
+      if(driveAccessToken){
+        try {
+          await enviarBackupParaDrive({forcar: true, silencioso: true});
+          okDrive = true;
+        } catch(e){}
+      } else {
+        await new Promise((resolve) => {
+          driveTokenClient.callback = async (resposta) => {
+            if(!resposta.error && resposta.access_token){
+              salvarTokenDrive(resposta.access_token, resposta.expires_in || 3500);
+              try {
+                await enviarBackupParaDrive({forcar: true, silencioso: true});
+                okDrive = true;
+              } catch(e){}
+            }
+            resolve(true);
+          };
+          driveTokenClient.requestAccessToken({prompt: ''});
+          setTimeout(() => resolve(false), 4500);
+        });
+      }
     } catch(e){}
   }
 

@@ -1253,3 +1253,145 @@ nav a.active,.nav-group.open>.nav-group-head{background:linear-gradient(90deg,rg
 .badge-score-novo{background:rgba(201,162,75,.15);color:#E3C16F;border:1px solid rgba(201,162,75,.35)}
 #page-clientes .cliente-card-status-badge{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 #page-clientes .cliente-card-status-badge .badge-score{border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;background:rgba(0,0,0,.25);box-shadow:0 0 12px -3px currentColor}
+
+/* ══════════════════════════════════════════════════════════════
+   ESTILOS: INTELIGÊNCIA ARTIFICIAL GEMINI (GESTÃOPRO)
+   ══════════════════════════════════════════════════════════════ */
+#btn-flutuante-ia {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #1C1914, #2A2417);
+  border: 1.5px solid rgba(201,162,75,.7);
+  color: #F8D98C;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 11px 18px;
+  border-radius: 999px;
+  box-shadow: 0 4px 20px rgba(201,162,75,.35), 0 0 12px rgba(201,162,75,.2);
+  cursor: pointer;
+  transition: all .2s ease;
+  backdrop-filter: blur(8px);
+}
+#btn-flutuante-ia:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 26px rgba(201,162,75,.5), 0 0 18px rgba(201,162,75,.3);
+  border-color: #E3C16F;
+  color: #FFF;
+}
+#btn-flutuante-ia:active {
+  transform: scale(.96);
+}
+
+/* Modal Chat IA */
+.ia-modal-dialog {
+  max-width: 640px !important;
+  width: 95% !important;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+.ia-chat-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 420px;
+  max-height: 60vh;
+}
+#ia-chat-mensagens {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ia-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 88%;
+}
+.ia-msg-user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+.ia-msg-assistant {
+  align-self: flex-start;
+}
+.ia-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(201,162,75,.15);
+  border: 1px solid rgba(201,162,75,.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.ia-bolha {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.ia-msg-user .ia-bolha {
+  background: linear-gradient(135deg, rgba(201,162,75,.3), rgba(201,162,75,.18));
+  border: 1px solid rgba(201,162,75,.45);
+  color: #FFF;
+  border-bottom-right-radius: 3px;
+}
+.ia-msg-assistant .ia-bolha {
+  background: #141417;
+  border: 1px solid rgba(255,255,255,.1);
+  color: #ECE7DA;
+  border-bottom-left-radius: 3px;
+}
+.ia-chip {
+  background: rgba(201,162,75,.12);
+  border: 1px solid rgba(201,162,75,.35);
+  color: #E3C16F;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.ia-chip:hover {
+  background: rgba(201,162,75,.25);
+  border-color: #E3C16F;
+  color: #FFF;
+  transform: translateY(-1px);
+}
+.ia-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(201,162,75,.25);
+  border-top-color: #C9A24B;
+  border-radius: 50%;
+  animation: iaSpin .8s linear infinite;
+  display: inline-block;
+}
+@keyframes iaSpin {
+  to { transform: rotate(360deg); }
+}
+.ia-chat-footer {
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  gap: 8px;
+  background: #0E0E10;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+}
+.ia-chat-footer input {
+  flex: 1;
+}
+

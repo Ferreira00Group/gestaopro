@@ -98,8 +98,8 @@ inicializarIconesLucide();
   }).observe(document.body,{childList:true,subtree:true});
 })();
 initGoogleDriveClient();
-// Backup automático ao ENTRAR no app (v5.61.0)
-setTimeout(()=>{ if(typeof tentarBackupSilenciosoDrive==='function') tentarBackupSilenciosoDrive(true); }, 1200);
+// Backup automático ao ENTRAR no app — somente silencioso se houver token em sessão
+setTimeout(()=>{ if(typeof tentarBackupSilenciosoDrive==='function') tentarBackupSilenciosoDrive(false); }, 1200);
 setTimeout(verificarLembreteBackup, 3500);
 
 // Sincronização ao voltar para o app e gravação ao sair/minimizar

@@ -60,6 +60,7 @@ const ASSETS = [
   './20-cartoes.js' + v,
   './12-drive-backup.js' + v,
   './11-app-init.js' + v,
+  './21-gemini-ia.js' + v,
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

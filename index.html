@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-<title>GestãoPRO</title>
+<title>GestãoPRO - ERP & Inteligência Empresarial</title>
+<meta name="description" content="Sistema completo de gestão comercial, vendas, estoque, produção, financeiro e CRM potencializado com inteligência artificial Gemini.">
+<meta property="og:title" content="GestãoPRO - ERP & Inteligência Empresarial">
+<meta property="og:description" content="Sistema completo de gestão comercial, vendas, estoque, produção, financeiro e CRM potencializado com inteligência artificial Gemini.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0B0B0C">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.61.0">
+<link rel="stylesheet" href="styles.css?v=5.82.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -57,6 +62,8 @@
     <img src="logo-topbar.png" alt="GestãoPro" class="app-logo-img" style="height:38px;max-width:100%;object-fit:contain;display:block">
   </div>
   <div class="topbar-alerts">
+    <a href="/download" download="gestaopro-v5.81.zip" class="alert-bell" title="Baixar ZIP do Sistema" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
+    <button class="alert-bell" onclick="abrirAssistenteIA()" title="Copiloto IA Gemini" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center"><i data-lucide="sparkles" class="ic"></i></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
   </div>
 </div>
@@ -110,6 +117,7 @@
   </div>
   <nav>
     <a class="active" onclick="goto('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard" class="icon"></i> Início</a>
+    <a onclick="abrirAssistenteIA()" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="sparkles" class="icon" style="color:var(--gold,#C9A24B)"></i> Copiloto IA <span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:9.5px;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:800">GEMINI</span></a>
     <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
     <a onclick="goto('crm')" data-page="crm"><i data-lucide="handshake" class="icon"></i> CRM</a>
     <a onclick="goto('meudia')" data-page="meudia"><i data-lucide="route" class="icon"></i> Meu dia</a>
@@ -145,6 +153,7 @@
     </a>
     <div id="footer-actions-collapsible" style="display:none">
       <div class="footer-actions">
+        <a href="/download" download="gestaopro-v5.81.zip" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.81)</a>
         <a onclick="compartilharBackup()" class="footer-action-link"><i data-lucide="download" class="ic"></i>Exportar JSON</a>
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
@@ -164,6 +173,30 @@
 <div id="page-dashboard" class="page active">
   <div class="print-header"><h1>GestãoPRO — Dashboard</h1><p id="print-date-dashboard"></p></div>
   <p id="dash-date" class="dash-date-line">Resumo geral do negócio</p>
+
+  <!-- BANNER INTELIGÊNCIA ARTIFICIAL GEMINI -->
+  <div style="background:linear-gradient(135deg,rgba(201,162,75,.16),rgba(201,162,75,.04));border:1px solid rgba(201,162,75,.35);border-radius:14px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0">
+        <i data-lucide="sparkles" style="width:20px;height:20px"></i>
+      </div>
+      <div>
+        <div style="font-size:13.5px;font-weight:700;color:#FFF">Copiloto IA GestãoPRO · Gemini 3.8 Flash</div>
+        <div style="font-size:11.5px;color:var(--muted)">Diagnóstico executivo de fluxo de caixa, alerta de estoque e otimização de faturamento.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/download" download="gestaopro-v5.81.zip" class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.3);color:#FFF;display:inline-flex;align-items:center;gap:6px;text-decoration:none" title="Baixar arquivo ZIP completo">
+        <i data-lucide="download" class="ic"></i> Baixar ZIP
+      </a>
+      <button class="btn btn-outline btn-sm" onclick="executarDiagnosticoIA()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="activity" class="ic"></i> Diagnóstico Geral
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="abrirAssistenteIA()" style="display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="sparkles" class="ic"></i> Abrir Chat IA
+      </button>
+    </div>
+  </div>
 
   <!-- META DO MÊS (barra no topo) -->
   <div class="table-card" style="margin-bottom:10px;padding:10px 14px">
@@ -2375,34 +2408,35 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.61.0"></script>
-<script src="00-core.js?v=5.61.0"></script>
-<script src="lib-qrcode.js?v=5.61.0"></script>
-<script src="01-ui-nav.js?v=5.61.0"></script>
-<script src="02-dashboard.js?v=5.61.0"></script>
-<script src="03-clientes.js?v=5.61.0"></script>
-<script src="04-vendas.js?v=5.61.0"></script>
-<script src="04b-pix-extrato.js?v=5.61.0"></script>
-<script src="11b-meu-dia.js?v=5.61.0"></script>
-<script src="11c-promessa-reneg.js?v=5.61.0"></script>
-<script src="11d-aprovar-lote.js?v=5.61.0"></script>
-<script src="05-producao.js?v=5.61.0"></script>
-<script src="06-estoque.js?v=5.61.0"></script>
-<script src="07-precificacao.js?v=5.61.0"></script>
-<script src="08-compras-fornecedores.js?v=5.61.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.61.0"></script>
-<script src="10-fab-inline.js?v=5.61.0"></script>
-<script src="10b-planejamento.js?v=5.61.0"></script>
-<script src="13-crm.js?v=5.61.0"></script>
-<script src="14-relacionamento.js?v=5.61.0"></script>
-<script src="15-cliente360.js?v=5.61.0"></script>
-<script src="16-automacoes.js?v=5.61.0"></script>
-<script src="17-banco.js?v=5.61.0"></script>
-<script src="18-credito.js?v=5.61.0"></script>
-<script src="19-conectores.js?v=5.61.0"></script>
-<script src="20-cartoes.js?v=5.61.0"></script>
-<script src="12-drive-backup.js?v=5.61.0"></script>
-<script src="11-app-init.js?v=5.61.0"></script>
+<script src="00a-config.js?v=5.82.0"></script>
+<script src="00-core.js?v=5.82.0"></script>
+<script src="lib-qrcode.js?v=5.82.0"></script>
+<script src="01-ui-nav.js?v=5.82.0"></script>
+<script src="02-dashboard.js?v=5.82.0"></script>
+<script src="03-clientes.js?v=5.82.0"></script>
+<script src="04-vendas.js?v=5.82.0"></script>
+<script src="04b-pix-extrato.js?v=5.82.0"></script>
+<script src="11b-meu-dia.js?v=5.82.0"></script>
+<script src="11c-promessa-reneg.js?v=5.82.0"></script>
+<script src="11d-aprovar-lote.js?v=5.82.0"></script>
+<script src="05-producao.js?v=5.82.0"></script>
+<script src="06-estoque.js?v=5.82.0"></script>
+<script src="07-precificacao.js?v=5.82.0"></script>
+<script src="08-compras-fornecedores.js?v=5.82.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.82.0"></script>
+<script src="10-fab-inline.js?v=5.82.0"></script>
+<script src="10b-planejamento.js?v=5.82.0"></script>
+<script src="13-crm.js?v=5.82.0"></script>
+<script src="14-relacionamento.js?v=5.82.0"></script>
+<script src="15-cliente360.js?v=5.82.0"></script>
+<script src="16-automacoes.js?v=5.82.0"></script>
+<script src="17-banco.js?v=5.82.0"></script>
+<script src="18-credito.js?v=5.82.0"></script>
+<script src="19-conectores.js?v=5.82.0"></script>
+<script src="20-cartoes.js?v=5.82.0"></script>
+<script src="12-drive-backup.js?v=5.82.0"></script>
+<script src="11-app-init.js?v=5.82.0"></script>
+<script src="21-gemini-ia.js?v=5.82.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -2648,6 +2682,77 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL ASSISTENTE IA GEMINI -->
+<div class="modal-overlay" id="modal-ia-assistente">
+  <div class="modal ia-modal-dialog">
+    <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.08);padding:14px 18px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:50%;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0">
+          <i data-lucide="sparkles" class="ic"></i>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:16px;color:#FFF;display:flex;align-items:center;gap:6px">
+            Copiloto IA GestãoPRO
+            <span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:10px;font-weight:800;padding:2px 6px">Gemini 3.8 Flash</span>
+          </h3>
+          <span style="font-size:11px;color:var(--muted)">Inteligência Executiva & Operacional em Tempo Real</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn btn-outline btn-xs" onclick="limparHistoricoIA()" title="Limpar conversa">
+          <i data-lucide="rotate-ccw" class="ic"></i> Limpar
+        </button>
+        <button class="modal-close" onclick="fecharAssistenteIA()"><i data-lucide="x" class="ic"></i></button>
+      </div>
+    </div>
+    <div class="ia-chat-container">
+      <div id="ia-chat-mensagens"></div>
+      <div class="ia-chat-footer">
+        <input type="text" class="form-control" id="ia-chat-input" placeholder="Faça uma pergunta sobre finanças, estoque, vendas ou cobrança..." onkeydown="if(event.key==='Enter')enviarMensagemIA()">
+        <button class="btn btn-primary" onclick="enviarMensagemIA()" style="display:inline-flex;align-items:center;gap:6px;padding:0 16px">
+          <i data-lucide="send" class="ic"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DIAGNÓSTICO EXECUTIVO IA -->
+<div class="modal-overlay" id="modal-ia-diagnostico">
+  <div class="modal" style="max-width:680px;width:95%;max-height:88vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 style="display:flex;align-items:center;gap:8px">
+        <i data-lucide="sparkles" class="ic" style="color:var(--gold,#C9A24B)"></i>
+        Diagnóstico Executivo da Empresa (Gemini)
+      </h3>
+      <button class="modal-close" onclick="closeModal('modal-ia-diagnostico')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body" id="ia-diagnostico-corpo">
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MENSAGENS DE COBRANÇA IA -->
+<div class="modal-overlay" id="modal-ia-cobranca">
+  <div class="modal" style="max-width:540px;width:95%;max-height:88vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 style="display:flex;align-items:center;gap:8px">
+        <i data-lucide="message-square" class="ic" style="color:var(--gold,#C9A24B)"></i>
+        Mensagens Inteligentes de Cobrança (WhatsApp / E-mail)
+      </h3>
+      <button class="modal-close" onclick="closeModal('modal-ia-cobranca')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body" id="ia-cobranca-corpo">
+    </div>
+  </div>
+</div>
+
+<!-- BOTÃO FLUTUANTE IA GEMINI -->
+<button id="btn-flutuante-ia" onclick="abrirAssistenteIA()" title="Abrir Copiloto IA Gemini">
+  <i data-lucide="sparkles" style="width:16px;height:16px"></i>
+  <span>Copiloto IA</span>
+</button>
 
 </body>
 </html>
