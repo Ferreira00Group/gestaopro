@@ -133,9 +133,12 @@
     <a onclick="goto('conectores')" data-page="conectores"><i data-lucide="plug-zap" class="icon"></i> Conectores</a>
   </nav>
 
-  <div class="sidebar-footer">
+  <div class="side-actions">
     <button class="side-foot-btn" onclick="closeSidebar();openModal('modal-config-fin')"><i data-lucide="settings" class="ic"></i> Configurações</button>
     <button class="side-foot-btn side-foot-sair" onclick="fecharExpedienteComBackup()" title="Salvar e fechar expediente com backup"><i data-lucide="log-out" class="ic"></i> Sair &amp; Backup</button>
+  </div>
+
+  <div class="sidebar-footer">
     <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
     <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
       <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>

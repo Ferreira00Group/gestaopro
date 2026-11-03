@@ -1234,3 +1234,11 @@ nav a.active,.nav-group.open>.nav-group-head{background:linear-gradient(90deg,rg
   color:var(--text);background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.4)}
 .sidebar-footer .side-foot-btn .ic{color:var(--gold-2)}
 .sidebar-footer .side-foot-sair{color:var(--gold-2);border-color:rgba(201,162,75,.6);box-shadow:0 0 12px rgba(201,162,75,.15)}
+
+/* v5.78: botões Configurações / Sair acima do rodapé */
+#sidebar .side-actions{flex-shrink:0;padding:10px 14px 6px;display:flex;flex-direction:column;gap:8px}
+#sidebar .side-actions .side-foot-btn{-webkit-appearance:none;appearance:none;width:100%;display:flex;align-items:center;gap:10px;padding:13px 14px;margin:0;border-radius:14px;
+  font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;text-align:left;
+  background:linear-gradient(180deg,#1b1b1e,#0e0e10)!important;border:1px solid rgba(201,162,75,.45)!important;color:#ECE7DA!important}
+#sidebar .side-actions .side-foot-btn .ic{width:19px;height:19px;color:#E3C16F}
+#sidebar .side-actions .side-foot-sair{color:#E3C16F!important;border-color:rgba(201,162,75,.7)!important;box-shadow:0 0 12px rgba(201,162,75,.18)}
