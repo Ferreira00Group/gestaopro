@@ -59,14 +59,16 @@ function renderClientes(){
 
     return `
     <div class="cliente-card ${arquivado ? 'arquivado' : ''}" id="cliente-card-${c.id}">
-      <div class="cliente-avatar" aria-hidden="true"><i data-lucide="user" class="ic"></i></div>
+      <button type="button" class="cliente-avatar-btn" onclick="abrirCliente360(${c.id})" title="Abrir ficha 360º de ${escapeHtml(c.nome)}" aria-label="Abrir perfil de ${escapeHtml(c.nome)}">
+        <span class="cliente-avatar"><i data-lucide="user" class="ic"></i></span>
+        <span class="card-metric-label">Perfil</span>
+      </button>
       <div class="cliente-card-header">
         <div class="cliente-card-title-group">
           <div class="cliente-card-badges">
             ${nCartao != null 
               ? `<span class="badge-cartao-selo" title="Número único do cartão"><i data-lucide="credit-card" class="ic ic-sm"></i> #${cartoesNum(nCartao)}</span>` 
               : `<span class="badge-cartao-sem" title="Sem cartão vinculado">Sem cartão</span>`}
-            ${scoreBadge}
             ${arquivado ? `<span class="badge badge-gray">Arquivado</span>` : ''}
           </div>
           <div class="cliente-card-nome" onclick="abrirCliente360(${c.id})" title="Abrir ficha 360º de ${escapeHtml(c.nome)}">
@@ -74,6 +76,7 @@ function renderClientes(){
           </div>
         </div>
         <div class="cliente-card-status-badge">
+          ${scoreObj ? `<span class="badge-score badge-score-${scoreObj.ehNovo ? 'amarelo' : scoreObj.classe}" title="${scoreObj.ehNovo ? 'Cliente novo: menos de 3 compras registradas' : 'Score ' + scoreObj.score + '/100 · ' + scoreObj.rotulo}">Score <span class="score-num">${scoreObj.score}</span></span>` : ''}
           ${saldo > 0 
             ? `<span class="badge badge-red badge-pulse">Devendo ${fmt(saldo)}</span>` 
             : `<span class="badge badge-green">Em dia ✓</span>`}
@@ -120,7 +123,6 @@ function renderClientes(){
 
       <div class="cliente-card-actions">
         <button class="btn btn-sm" style="background:linear-gradient(135deg,#F6B52A,#C98C14);color:#000;font-weight:800;border:none;box-shadow:0 2px 6px rgba(201,140,20,.3)" onclick="iniciarAtendimentoMes(${c.id})" title="Atendimento Mensal de Rota (Receber + Novo Pedido)"><i data-lucide="zap" class="ic"></i> Atendimento</button>
-        <button class="btn btn-principal btn-sm" onclick="abrirCliente360(${c.id})" title="Ficha 360º"><i data-lucide="contact" class="ic"></i> Ficha</button>
         <button class="btn btn-outline btn-sm" onclick="cartoesNovaVendaPara(${c.id})" title="Nova Venda"><i data-lucide="shopping-cart" class="ic"></i> Venda</button>
         ${saldo > 0 
           ? `<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})" title="Receber pagamento"><i data-lucide="banknote" class="ic"></i> Receber</button>` 

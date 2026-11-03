@@ -1242,3 +1242,14 @@ nav a.active,.nav-group.open>.nav-group-head{background:linear-gradient(90deg,rg
   background:linear-gradient(180deg,#1b1b1e,#0e0e10)!important;border:1px solid rgba(201,162,75,.45)!important;color:#ECE7DA!important}
 #sidebar .side-actions .side-foot-btn .ic{width:19px;height:19px;color:#E3C16F}
 #sidebar .side-actions .side-foot-sair{color:#E3C16F!important;border-color:rgba(201,162,75,.7)!important;box-shadow:0 0 12px rgba(201,162,75,.18)}
+
+/* v5.80: avatar clicável abre o perfil */
+#page-clientes .cliente-avatar-btn{grid-area:av;align-self:start;margin-top:4px;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:pointer;color:inherit;-webkit-tap-highlight-color:transparent}
+#page-clientes .cliente-avatar-btn .cliente-avatar{margin-top:0}
+#page-clientes .cliente-avatar-btn:active .cliente-avatar{transform:scale(.94);box-shadow:0 0 20px rgba(246,181,42,.5)}
+#page-clientes .cliente-avatar-btn .card-metric-label{margin:0}
+
+/* v5.81: score em selo ao lado do status; "novo" em amarelo (sem cinza) */
+.badge-score-novo{background:rgba(201,162,75,.15);color:#E3C16F;border:1px solid rgba(201,162,75,.35)}
+#page-clientes .cliente-card-status-badge{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+#page-clientes .cliente-card-status-badge .badge-score{border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;background:rgba(0,0,0,.25);box-shadow:0 0 12px -3px currentColor}
