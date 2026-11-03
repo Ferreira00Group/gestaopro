@@ -53,9 +53,8 @@
 <!-- TOPBAR -->
 <div id="topbar">
   <button id="hamburger" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
-  <div id="topbar-title" style="display:flex;align-items:center;gap:8px">
-    <img src="logo.png" alt="GestãoPro" class="app-logo-img" style="height:28px;max-width:135px;object-fit:contain;vertical-align:middle;display:inline-block">
-    <span style="color:var(--gold);font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;line-height:1;margin-top:2px" class="hidden sm:inline">Powered by Ferreira Group</span>
+  <div id="topbar-title" style="display:flex;align-items:center;min-width:0;flex:1">
+    <img src="logo-topbar.png" alt="GestãoPro" class="app-logo-img" style="height:38px;max-width:100%;object-fit:contain;display:block">
   </div>
   <div class="topbar-alerts">
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
@@ -161,9 +160,6 @@
 <div id="page-dashboard" class="page active">
   <div class="print-header"><h1>GestãoPRO — Dashboard</h1><p id="print-date-dashboard"></p></div>
   <p id="dash-date" class="dash-date-line">Resumo geral do negócio</p>
-
-  <!-- BANNER DINÂMICO PIX OFFLINE -->
-  <div id="dash-pix-banner" style="margin-bottom:10px"></div>
 
   <!-- META DO MÊS (barra no topo) -->
   <div class="table-card" style="margin-bottom:10px;padding:10px 14px">

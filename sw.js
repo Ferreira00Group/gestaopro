@@ -64,6 +64,7 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
+  './logo-topbar.png',
 ];
 
 self.addEventListener('install', (event)=>{

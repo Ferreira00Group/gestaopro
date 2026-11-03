@@ -1158,3 +1158,8 @@ tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
 .nav-group.open .nav-sub{display:block}
 .nav-sub a{padding:11px 20px 11px 52px;font-size:13.5px}
 .nav-sub a .icon{width:16px;height:16px}
+
+/* v5.74: busca translúcida (mesmo estilo da antiga faixa Pix) */
+#busca-bar-wrap{background:transparent;border-bottom:1px solid rgba(201,162,75,.18)}
+#busca-bar-inner{background:rgba(201,162,75,.07);border:1px solid rgba(201,162,75,.3);box-shadow:none}
+#busca-bar-inner:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,75,.12)}
