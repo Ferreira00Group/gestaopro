@@ -615,9 +615,11 @@ function salvarDados(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     state.dados_alterados=false;
     const btn = document.getElementById('topbar-save');
-    btn.classList.add('saved');
-    btn.classList.remove('unsaved');
-    setTimeout(()=>{btn.classList.remove('saved');},2000);
+    if(btn){
+      btn.classList.add('saved');
+      btn.classList.remove('unsaved');
+      setTimeout(()=>{btn.classList.remove('saved');},2000);
+    }
   } catch(e){
     showToast('Erro ao salvar dados','red');
   }

@@ -333,11 +333,6 @@ function renderDashPixBanner(){
             Pix Offline Ativo: <strong style="color:#fff">${typeof pixTipoNome === 'function' ? pixTipoNome() : 'Chave'} (${typeof pixChaveExibicao === 'function' ? pixChaveExibicao() : p.chave})</strong> · <span style="color:var(--muted)">${escapeHtml(p.nome)}</span>
           </span>
         </div>
-        <div style="display:flex;gap:6px">
-          <button type="button" class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px" onclick="abrirConfigPix()">
-            Editar Pix
-          </button>
-        </div>
       </div>`;
   }
 }

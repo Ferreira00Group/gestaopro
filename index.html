@@ -58,13 +58,7 @@
     <span style="color:var(--gold);font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;line-height:1;margin-top:2px" class="hidden sm:inline">Powered by Ferreira Group</span>
   </div>
   <div class="topbar-alerts">
-    <button class="alert-bell" id="topbar-btn-pix" onclick="abrirConfigPix()" title="Configurar Chave Pix (Offline)"><i data-lucide="qr-code" class="ic"></i></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
-    <button class="alert-bell bell-estoque" id="topbar-bell-estoque" onclick="toggleAlertDrop('drop-estoque')" title="Estoque baixo"><i data-lucide="package" class="ic"></i><span class="badge-dot"></span></button>
-    <button class="alert-bell bell-cobranca" id="topbar-bell-cobranca" onclick="toggleAlertDrop('drop-cobranca')" title="A receber"><i data-lucide="wallet" class="ic"></i><span class="badge-dot"></span></button>
-    <button class="alert-bell bell-pagar" id="topbar-bell-pagar" onclick="toggleAlertDrop('drop-pagar')" title="A pagar"><i data-lucide="credit-card" class="ic"></i><span class="badge-dot"></span></button>
-    <button id="topbar-print" onclick="abrirEscolhaImpressao()" title="Imprimir"><i data-lucide="printer" class="ic"></i></button>
-    <button id="topbar-save" onclick="salvarDados()" title="Salvar"><i data-lucide="save" class="ic ic-save"></i><i data-lucide="check" class="ic ic-ok"></i></button>
     <button class="btn btn-outline btn-sm" id="topbar-btn-fechar" onclick="fecharExpedienteComBackup()" style="border-color:rgba(201,162,75,.45);color:var(--gold);display:inline-flex;align-items:center;gap:5px;padding:5px 10px;font-size:11.5px;font-weight:700;margin-left:4px" title="Salvar e fechar expediente com backup"><i data-lucide="log-out" class="ic"></i> Sair & Backup</button>
   </div>
 </div>
