@@ -8,7 +8,9 @@ const CONECTORES_CATALOGO = [
   {id:'documentai',nome:'Google Document AI',grupo:'Documentos',icone:'file-text',descricao:'Extração estruturada de notas fiscais e documentos.',uso:'Notas e recibos',custo:'Pago conforme processador e volume',custoTipo:'pago',fase:'Fase 4',detalhe:'Será avaliado para documentos fiscais e recibos que exigem extração estruturada. Só será habilitado após definir orçamento e limites.'},
   {id:'drive',nome:'Google Drive',grupo:'Armazenamento',icone:'cloud',descricao:'Backup e restauração dos dados do GestãoPRO.',uso:'Backup',custo:'API sem cobrança por chamada dentro das cotas; armazenamento sujeito à conta',custoTipo:'free',fase:'Já existe',detalhe:'O aplicativo já contém integração com Google Drive para backup. Esta central permitirá acompanhar e organizar sua configuração sem substituir o mecanismo atual.'},
   {id:'sheets',nome:'Google Sheets',grupo:'Produtividade',icone:'table',descricao:'Exportar relatórios e listas para Planilhas Google.',uso:'Relatórios e exportações',custo:'API gratuita dentro das cotas',custoTipo:'free',fase:'Fase 5',detalhe:'Permitirá exportar relatórios, clientes e produtos para planilhas, respeitando permissões específicas da conta Google.'},
-  {id:'barcode',nome:'Leitor de códigos',grupo:'Leitura local',icone:'barcode',descricao:'Ler EAN/UPC pela câmera do aparelho.',uso:'Produtos e estoque',custo:'Sem custo de API com leitura local',custoTipo:'free',fase:'Fase 3',detalhe:'A leitura será feita no próprio aparelho sempre que possível. A busca do código em catálogos externos será uma etapa separada e opcional.'}
+  {id:'barcode',nome:'Leitor de códigos',grupo:'Leitura local',icone:'barcode',descricao:'Ler EAN/UPC pela câmera do aparelho.',uso:'Produtos e estoque',custo:'Sem custo de API com leitura local',custoTipo:'free',fase:'Fase 3',detalhe:'A leitura será feita no próprio aparelho sempre que possível. A busca do código em catálogos externos será uma etapa separada e opcional.'},
+  {id:'pix',nome:'Pix',grupo:'Pagamentos',icone:'qr-code',descricao:'Chave Pix offline para gerar QR Code de cobrança e conferir recebimentos pelo extrato.',uso:'Cobrança e recebimentos',custo:'Sem custo de API; geração do QR é local',custoTipo:'free',fase:'Ativo',acao:'abrirConfigPix()',acaoLabel:'Configurar chave Pix',detalhe:'O GestãoPRO gera o QR Code Pix direto no aparelho, a partir da sua chave, sem depender de internet ou de serviço externo. A conferência dos recebimentos é feita importando o extrato do banco. Integração automática com banco (confirmação em tempo real) pode ser adicionada depois e dependeria de credenciais do seu banco ou PSP.'},
+  {id:'whatsapp',nome:'WhatsApp Business',grupo:'Mensagens',icone:'message-circle',descricao:'Cobranças e avisos aos clientes pelo WhatsApp.',uso:'Cobrança e atendimento',custo:'Envio por link: gratuito. API oficial: cobrada por conversa',custoTipo:'misto',fase:'Parcial',detalhe:'Hoje o app já abre o WhatsApp com a mensagem de cobrança pronta (envio manual por link, sem custo). A API oficial do WhatsApp Business permitiria envio automático e recebimento de respostas, mas exige conta Meta Business, número verificado e modelos de mensagem aprovados, com cobrança por conversa.'},
 ];
 function conectoresLerConfig(){
   try{return Object.assign({permitirCobranca:false,orcamentoMensal:0,alertaPercentual:80,preferencias:{}},JSON.parse(localStorage.getItem(CONECTORES_STORAGE_KEY)||'{}'));}
@@ -20,6 +22,8 @@ function conectoresSalvarConfig(cfg){
 }
 function conectoresStatus(item){
   if(item.id==='drive') return (typeof state!=='undefined'&&state.driveBackupAtivo)?'Ativo no backup':'Integração existente';
+  if(item.id==='pix') return (typeof state!=='undefined'&&state.pix&&state.pix.chave)?'Chave configurada':'Aguardando configuração';
+  if(item.id==='whatsapp') return 'Envio por link disponível';
   if(item.id==='maps') return 'Navegação básica disponível';
   if(item.id==='barcode') return 'Aguardando módulo de leitura';
   return 'Aguardando configuração';
@@ -39,13 +43,13 @@ function renderConectores(){
       <div class="conectores-resumo-num"><strong>${ativos}</strong><span>marcados para configuração</span></div>
     </div>
     <div class="conectores-alerta"><i data-lucide="shield-check" class="ic"></i><div><strong>Proteção contra cobranças</strong><span>Serviços que podem gerar custos permanecem bloqueados até você autorizar. Marcar um conector nesta tela não ativa uma API nem gera cobrança.</span></div></div>
-    <div class="conectores-section-title"><div><h3>Conectores disponíveis</h3><p>Integrações Google e recursos locais</p></div><span>${CONECTORES_CATALOGO.length} serviços</span></div>
+    <div class="conectores-section-title"><div><h3>Conectores disponíveis</h3><p>Google, Pix, WhatsApp e recursos locais</p></div><span>${CONECTORES_CATALOGO.length} serviços</span></div>
     <div class="conectores-grid">${CONECTORES_CATALOGO.map(item=>{
       const pref=cfg.preferencias[item.id]||{};
       return `<article class="conector-card">
         <div class="conector-card-top"><div class="conector-icon"><i data-lucide="${item.icone}"></i></div><span class="conector-fase">${item.fase}</span></div>
         <h4>${item.nome}</h4><p class="conector-desc">${item.descricao}</p>
-        <div class="conector-status"><span class="conector-status-dot ${item.id==='drive'&&state.driveBackupAtivo?'is-on':''}"></span>${conectoresStatus(item)}</div>
+        <div class="conector-status"><span class="conector-status-dot ${(item.id==='drive'&&state.driveBackupAtivo)||(item.id==='pix'&&state.pix&&state.pix.chave)||item.id==='whatsapp'?'is-on':''}"></span>${conectoresStatus(item)}</div>
         ${conectoresCustoBadge(item)}
         <div class="conector-card-actions"><button class="btn btn-outline btn-sm" onclick="conectoresDetalhe('${item.id}')">Detalhes</button><button class="btn ${pref.marcado?'btn-primary':'btn-outline'} btn-sm" onclick="conectoresMarcar('${item.id}')">${pref.marcado?'Selecionado':'Preparar'}</button></div>
       </article>`;
@@ -68,7 +72,7 @@ function conectoresMarcar(id){
 }
 function conectoresDetalhe(id){
   const item=CONECTORES_CATALOGO.find(x=>x.id===id);const box=document.getElementById('conectores-detalhe');if(!item||!box)return;
-  box.innerHTML=`<div class="conector-detalhe-head"><div><span class="conector-kicker">DETALHES DO SERVIÇO</span><h3>${item.nome}</h3></div><button class="btn btn-outline btn-sm" onclick="document.getElementById('conectores-detalhe').style.display='none'">Fechar</button></div><p>${item.detalhe}</p><div class="conector-detalhe-meta"><span><strong>Uso previsto:</strong> ${item.uso}</span><span><strong>Custo:</strong> ${item.custo}</span><span><strong>Etapa:</strong> ${item.fase}</span></div>`;
+  box.innerHTML=`<div class="conector-detalhe-head"><div><span class="conector-kicker">DETALHES DO SERVIÇO</span><h3>${item.nome}</h3></div><button class="btn btn-outline btn-sm" onclick="document.getElementById('conectores-detalhe').style.display='none'">Fechar</button></div><p>${item.detalhe}</p><div class="conector-detalhe-meta"><span><strong>Uso previsto:</strong> ${item.uso}</span><span><strong>Custo:</strong> ${item.custo}</span><span><strong>Etapa:</strong> ${item.fase}</span></div>${item.acao?`<div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="${item.acao}">${item.acaoLabel}</button></div>`:''}`;
   box.style.display='block';box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function conectoresAtualizarControle(){
