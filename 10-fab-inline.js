@@ -300,6 +300,7 @@ function atualizarAlertBells(){
   });
   state.materias.forEach(m=>{if(m.qtd<=m.minimo)temEstoqueBaixo=true;});
   const be=document.getElementById('bell-estoque');if(be)be.classList.toggle('has-alert',temEstoqueBaixo);
+  const bf=document.getElementById('bell-fabrica');if(bf)bf.classList.toggle('has-alert',temEstoqueBaixo);
   const beTop=document.getElementById('topbar-bell-estoque');if(beTop)beTop.classList.toggle('has-alert',temEstoqueBaixo);
 
   // cobrança (a receber): devedor OU vencimento em até 3 dias

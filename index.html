@@ -111,23 +111,27 @@
     <span style="font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;display:block">Powered by Ferreira Group</span>
   </div>
   <nav>
-    <a class="active" onclick="goto('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard" class="icon"></i> Dashboard</a>
+    <a class="active" onclick="goto('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard" class="icon"></i> Início</a>
     <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
-    <a onclick="goto('cartoes')" data-page="cartoes"><i data-lucide="qr-code" class="icon"></i> Cartões QR</a>
     <a onclick="goto('crm')" data-page="crm"><i data-lucide="handshake" class="icon"></i> CRM</a>
-    <a onclick="goto('vendas')" data-page="vendas"><i data-lucide="shopping-cart" class="icon"></i> Vendas / Pedidos</a>
-    <a onclick="goto('orcaprov')" data-page="orcaprov"><i data-lucide="check-check" class="icon"></i> Aprovar orçamentos</a>
-    <a onclick="goto('receber')" data-page="receber"><i data-lucide="wallet" class="icon"></i> Contas a Receber<span class="nav-dot" id="bell-cobranca"></span></a>
     <a onclick="goto('meudia')" data-page="meudia"><i data-lucide="route" class="icon"></i> Meu dia</a>
-    <a onclick="goto('cobranca')" data-page="cobranca"><i data-lucide="megaphone" class="icon"></i> Cobrança do dia</a>
-    <a onclick="goto('pagar')" data-page="pagar"><i data-lucide="credit-card" class="icon"></i> Contas a Pagar<span class="nav-dot" id="bell-pagar"></span></a>
-    <a onclick="goto('producao')" data-page="producao"><i data-lucide="factory" class="icon"></i> Produção</a>
-    <a onclick="goto('estoque')" data-page="estoque"><i data-lucide="package" class="icon"></i> Estoque<span class="nav-dot" id="bell-estoque"></span></a>
-    <a onclick="goto('planejamento')" data-page="planejamento"><i data-lucide="calculator" class="icon"></i> Planejamento</a>
-    <a onclick="goto('precificacao')" data-page="precificacao"><i data-lucide="tag" class="icon"></i> Precificação</a>
-    <a onclick="goto('financeiro')" data-page="financeiro"><i data-lucide="trending-up" class="icon"></i> Financeiro</a>
-    <a id="nav-banco" onclick="goto('banco')" data-page="banco" style="display:none"><i data-lucide="landmark" class="icon"></i> Banco</a>
-    <a onclick="goto('relatorio')" data-page="relatorio"><i data-lucide="calendar-days" class="icon"></i> Relatório por Período</a>
+    <div class="nav-group" id="grp-financeiro">
+      <a class="nav-group-head" onclick="toggleNavGroup('financeiro')"><i data-lucide="trending-up" class="icon"></i> Financeiro<i data-lucide="chevron-down" class="icon nav-chev"></i></a>
+      <div class="nav-sub">
+      <a onclick="goto('financeiro')" data-page="financeiro"><i data-lucide="trending-up" class="icon"></i> Resumo financeiro</a>
+      <a onclick="goto('banco')" data-page="banco" id="nav-banco" style="display:none"><i data-lucide="landmark" class="icon"></i> Banco</a>
+      <a onclick="goto('relatorio')" data-page="relatorio"><i data-lucide="calendar-days" class="icon"></i> Relatório por Período</a>
+      </div>
+    </div>
+    <div class="nav-group" id="grp-fabrica">
+      <a class="nav-group-head" onclick="toggleNavGroup('fabrica')"><i data-lucide="factory" class="icon"></i> Fábrica<span class="nav-dot" id="bell-fabrica"></span><i data-lucide="chevron-down" class="icon nav-chev"></i></a>
+      <div class="nav-sub">
+      <a onclick="goto('producao')" data-page="producao"><i data-lucide="factory" class="icon"></i> Produção</a>
+      <a onclick="goto('estoque')" data-page="estoque"><i data-lucide="package" class="icon"></i> Estoque<span class="nav-dot" id="bell-estoque"></span></a>
+      <a onclick="goto('planejamento')" data-page="planejamento"><i data-lucide="calculator" class="icon"></i> Planejamento</a>
+      <a onclick="goto('precificacao')" data-page="precificacao"><i data-lucide="tag" class="icon"></i> Precificação</a>
+      </div>
+    </div>
     <a onclick="goto('conectores')" data-page="conectores"><i data-lucide="plug-zap" class="icon"></i> Conectores</a>
   </nav>
 

@@ -1147,3 +1147,14 @@ tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
   border-radius: 3px;
   transition: width .3s ease;
 }
+
+/* MENU AGRUPADO */
+.nav-group-head{cursor:pointer}
+.nav-group-head .nav-dot{margin-left:auto}
+.nav-group-head .nav-chev{margin-left:auto;width:16px;height:16px;transition:transform .2s;opacity:.7}
+.nav-group-head .nav-dot.has-alert + .nav-chev{margin-left:8px}
+.nav-group.open .nav-chev{transform:rotate(180deg)}
+.nav-sub{display:none;background:rgba(255,255,255,.02)}
+.nav-group.open .nav-sub{display:block}
+.nav-sub a{padding:11px 20px 11px 52px;font-size:13.5px}
+.nav-sub a .icon{width:16px;height:16px}

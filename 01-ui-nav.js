@@ -556,12 +556,20 @@ function closeSidebar(){
   document.getElementById('sidebar-backdrop').classList.remove('open');
   document.getElementById('hamburger').classList.remove('open');
 }
+function toggleNavGroup(id){
+  const g=document.getElementById('grp-'+id);
+  if(g) g.classList.toggle('open');
+}
 function goto(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   const navLink=document.querySelector(`nav a[data-page="${page}"]`);
-  if(navLink) navLink.classList.add('active');
+  if(navLink){
+    navLink.classList.add('active');
+    const g=navLink.closest('.nav-group');
+    document.querySelectorAll('.nav-group').forEach(x=>x.classList.toggle('open',x===g));
+  }
   closeSidebar();
   if(page==='clientes'&&typeof limparFiltrosClientes==='function') limparFiltrosClientes();
   render(page);
