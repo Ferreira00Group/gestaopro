@@ -199,6 +199,31 @@ function verificarAlertasNotificacoes() {
 // ─── 3. SUGESTÃO 1: MODO PDV / CAIXA BALCÃO RÁPIDO ───
 let _pdvCesta = [];
 let _pdvClienteId = null;
+let _pdvAbaAtiva = 'catalogo';
+
+function trocarAbaPDV(aba) {
+  _pdvAbaAtiva = aba;
+  const colCat = document.getElementById('pdv-col-catalogo');
+  const colCesta = document.getElementById('pdv-col-cesta');
+  const btnCat = document.getElementById('pdv-tab-btn-cat');
+  const btnCesta = document.getElementById('pdv-tab-btn-cesta');
+  const bottomBar = document.getElementById('pdv-bottom-bar');
+
+  if (btnCat) btnCat.classList.toggle('active', aba === 'catalogo');
+  if (btnCesta) btnCesta.classList.toggle('active', aba === 'cesta');
+
+  // No mobile, alterna visibilidade das colunas
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    if (colCat) colCat.style.display = aba === 'catalogo' ? 'flex' : 'none';
+    if (colCesta) colCesta.style.display = aba === 'cesta' ? 'flex' : 'none';
+    if (bottomBar) bottomBar.style.display = (aba === 'catalogo' && _pdvCesta.length > 0) ? 'flex' : 'none';
+  } else {
+    if (colCat) colCat.style.display = 'flex';
+    if (colCesta) colCesta.style.display = 'flex';
+    if (bottomBar) bottomBar.style.display = 'none';
+  }
+}
 
 function abrirPDVRapido() {
   _pdvCesta = [];
@@ -211,6 +236,7 @@ function abrirPDVRapido() {
   popularClientesPDV();
   renderizarGradeProdutosPDV();
   renderizarCestaPDV();
+  trocarAbaPDV('catalogo');
 
   if (typeof openModal === 'function') {
     openModal('modal-pdv-rapido');
@@ -220,7 +246,7 @@ function abrirPDVRapido() {
   }
 
   setTimeout(() => {
-    if (inputBusca) inputBusca.focus();
+    if (inputBusca && window.innerWidth > 768) inputBusca.focus();
   }, 250);
 }
 
@@ -250,16 +276,22 @@ function renderizarGradeProdutosPDV(termo = '') {
     return;
   }
 
-  container.innerHTML = prods.slice(0, 18).map(p => {
+  container.innerHTML = prods.slice(0, 30).map(p => {
     const preco = Number(p.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const est = Number(p.estoque || 0);
     const semEstoque = est <= 0;
+    const naCesta = _pdvCesta.find(it => it.produtoId === p.id);
+    const qtdNaCesta = naCesta ? naCesta.qtd : 0;
+
     return `
-      <div class="pdv-card-prod" onclick="adicionarItemPDV(${p.id})" style="${semEstoque ? 'opacity:.6;' : ''}">
-        <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong style="color:var(--gold,#C9A24B);font-size:13.5px">${preco}</strong>
-          <span style="font-size:10.5px;color:${semEstoque ? '#E5604F' : 'var(--muted)'}">${est} un</span>
+      <div class="pdv-card-prod ${qtdNaCesta > 0 ? 'selecionado' : ''}" onclick="adicionarItemPDV(${p.id})" style="${semEstoque ? 'opacity:.65;' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
+          <div style="font-size:13px;font-weight:700;color:#FFF;line-height:1.3;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.nome}</div>
+          ${qtdNaCesta > 0 ? `<span class="pdv-card-badge">${qtdNaCesta}</span>` : ''}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
+          <strong style="color:var(--gold,#C9A24B);font-size:14px">${preco}</strong>
+          <span style="font-size:11px;color:${semEstoque ? '#E5604F' : 'var(--muted)'};font-weight:600">${est} un</span>
         </div>
       </div>
     `;
@@ -280,6 +312,7 @@ function adicionarItemPDV(produtoId) {
       qtd: 1
     });
   }
+  renderizarGradeProdutosPDV(document.getElementById('pdv-busca-item')?.value || '');
   renderizarCestaPDV();
 }
 
@@ -289,6 +322,14 @@ function alterarQtdPDV(index, delta) {
   if (_pdvCesta[index].qtd <= 0) {
     _pdvCesta.splice(index, 1);
   }
+  renderizarGradeProdutosPDV(document.getElementById('pdv-busca-item')?.value || '');
+  renderizarCestaPDV();
+}
+
+function removerItemPDV(index) {
+  if (!_pdvCesta[index]) return;
+  _pdvCesta.splice(index, 1);
+  renderizarGradeProdutosPDV(document.getElementById('pdv-busca-item')?.value || '');
   renderizarCestaPDV();
 }
 
@@ -296,37 +337,86 @@ function calcularTotalPDV() {
   return _pdvCesta.reduce((s, it) => s + (it.preco * it.qtd), 0);
 }
 
+function calcularQtdItensPDV() {
+  return _pdvCesta.reduce((s, it) => s + it.qtd, 0);
+}
+
+// ─── SUGESTÃO 3: ATALHOS RÁPIDOS DE CÉDULAS PARA TROCO ───
+function selecionarCedulaPDV(valor) {
+  const inputRecebido = document.getElementById('pdv-valor-recebido');
+  if (!inputRecebido) return;
+
+  const total = calcularTotalPDV();
+  let v = 0;
+  if (valor === 'exato') {
+    v = total;
+  } else {
+    v = Number(valor);
+  }
+
+  inputRecebido.value = v > 0 ? v.toFixed(2) : '';
+  renderizarCestaPDV();
+
+  // Destaque visual nos botões de cédula
+  document.querySelectorAll('.pdv-cedula-btn').forEach(btn => {
+    const bval = btn.getAttribute('data-val');
+    btn.classList.toggle('active', (valor === 'exato' && bval === 'exato') || (bval === String(valor)));
+  });
+}
+
 function renderizarCestaPDV() {
   const container = document.getElementById('pdv-cesta-itens');
   const totalEl = document.getElementById('pdv-total-val');
   const trocoEl = document.getElementById('pdv-troco-val');
   const inputRecebido = document.getElementById('pdv-valor-recebido');
+  const tabBadge = document.getElementById('pdv-tab-badge');
+  const bottomQtd = document.getElementById('pdv-bottom-qtd');
+  const bottomTotal = document.getElementById('pdv-bottom-total');
+  const bottomBar = document.getElementById('pdv-bottom-bar');
 
   const total = calcularTotalPDV();
-  if (totalEl) totalEl.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const totalItens = calcularQtdItensPDV();
+  const totalFmt = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  if (totalEl) totalEl.textContent = totalFmt;
+  if (tabBadge) tabBadge.textContent = totalItens;
+  if (bottomQtd) bottomQtd.textContent = totalItens;
+  if (bottomTotal) bottomTotal.textContent = totalFmt;
+
+  // Atualiza visibilidade da barra inferior móvel
+  if (bottomBar && window.innerWidth <= 768) {
+    bottomBar.style.display = (_pdvAbaAtiva === 'catalogo' && totalItens > 0) ? 'flex' : 'none';
+  }
 
   if (container) {
     if (_pdvCesta.length === 0) {
-      container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Cesta vazia. Toque em um produto ao lado para adicionar.</div>';
+      container.innerHTML = `
+        <div style="text-align:center;padding:36px 16px;color:var(--muted)">
+          <div style="font-size:32px;margin-bottom:8px">🛒</div>
+          <div style="font-size:14px;font-weight:600;color:#FFF;margin-bottom:4px">Cesta vazia</div>
+          <div style="font-size:12px">Toque nos produtos do catálogo para adicionar à venda.</div>
+        </div>
+      `;
     } else {
       container.innerHTML = _pdvCesta.map((it, idx) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-          <div style="min-width:0;flex:1;padding-right:8px">
-            <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.nome}</div>
-            <div style="font-size:11px;color:var(--muted)">${it.qtd}x R$ ${it.preco.toFixed(2)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);gap:8px">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:13px;font-weight:700;color:#FFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.nome}</div>
+            <div style="font-size:11.5px;color:var(--gold,#C9A24B);font-weight:600">R$ ${it.preco.toFixed(2)} un</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <button type="button" class="btn btn-outline btn-xs" onclick="alterarQtdPDV(${idx}, -1)">-</button>
-            <span style="font-size:13px;font-weight:700;width:24px;text-align:center">${it.qtd}</span>
-            <button type="button" class="btn btn-outline btn-xs" onclick="alterarQtdPDV(${idx}, 1)">+</button>
-            <strong style="font-size:13px;min-width:65px;text-align:right">R$ ${(it.qtd * it.preco).toFixed(2)}</strong>
+            <button type="button" class="btn btn-outline btn-xs pdv-btn-touch" onclick="alterarQtdPDV(${idx}, -1)">-</button>
+            <span style="font-size:14px;font-weight:800;width:24px;text-align:center;color:#FFF">${it.qtd}</span>
+            <button type="button" class="btn btn-outline btn-xs pdv-btn-touch" onclick="alterarQtdPDV(${idx}, 1)">+</button>
+            <strong style="font-size:13.5px;min-width:70px;text-align:right;color:#FFF">R$ ${(it.qtd * it.preco).toFixed(2)}</strong>
+            <button type="button" class="btn btn-outline btn-xs pdv-btn-touch" onclick="removerItemPDV(${idx})" title="Remover" style="color:var(--red,#E5604F);border-color:rgba(229,96,79,.4);margin-left:2px">✕</button>
           </div>
         </div>
       `).join('');
     }
   }
 
-  // Calcula troco
+  // Calcula troco dinâmico
   if (inputRecebido && trocoEl) {
     const recebido = parseFloat(inputRecebido.value) || 0;
     const troco = recebido > total ? recebido - total : 0;
