@@ -371,6 +371,7 @@ function vcStepper(key,qtd,alerta){
 function renderVendaItensLista(){
   const el=document.getElementById('venda-itens-lista');
   if(!el) return;
+  const termo=vendaCatBusca;
   const editando=!!document.getElementById('venda-edit-id')?.value;
   const verEstoque=!editando&&document.getElementById('venda-tipo')?.value!=='orcamento';
   let html='';
@@ -397,7 +398,6 @@ function renderVendaItensLista(){
       </div>`;
     }
   }
-  const termo=vendaCatBusca;
   const lista=vcEntradasCatalogo().filter(e=>!termo||(e.nome+' '+e.cod).toLowerCase().includes(termo));
   lista.forEach(e=>{
     const key=`p:${e.produtoId}:${e.varianteId||''}`;

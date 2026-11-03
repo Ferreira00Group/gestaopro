@@ -1395,3 +1395,47 @@ nav a.active,.nav-group.open>.nav-group-head{background:linear-gradient(90deg,rg
   flex: 1;
 }
 
+/* Oculta botão flutuante quando o modal estiver aberto e garante funcionamento mobile */
+.modal-overlay.open ~ #btn-flutuante-ia,
+body.modal-open #btn-flutuante-ia,
+#modal-ia-assistente.open ~ #btn-flutuante-ia {
+  display: none !important;
+}
+
+#modal-ia-assistente.open {
+  display: flex !important;
+  pointer-events: all !important;
+  z-index: 99999 !important;
+}
+
+#modal-ia-assistente .ia-modal-dialog {
+  max-width: 600px !important;
+  width: 100% !important;
+  max-height: 82vh !important;
+  height: 82vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  background: #121215 !important;
+  border: 1px solid rgba(201,162,75,.45) !important;
+  box-shadow: 0 -8px 30px rgba(0,0,0,.8) !important;
+}
+
+#modal-ia-assistente .ia-chat-container {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  height: calc(100% - 60px) !important;
+}
+
+#modal-ia-assistente #ia-chat-mensagens {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 12px !important;
+}
+
+

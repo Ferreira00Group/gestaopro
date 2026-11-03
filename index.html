@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.82.0">
+<link rel="stylesheet" href="styles.css?v=5.83.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -62,7 +62,7 @@
     <img src="logo-topbar.png" alt="GestãoPro" class="app-logo-img" style="height:38px;max-width:100%;object-fit:contain;display:block">
   </div>
   <div class="topbar-alerts">
-    <a href="/download" download="gestaopro-v5.81.zip" class="alert-bell" title="Baixar ZIP do Sistema" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
+    <a href="/download" download="gestaopro-v5.83.zip" class="alert-bell" title="Baixar ZIP do Sistema (v5.83.0)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
     <button class="alert-bell" onclick="abrirAssistenteIA()" title="Copiloto IA Gemini" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center"><i data-lucide="sparkles" class="ic"></i></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
   </div>
@@ -147,13 +147,13 @@
   </div>
 
   <div class="sidebar-footer">
-    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
+    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual">5.83.0</span> · GestãoPRO · Dados salvos localmente</div>
     <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
       <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>
     </a>
     <div id="footer-actions-collapsible" style="display:none">
       <div class="footer-actions">
-        <a href="/download" download="gestaopro-v5.81.zip" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.81)</a>
+        <a href="/download" download="gestaopro-v5.83.zip" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.83.0)</a>
         <a onclick="compartilharBackup()" class="footer-action-link"><i data-lucide="download" class="ic"></i>Exportar JSON</a>
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
@@ -186,8 +186,8 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/download" download="gestaopro-v5.81.zip" class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.3);color:#FFF;display:inline-flex;align-items:center;gap:6px;text-decoration:none" title="Baixar arquivo ZIP completo">
-        <i data-lucide="download" class="ic"></i> Baixar ZIP
+      <a href="/download" download="gestaopro-v5.83.zip" class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.3);color:#FFF;display:inline-flex;align-items:center;gap:6px;text-decoration:none" title="Baixar arquivo ZIP completo">
+        <i data-lucide="download" class="ic"></i> Baixar ZIP v5.83
       </a>
       <button class="btn btn-outline btn-sm" onclick="executarDiagnosticoIA()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="activity" class="ic"></i> Diagnóstico Geral
@@ -2408,35 +2408,35 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.82.0"></script>
-<script src="00-core.js?v=5.82.0"></script>
-<script src="lib-qrcode.js?v=5.82.0"></script>
-<script src="01-ui-nav.js?v=5.82.0"></script>
-<script src="02-dashboard.js?v=5.82.0"></script>
-<script src="03-clientes.js?v=5.82.0"></script>
-<script src="04-vendas.js?v=5.82.0"></script>
-<script src="04b-pix-extrato.js?v=5.82.0"></script>
-<script src="11b-meu-dia.js?v=5.82.0"></script>
-<script src="11c-promessa-reneg.js?v=5.82.0"></script>
-<script src="11d-aprovar-lote.js?v=5.82.0"></script>
-<script src="05-producao.js?v=5.82.0"></script>
-<script src="06-estoque.js?v=5.82.0"></script>
-<script src="07-precificacao.js?v=5.82.0"></script>
-<script src="08-compras-fornecedores.js?v=5.82.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.82.0"></script>
-<script src="10-fab-inline.js?v=5.82.0"></script>
-<script src="10b-planejamento.js?v=5.82.0"></script>
-<script src="13-crm.js?v=5.82.0"></script>
-<script src="14-relacionamento.js?v=5.82.0"></script>
-<script src="15-cliente360.js?v=5.82.0"></script>
-<script src="16-automacoes.js?v=5.82.0"></script>
-<script src="17-banco.js?v=5.82.0"></script>
-<script src="18-credito.js?v=5.82.0"></script>
-<script src="19-conectores.js?v=5.82.0"></script>
-<script src="20-cartoes.js?v=5.82.0"></script>
-<script src="12-drive-backup.js?v=5.82.0"></script>
-<script src="11-app-init.js?v=5.82.0"></script>
-<script src="21-gemini-ia.js?v=5.82.0"></script>
+<script src="00a-config.js?v=5.83.0"></script>
+<script src="00-core.js?v=5.83.0"></script>
+<script src="lib-qrcode.js?v=5.83.0"></script>
+<script src="01-ui-nav.js?v=5.83.0"></script>
+<script src="02-dashboard.js?v=5.83.0"></script>
+<script src="03-clientes.js?v=5.83.0"></script>
+<script src="04-vendas.js?v=5.83.0"></script>
+<script src="04b-pix-extrato.js?v=5.83.0"></script>
+<script src="11b-meu-dia.js?v=5.83.0"></script>
+<script src="11c-promessa-reneg.js?v=5.83.0"></script>
+<script src="11d-aprovar-lote.js?v=5.83.0"></script>
+<script src="05-producao.js?v=5.83.0"></script>
+<script src="06-estoque.js?v=5.83.0"></script>
+<script src="07-precificacao.js?v=5.83.0"></script>
+<script src="08-compras-fornecedores.js?v=5.83.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.83.0"></script>
+<script src="10-fab-inline.js?v=5.83.0"></script>
+<script src="10b-planejamento.js?v=5.83.0"></script>
+<script src="13-crm.js?v=5.83.0"></script>
+<script src="14-relacionamento.js?v=5.83.0"></script>
+<script src="15-cliente360.js?v=5.83.0"></script>
+<script src="16-automacoes.js?v=5.83.0"></script>
+<script src="17-banco.js?v=5.83.0"></script>
+<script src="18-credito.js?v=5.83.0"></script>
+<script src="19-conectores.js?v=5.83.0"></script>
+<script src="20-cartoes.js?v=5.83.0"></script>
+<script src="12-drive-backup.js?v=5.83.0"></script>
+<script src="11-app-init.js?v=5.83.0"></script>
+<script src="21-gemini-ia.js?v=5.83.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
