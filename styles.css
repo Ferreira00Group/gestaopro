@@ -1209,3 +1209,28 @@ tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
 #page-clientes .cliente-card-actions .btn-outline .ic,#page-clientes .cliente-card-actions .icon-btn.edit .ic{color:var(--cg2)}
 #page-clientes .cliente-card-actions .icon-btn.del{border-color:rgba(229,96,79,.55)}
 @media (max-width:380px){#page-clientes .cli-actions .btn{font-size:12px;padding:11px 6px}#page-clientes .cli-actions .btn .ic{display:none}}
+
+/* ═══ v5.77 — ESTILO FUTURISTA NO APP TODO (só visual) ═══ */
+#topbar{border-bottom:1px solid rgba(201,162,75,.55);box-shadow:0 1px 14px rgba(201,162,75,.18)}
+.alert-bell{border-radius:14px;border-color:rgba(201,162,75,.4);background:linear-gradient(180deg,#19191c,#0e0e10)}
+.page-header{border:1px solid rgba(201,162,75,.45);border-radius:20px;padding:10px 16px;
+  background:linear-gradient(115deg,rgba(201,162,75,.16),#121214 52%,rgba(201,162,75,.06));box-shadow:0 0 16px rgba(201,162,75,.12)}
+.page-header h2{color:#fff;font-weight:800}
+.card-hero,.card-compacto,.pilula,.stat-card,.chart-card,.table-card,.detail-panel,.parcelas-resumo,.crm-funil-card{
+  border:1px solid rgba(201,162,75,.38);border-radius:20px;box-shadow:0 0 0 1px rgba(0,0,0,.6) inset,0 0 16px rgba(201,162,75,.1),0 8px 20px rgba(0,0,0,.45)}
+.card-compacto,.pilula{border-radius:16px}
+.btn{border-radius:12px}
+.btn-primary{background:linear-gradient(180deg,#F6C84A,#C98C14);color:#17120A;font-weight:800;border:1px solid rgba(255,224,130,.55);box-shadow:0 0 14px rgba(246,181,42,.28)}
+.btn-primary:hover{filter:brightness(1.07)}
+.btn-outline{background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.4);color:var(--text)}
+.form-control,.search-input,select.filter{border-radius:12px;border:1px solid rgba(201,162,75,.28);background-color:#101012}
+.form-control:focus,.search-input:focus,select.filter:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,75,.14),0 0 12px rgba(201,162,75,.18)}
+.modal{border:1px solid rgba(201,162,75,.5);border-radius:22px;box-shadow:0 0 28px rgba(201,162,75,.18),0 18px 50px rgba(0,0,0,.7)}
+.badge{border-radius:999px}
+nav a{margin:3px 10px;border-radius:12px}
+nav a.active,.nav-group.open>.nav-group-head{background:linear-gradient(90deg,rgba(201,162,75,.2),rgba(201,162,75,.04));box-shadow:0 0 12px rgba(201,162,75,.12)}
+.nav-sub{background:transparent}
+.sidebar-footer .side-foot-btn{width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;border-radius:14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  color:var(--text);background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.4)}
+.sidebar-footer .side-foot-btn .ic{color:var(--gold-2)}
+.sidebar-footer .side-foot-sair{color:var(--gold-2);border-color:rgba(201,162,75,.6);box-shadow:0 0 12px rgba(201,162,75,.15)}
