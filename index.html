@@ -119,7 +119,7 @@
       <a class="nav-group-head" onclick="toggleNavGroup('financeiro')"><i data-lucide="trending-up" class="icon"></i> Financeiro<i data-lucide="chevron-down" class="icon nav-chev"></i></a>
       <div class="nav-sub">
       <a onclick="goto('financeiro')" data-page="financeiro"><i data-lucide="trending-up" class="icon"></i> Resumo financeiro</a>
-      <a onclick="goto('banco')" data-page="banco" id="nav-banco" style="display:none"><i data-lucide="landmark" class="icon"></i> Banco</a>
+      <a onclick="goto('banco')" data-page="banco" id="nav-banco"><i data-lucide="landmark" class="icon"></i> Banco</a>
       <a onclick="goto('relatorio')" data-page="relatorio"><i data-lucide="calendar-days" class="icon"></i> Relatório por Período</a>
       </div>
     </div>
@@ -136,7 +136,6 @@
   </nav>
 
   <div class="sidebar-footer">
-    <a onclick="fecharExpedienteComBackup()" class="footer-action-link" style="color:var(--gold);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><i data-lucide="log-out" class="ic"></i> Sair & Fazer Backup</a>
     <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual"></span> · GestãoPRO · Dados salvos localmente</div>
     <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
       <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>
@@ -147,10 +146,6 @@
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
         </label>
-        <a onclick="closeSidebar();abrirConfigPix()" class="footer-action-link"><i data-lucide="qr-code" class="ic"></i>Configurar Pix</a>
-        <a onclick="closeSidebar();abrirConfigEncargos()" class="footer-action-link"><i data-lucide="percent" class="ic"></i>Configurar encargos</a>
-        <a onclick="closeSidebar();abrirConfigCredito()" class="footer-action-link"><i data-lucide="shield-check" class="ic"></i>Regras de crédito</a>
-        <a onclick="bancoAlternarAba()" class="footer-action-link"><i data-lucide="landmark" class="ic"></i><span id="banco-toggle-label">Ativar aba Banco</span></a>
         <a id="link-restaurar-anterior" onclick="closeSidebar();restaurarEstadoAnterior()" class="footer-action-link" style="display:none"><i data-lucide="undo-2" class="ic"></i>Restaurar estado anterior</a>
         <a id="link-baixar-recuperacao" onclick="baixarCopiaRecuperacao()" class="footer-action-link" style="color:var(--red);display:none"><i data-lucide="life-buoy" class="ic"></i>Baixar cópia de recuperação</a>
         <a id="drive-status-btn" onclick="cliqueBotaoDrive()" class="footer-action-link" style="display:none"></a>
@@ -685,6 +680,7 @@
   <div class="page-header">
     <div><h2>Financeiro</h2><p>Entradas, saídas e caixa</p></div>
     <div class="page-header-actions">
+      <button class="btn btn-outline" onclick="openModal('modal-config-fin')" aria-label="Configurações do financeiro" title="Configurações"><i data-lucide="settings-2" class="ic"></i> Configurações</button>
       <button class="btn btn-primary" onclick="openModal('modal-lancamento')">+ Lançamento</button>
     </div>
   </div>
@@ -2151,6 +2147,17 @@
 </div>
 
 <!-- LANÇAMENTO FINANCEIRO -->
+<div class="modal-overlay" id="modal-config-fin">
+  <div class="modal">
+    <div class="modal-header"><h3>Configurações do financeiro</h3><button class="modal-close" onclick="closeModal('modal-config-fin')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigEncargos()"><i data-lucide="percent" class="ic"></i> Encargos (multa e juros de atraso)</button>
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigCredito()"><i data-lucide="shield-check" class="ic"></i> Regras de crédito</button>
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigPix()"><i data-lucide="qr-code" class="ic"></i> Chave Pix</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-lancamento">
   <div class="modal">
     <div class="modal-header"><h3 id="modal-lanc-title">Novo Lançamento</h3><button class="modal-close" onclick="closeModal('modal-lancamento')"><i data-lucide="x" class="ic"></i></button></div>

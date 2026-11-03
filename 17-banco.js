@@ -46,7 +46,7 @@ function bancoGarantirEstado(){
 function bancoAplicarFlag(){
   const on=!!(typeof state!=='undefined' && state && state.bancoAtivo);
   const nav=document.getElementById('nav-banco');
-  if(nav) nav.style.display=on?'':'none';
+  if(nav) nav.style.display=''; // v5.73: aba Banco sempre visível
   const lb=document.getElementById('banco-toggle-label');
   if(lb) lb.textContent=on?'Desativar aba Banco':'Ativar aba Banco';
 }

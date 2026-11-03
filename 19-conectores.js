@@ -10,7 +10,7 @@ const CONECTORES_CATALOGO = [
   {id:'sheets',nome:'Google Sheets',grupo:'Produtividade',icone:'table',descricao:'Exportar relatórios e listas para Planilhas Google.',uso:'Relatórios e exportações',custo:'API gratuita dentro das cotas',custoTipo:'free',fase:'Fase 5',detalhe:'Permitirá exportar relatórios, clientes e produtos para planilhas, respeitando permissões específicas da conta Google.'},
   {id:'barcode',nome:'Leitor de códigos',grupo:'Leitura local',icone:'barcode',descricao:'Ler EAN/UPC pela câmera do aparelho.',uso:'Produtos e estoque',custo:'Sem custo de API com leitura local',custoTipo:'free',fase:'Fase 3',detalhe:'A leitura será feita no próprio aparelho sempre que possível. A busca do código em catálogos externos será uma etapa separada e opcional.'},
   {id:'pix',nome:'Pix',grupo:'Pagamentos',icone:'qr-code',descricao:'Chave Pix offline para gerar QR Code de cobrança e conferir recebimentos pelo extrato.',uso:'Cobrança e recebimentos',custo:'Sem custo de API; geração do QR é local',custoTipo:'free',fase:'Ativo',acao:'abrirConfigPix()',acaoLabel:'Configurar chave Pix',detalhe:'O GestãoPRO gera o QR Code Pix direto no aparelho, a partir da sua chave, sem depender de internet ou de serviço externo. A conferência dos recebimentos é feita importando o extrato do banco. Integração automática com banco (confirmação em tempo real) pode ser adicionada depois e dependeria de credenciais do seu banco ou PSP.'},
-  {id:'whatsapp',nome:'WhatsApp Business',grupo:'Mensagens',icone:'message-circle',descricao:'Cobranças e avisos aos clientes pelo WhatsApp.',uso:'Cobrança e atendimento',custo:'Envio por link: gratuito. API oficial: cobrada por conversa',custoTipo:'misto',fase:'Parcial',detalhe:'Hoje o app já abre o WhatsApp com a mensagem de cobrança pronta (envio manual por link, sem custo). A API oficial do WhatsApp Business permitiria envio automático e recebimento de respostas, mas exige conta Meta Business, número verificado e modelos de mensagem aprovados, com cobrança por conversa.'},
+  {id:'whatsapp',nome:'WhatsApp (wa.me)',grupo:'Mensagens',icone:'message-circle',descricao:'Cobranças e avisos aos clientes: abre o WhatsApp com a mensagem pronta.',uso:'Cobrança e atendimento',custo:'Gratuito: usa o link wa.me, sem API',custoTipo:'free',fase:'Ativo',detalhe:'O app abre o WhatsApp do aparelho com a mensagem pronta (cobrança, orçamento, Pix) e você só toca em enviar. Não precisa de conta Meta Business, token nem aprovação de modelos, e não tem custo. A API oficial (envio automático) fica de fora por ser cobrada por conversa.'},
 ];
 function conectoresLerConfig(){
   try{return Object.assign({permitirCobranca:false,orcamentoMensal:0,alertaPercentual:80,preferencias:{}},JSON.parse(localStorage.getItem(CONECTORES_STORAGE_KEY)||'{}'));}
@@ -23,7 +23,7 @@ function conectoresSalvarConfig(cfg){
 function conectoresStatus(item){
   if(item.id==='drive') return (typeof state!=='undefined'&&state.driveBackupAtivo)?'Ativo no backup':'Integração existente';
   if(item.id==='pix') return (typeof state!=='undefined'&&state.pix&&state.pix.chave)?'Chave configurada':'Aguardando configuração';
-  if(item.id==='whatsapp') return 'Envio por link disponível';
+  if(item.id==='whatsapp') return 'Ativo (envio por link)';
   if(item.id==='maps') return 'Navegação básica disponível';
   if(item.id==='barcode') return 'Aguardando módulo de leitura';
   return 'Aguardando configuração';
@@ -82,3 +82,4 @@ function conectoresAtualizarControle(){
   cfg.alertaPercentual=Number(document.getElementById('conectores-alerta')?.value)||80;
   if(conectoresSalvarConfig(cfg))showToast('Controles dos conectores salvos','green');
 }
+
