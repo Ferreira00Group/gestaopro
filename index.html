@@ -62,7 +62,9 @@
     <img src="logo-topbar.png" alt="GestãoPro" class="app-logo-img" style="height:38px;max-width:100%;object-fit:contain;display:block">
   </div>
   <div class="topbar-alerts">
-    <a href="/download" download="gestaopro-v5.83.zip" class="alert-bell" title="Baixar ZIP do Sistema (v5.83.0)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
+    <button id="btn-sair-foco" class="btn btn-outline btn-xs" onclick="toggleModoFoco(false)" style="display:none;border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);gap:4px"><i data-lucide="minimize-2" style="width:13px;height:13px"></i> Sair do Foco</button>
+    <button class="alert-bell" id="btn-topbar-foco" onclick="toggleModoFoco()" title="Modo Foco (Alt+F)" style="display:flex;align-items:center;justify-content:center"><i data-lucide="scan" class="ic"></i></button>
+    <a href="/download" download="gestaopro-v5.84.zip" class="alert-bell" title="Baixar ZIP do Sistema (v5.84.0)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
     <button class="alert-bell" onclick="abrirAssistenteIA()" title="Copiloto IA Gemini" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center"><i data-lucide="sparkles" class="ic"></i></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
   </div>
@@ -186,14 +188,20 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/download" download="gestaopro-v5.83.zip" class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.3);color:#FFF;display:inline-flex;align-items:center;gap:6px;text-decoration:none" title="Baixar arquivo ZIP completo">
-        <i data-lucide="download" class="ic"></i> Baixar ZIP v5.83
+      <button class="btn btn-outline btn-sm" onclick="abrirPDVRapido()" style="border-color:#4CC38A;color:#4CC38A;display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="shopping-cart" class="ic"></i> PDV Balcão
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="abrirFilaSeparacao()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="boxes" class="ic"></i> Expedição
+      </button>
+      <a href="/download" download="gestaopro-v5.84.zip" class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.3);color:#FFF;display:inline-flex;align-items:center;gap:6px;text-decoration:none" title="Baixar arquivo ZIP completo">
+        <i data-lucide="download" class="ic"></i> Baixar ZIP v5.84
       </a>
       <button class="btn btn-outline btn-sm" onclick="executarDiagnosticoIA()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="activity" class="ic"></i> Diagnóstico Geral
+        <i data-lucide="activity" class="ic"></i> Diagnóstico
       </button>
       <button class="btn btn-primary btn-sm" onclick="abrirAssistenteIA()" style="display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="sparkles" class="ic"></i> Abrir Chat IA
+        <i data-lucide="sparkles" class="ic"></i> Chat IA
       </button>
     </div>
   </div>
@@ -2181,11 +2189,13 @@
 
 <!-- LANÇAMENTO FINANCEIRO -->
 <div class="modal-overlay" id="modal-config-fin">
-  <div class="modal">
-    <div class="modal-header"><h3>Configurações do financeiro</h3><button class="modal-close" onclick="closeModal('modal-config-fin')"><i data-lucide="x" class="ic"></i></button></div>
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>Configurações do Sistema</h3><button class="modal-close" onclick="closeModal('modal-config-fin')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigNotificacoes()"><i data-lucide="bell" class="ic" style="color:var(--gold,#C9A24B)"></i> Preferências de Notificações Push & Alertas</button>
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');toggleModoFoco()"><i data-lucide="scan" class="ic" style="color:var(--gold,#C9A24B)"></i> Alternar Modo Foco (Tela Limpa / Alt+F)</button>
       <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigEncargos()"><i data-lucide="percent" class="ic"></i> Encargos (multa e juros de atraso)</button>
-      <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigCredito()"><i data-lucide="shield-check" class="ic"></i> Regras de crédito</button>
+      <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigCredito()"><i data-lucide="shield-check" class="ic"></i> Regras de crédito (Fiado)</button>
       <button class="btn btn-outline" style="justify-content:flex-start;gap:10px" onclick="closeModal('modal-config-fin');abrirConfigPix()"><i data-lucide="qr-code" class="ic"></i> Chave Pix</button>
     </div>
   </div>
@@ -2408,35 +2418,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.83.0"></script>
-<script src="00-core.js?v=5.83.0"></script>
-<script src="lib-qrcode.js?v=5.83.0"></script>
-<script src="01-ui-nav.js?v=5.83.0"></script>
-<script src="02-dashboard.js?v=5.83.0"></script>
-<script src="03-clientes.js?v=5.83.0"></script>
-<script src="04-vendas.js?v=5.83.0"></script>
-<script src="04b-pix-extrato.js?v=5.83.0"></script>
-<script src="11b-meu-dia.js?v=5.83.0"></script>
-<script src="11c-promessa-reneg.js?v=5.83.0"></script>
-<script src="11d-aprovar-lote.js?v=5.83.0"></script>
-<script src="05-producao.js?v=5.83.0"></script>
-<script src="06-estoque.js?v=5.83.0"></script>
-<script src="07-precificacao.js?v=5.83.0"></script>
-<script src="08-compras-fornecedores.js?v=5.83.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.83.0"></script>
-<script src="10-fab-inline.js?v=5.83.0"></script>
-<script src="10b-planejamento.js?v=5.83.0"></script>
-<script src="13-crm.js?v=5.83.0"></script>
-<script src="14-relacionamento.js?v=5.83.0"></script>
-<script src="15-cliente360.js?v=5.83.0"></script>
-<script src="16-automacoes.js?v=5.83.0"></script>
-<script src="17-banco.js?v=5.83.0"></script>
-<script src="18-credito.js?v=5.83.0"></script>
-<script src="19-conectores.js?v=5.83.0"></script>
-<script src="20-cartoes.js?v=5.83.0"></script>
-<script src="12-drive-backup.js?v=5.83.0"></script>
-<script src="11-app-init.js?v=5.83.0"></script>
-<script src="21-gemini-ia.js?v=5.83.0"></script>
+<script src="00a-config.js?v=5.84.0"></script>
+<script src="00-core.js?v=5.84.0"></script>
+<script src="lib-qrcode.js?v=5.84.0"></script>
+<script src="01-ui-nav.js?v=5.84.0"></script>
+<script src="02-dashboard.js?v=5.84.0"></script>
+<script src="03-clientes.js?v=5.84.0"></script>
+<script src="04-vendas.js?v=5.84.0"></script>
+<script src="04b-pix-extrato.js?v=5.84.0"></script>
+<script src="11b-meu-dia.js?v=5.84.0"></script>
+<script src="11c-promessa-reneg.js?v=5.84.0"></script>
+<script src="11d-aprovar-lote.js?v=5.84.0"></script>
+<script src="05-producao.js?v=5.84.0"></script>
+<script src="06-estoque.js?v=5.84.0"></script>
+<script src="07-precificacao.js?v=5.84.0"></script>
+<script src="08-compras-fornecedores.js?v=5.84.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.84.0"></script>
+<script src="10-fab-inline.js?v=5.84.0"></script>
+<script src="10b-planejamento.js?v=5.84.0"></script>
+<script src="13-crm.js?v=5.84.0"></script>
+<script src="14-relacionamento.js?v=5.84.0"></script>
+<script src="15-cliente360.js?v=5.84.0"></script>
+<script src="16-automacoes.js?v=5.84.0"></script>
+<script src="17-banco.js?v=5.84.0"></script>
+<script src="18-credito.js?v=5.84.0"></script>
+<script src="19-conectores.js?v=5.84.0"></script>
+<script src="20-cartoes.js?v=5.84.0"></script>
+<script src="12-drive-backup.js?v=5.84.0"></script>
+<script src="11-app-init.js?v=5.84.0"></script>
+<script src="21-gemini-ia.js?v=5.84.0"></script>
+<script src="22-operacao-foco.js?v=5.84.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -2744,6 +2755,174 @@
       <button class="modal-close" onclick="closeModal('modal-ia-cobranca')"><i data-lucide="x" class="ic"></i></button>
     </div>
     <div class="modal-body" id="ia-cobranca-corpo">
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PREFERÊNCIAS DE NOTIFICAÇÕES (PUSH & ALERTAS) -->
+<div class="modal-overlay" id="modal-config-notificacoes">
+  <div class="modal" style="max-width:540px;width:95%">
+    <div class="modal-header">
+      <h3 style="display:flex;align-items:center;gap:8px">
+        <i data-lucide="bell" class="ic" style="color:var(--gold,#C9A24B)"></i>
+        Preferências de Notificações Push
+      </h3>
+      <button class="modal-close" onclick="closeModal('modal-config-notificacoes')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:18px">
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0">
+        Configure quais alertas operacionais você deseja receber automaticamente no navegador e dispositivo móvel mesmo quando o app estiver em segundo plano.
+      </p>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:14px">
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
+          <input type="checkbox" id="notif-chk-estoque" style="width:18px;height:18px;margin-top:2px;accent-color:var(--gold,#C9A24B)">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:#FFF">📦 Alerta de Estoque Baixo</div>
+            <div style="font-size:12px;color:var(--muted)">Notifica quando produtos atingirem ou ficarem abaixo da quantidade mínima cadastrada.</div>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
+          <input type="checkbox" id="notif-chk-venc" style="width:18px;height:18px;margin-top:2px;accent-color:var(--gold,#C9A24B)">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:#FFF">📅 Vencimentos Hoje (Contas a Receber)</div>
+            <div style="font-size:12px;color:var(--muted)">Avisa pela manhã sobre cobranças, parcelas e fiados que vencem no dia de hoje.</div>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
+          <input type="checkbox" id="notif-chk-pagar" style="width:18px;height:18px;margin-top:2px;accent-color:var(--gold,#C9A24B)">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:#FFF">💸 Contas a Pagar do Dia</div>
+            <div style="font-size:12px;color:var(--muted)">Alerta sobre fornecedores, boletos e despesas operacionais com vencimento hoje.</div>
+          </div>
+        </label>
+      </div>
+
+      <div style="background:rgba(201,162,75,0.08);border:1px solid rgba(201,162,75,0.25);border-radius:10px;padding:12px 14px">
+        <div style="font-size:12px;font-weight:600;color:var(--gold,#C9A24B);margin-bottom:4px">Status de Permissão no Navegador:</div>
+        <div id="notif-status-permissao" style="font-size:12.5px;color:var(--muted)">Verificando...</div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-outline btn-sm" onclick="solicitarPermissaoPush()">
+            <i data-lucide="shield-check" class="ic"></i> Autorizar Navegador
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="testarNotificacaoPush()">
+            <i data-lucide="send" class="ic"></i> Testar Alerta
+          </button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-config-notificacoes')">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="salvarConfigNotificacoes()">
+            <i data-lucide="check" class="ic"></i> Salvar Preferências
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MODO PDV / CAIXA BALCÃO RÁPIDO (SUGESTÃO 1) -->
+<div class="modal-overlay" id="modal-pdv-rapido">
+  <div class="modal" style="max-width:1050px;width:96%;max-height:92vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <!-- Header PDV -->
+    <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(201,162,75,0.15);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);font-size:18px">🛍️</div>
+        <div>
+          <h3 style="margin:0;font-size:17px;font-weight:700;color:#FFF">PDV Balcão Rápido</h3>
+          <span style="font-size:12px;color:var(--muted)">Venda instantânea de balcão com leitor/busca e fechamento em 1 clique</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:11px;padding:3px 8px;border-radius:12px;background:rgba(76,195,138,0.15);color:#4CC38A;font-weight:600">Caixa Aberto</span>
+        <button class="modal-close" onclick="closeModal('modal-pdv-rapido')"><i data-lucide="x" class="ic"></i></button>
+      </div>
+    </div>
+
+    <!-- Corpo PDV dividido em 2 colunas -->
+    <div class="pdv-grid-container" style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:0;flex:1;min-height:0;overflow:hidden">
+      <!-- Coluna Esquerda: Catálogo / Busca Rápida -->
+      <div style="padding:16px;border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;min-height:0;background:rgba(0,0,0,0.15)">
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <div style="position:relative;flex:1">
+            <input type="text" id="pdv-busca-item" class="form-input" placeholder="🔍 Buscar por nome, código ou bipar leitor..." oninput="renderizarGradeProdutosPDV(this.value)" style="width:100%;padding:10px 14px;font-size:14px;border-radius:8px">
+          </div>
+          <select id="pdv-cliente-select" class="form-select" style="max-width:200px;font-size:13px;border-radius:8px">
+            <option value="">Consumidor Final</option>
+          </select>
+        </div>
+
+        <div id="pdv-produtos-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;overflow-y:auto;flex:1;padding-right:4px">
+          <!-- Cards de produtos inseridos dinamicamente -->
+        </div>
+      </div>
+
+      <!-- Coluna Direita: Cesta e Fechamento -->
+      <div style="padding:16px;display:flex;flex-direction:column;min-height:0;background:rgba(255,255,255,0.01)">
+        <div style="font-weight:700;font-size:14px;color:#FFF;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <span>🛒 Cesta de Itens</span>
+          <button type="button" class="btn btn-outline btn-xs" onclick="_pdvCesta=[];renderizarCestaPDV()" style="color:var(--muted)">Limpar</button>
+        </div>
+
+        <div id="pdv-cesta-itens" style="flex:1;overflow-y:auto;min-height:160px;margin-bottom:14px;padding-right:4px">
+          <!-- Itens da cesta -->
+        </div>
+
+        <!-- Totalizadores e Troco -->
+        <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:14px;border:1px solid rgba(255,255,255,0.08);margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--muted)">Total a Pagar:</span>
+            <span id="pdv-total-val" style="font-size:22px;font-weight:800;color:var(--gold,#C9A24B)">R$ 0,00</span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">
+            <label style="font-size:12px;color:var(--muted);white-space:nowrap">Valor Recebido (R$):</label>
+            <input type="number" id="pdv-valor-recebido" class="form-input" placeholder="0,00" step="0.5" style="width:100px;padding:6px 10px;font-size:13px;text-align:right" oninput="renderizarCestaPDV()">
+            <div style="flex:1;text-align:right;font-size:12.5px;color:var(--muted)">
+              Troco: <strong id="pdv-troco-val" style="color:#4CC38A;font-size:14px">R$ 0,00</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botões de Fechamento em 1 Toque -->
+        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px">
+          <button type="button" class="btn btn-primary" onclick="finalizarVendaPDV('Pix')" style="background:#00bdae;border-color:#00bdae;font-weight:700">⚡ Pix</button>
+          <button type="button" class="btn btn-primary" onclick="finalizarVendaPDV('Dinheiro')" style="background:#28a745;border-color:#28a745;font-weight:700">💵 Dinheiro</button>
+          <button type="button" class="btn btn-primary" onclick="finalizarVendaPDV('Débito')" style="background:#17a2b8;border-color:#17a2b8;font-weight:700">💳 Débito</button>
+          <button type="button" class="btn btn-primary" onclick="finalizarVendaPDV('Crédito')" style="background:#6f42c1;border-color:#6f42c1;font-weight:700">💳 Crédito</button>
+          <button type="button" class="btn btn-primary" onclick="finalizarVendaPDV('Fiado')" style="background:#fd7e14;border-color:#fd7e14;font-weight:700">📋 Fiado</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-pdv-rapido')">✕ Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FILA DE SEPARAÇÃO E EXPEDIÇÃO (PICKING - SUGESTÃO 2) -->
+<div class="modal-overlay" id="modal-fila-separacao">
+  <div class="modal" style="max-width:850px;width:95%;max-height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(201,162,75,0.15);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);font-size:18px">📦</div>
+        <div>
+          <h3 style="margin:0;font-size:17px;font-weight:700;color:#FFF">Fila de Separação & Expedição (Picking)</h3>
+          <span style="font-size:12px;color:var(--muted)">Checklist item a item dos pedidos a separar, romaneio e baixa de envio</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="renderizarFilaSeparacao()" title="Atualizar fila">
+          <i data-lucide="refresh-cw" class="ic"></i>
+        </button>
+        <button class="modal-close" onclick="closeModal('modal-fila-separacao')"><i data-lucide="x" class="ic"></i></button>
+      </div>
+    </div>
+
+    <div style="padding:16px 20px;overflow-y:auto;flex:1;min-height:0" id="fila-separacao-lista">
+      <!-- Pedidos pendentes de separação renderizados dinamicamente -->
     </div>
   </div>
 </div>
