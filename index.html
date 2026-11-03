@@ -276,13 +276,14 @@
 <!-- CLIENTES -->
 <div id="page-clientes" class="page">
   <div class="print-header"><h1>GestãoPRO — Clientes</h1><p id="print-date-clientes"></p></div>
-  <div class="page-header">
+  <div class="page-header cli-banner">
+    <i data-lucide="users" class="ic cli-banner-ic"></i>
     <div><h2>Clientes</h2><p>Cadastro e saldo devedor</p></div>
-    <div class="page-header-actions">
-      <button class="btn btn-outline" onclick="abrirImportarClientes()">Importar Lista</button>
-      <button class="btn btn-outline" onclick="copiarListaClientes()">Copiar lista</button>
-      <button class="btn btn-primary" onclick="openModal('modal-cliente')">+ Novo Cliente</button>
-    </div>
+  </div>
+  <div class="cli-actions">
+    <button class="btn btn-outline" onclick="abrirImportarClientes()"><i data-lucide="download" class="ic"></i> Importar Lista</button>
+    <button class="btn btn-outline" onclick="copiarListaClientes()"><i data-lucide="copy" class="ic"></i> Copiar lista</button>
+    <button class="btn btn-primary" onclick="openModal('modal-cliente')"><i data-lucide="plus" class="ic"></i> Novo Cliente</button>
   </div>
   <div class="search-bar">
     <input class="search-input" id="cliente-busca-input" placeholder="Buscar por nome, telefone ou nº..." oninput="filterClientesDebounced(this.value)">

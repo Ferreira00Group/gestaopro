@@ -59,6 +59,7 @@ function renderClientes(){
 
     return `
     <div class="cliente-card ${arquivado ? 'arquivado' : ''}" id="cliente-card-${c.id}">
+      <div class="cliente-avatar" aria-hidden="true"><i data-lucide="user" class="ic"></i></div>
       <div class="cliente-card-header">
         <div class="cliente-card-title-group">
           <div class="cliente-card-badges">

@@ -1163,3 +1163,49 @@ tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
 #busca-bar-wrap{background:transparent;border-bottom:1px solid rgba(201,162,75,.18)}
 #busca-bar-inner{background:rgba(201,162,75,.07);border:1px solid rgba(201,162,75,.3);box-shadow:none}
 #busca-bar-inner:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,75,.12)}
+
+/* ═══ v5.76 — ABA CLIENTES: visual futurista (só estilo; informações iguais) ═══ */
+#page-clientes{--cg:#C9A24B;--cg2:#F6B52A}
+#page-clientes .cli-banner{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:flex-start;gap:16px;padding:16px 20px;margin-bottom:14px;border-radius:22px;
+  border:1px solid rgba(201,162,75,.55);background:linear-gradient(115deg,rgba(201,162,75,.18),rgba(18,18,20,.92) 48%,rgba(201,162,75,.07));
+  box-shadow:0 0 0 1px rgba(0,0,0,.6) inset,0 0 20px rgba(201,162,75,.16);position:static;top:auto;-webkit-backdrop-filter:none;backdrop-filter:none}
+#page-clientes .cli-banner::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(118deg,transparent 62%,rgba(246,181,42,.16) 62.4%,rgba(246,181,42,.04) 78%,transparent 78.4%)}
+#page-clientes .cli-banner-ic{width:38px;height:38px;color:var(--cg2);flex-shrink:0;filter:drop-shadow(0 0 8px rgba(246,181,42,.45))}
+#page-clientes .cli-banner h2{font-size:24px;font-weight:800;letter-spacing:-.3px;color:#fff;line-height:1.1}
+#page-clientes .cli-banner p{font-size:14px;color:var(--muted);margin-top:2px}
+#page-clientes .cli-actions{display:flex;gap:10px;margin-bottom:12px}
+#page-clientes .cli-actions .btn{flex:1 1 0;min-width:0;justify-content:center;gap:7px;padding:12px 10px;border-radius:16px;font-size:13.5px;font-weight:600;white-space:nowrap}
+#page-clientes .cli-actions .btn-outline{background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.4);color:#fff;box-shadow:0 0 12px rgba(201,162,75,.08)}
+#page-clientes .cli-actions .btn-outline .ic{color:var(--cg2)}
+#page-clientes .cli-actions .btn-primary{background:linear-gradient(180deg,#F6C84A,#C98C14);color:#17120A;font-weight:800;border:1px solid rgba(255,224,130,.6);box-shadow:0 0 16px rgba(246,181,42,.35)}
+#page-clientes .cli-actions .btn-primary .ic{color:#17120A}
+#page-clientes .search-bar{gap:10px}
+#page-clientes .search-input,#page-clientes select.filter{background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.3);border-radius:999px;padding:11px 16px;box-shadow:0 0 12px rgba(201,162,75,.07)}
+#page-clientes .search-input:focus,#page-clientes select.filter:focus{border-color:var(--cg);box-shadow:0 0 0 3px rgba(201,162,75,.14),0 0 14px rgba(201,162,75,.2)}
+#page-clientes .clientes-grid{gap:18px}
+#page-clientes .cliente-card{display:grid;grid-template-columns:60px minmax(0,1fr);grid-template-areas:"av head" "av body" "act act";column-gap:12px;justify-content:stretch;
+  padding:38px 14px 12px;border-radius:24px;border:1px solid rgba(201,162,75,.5);
+  background:radial-gradient(120% 90% at 0% 0%,rgba(201,162,75,.09),transparent 55%),linear-gradient(165deg,#18181b,#0b0b0d);
+  box-shadow:0 0 0 1px rgba(0,0,0,.7) inset,0 0 22px rgba(201,162,75,.16),0 12px 26px rgba(0,0,0,.55)}
+#page-clientes .cliente-card:hover{transform:none;border-color:rgba(246,181,42,.8);box-shadow:0 0 0 1px rgba(0,0,0,.7) inset,0 0 28px rgba(246,181,42,.26),0 12px 26px rgba(0,0,0,.55)}
+#page-clientes .cliente-card::before{content:"";position:absolute;left:18%;right:18%;bottom:0;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--cg2),transparent);opacity:.7}
+#page-clientes .cliente-avatar{grid-area:av;align-self:start;margin-top:4px;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(201,162,75,.75);background:radial-gradient(circle at 35% 30%,#2a2417,#0d0d0f);box-shadow:0 0 14px rgba(201,162,75,.3)}
+#page-clientes .cliente-avatar .ic{width:28px;height:28px;color:var(--cg2);fill:var(--cg2)}
+#page-clientes .cliente-card-header{grid-area:head;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(201,162,75,.18)}
+#page-clientes .cliente-card-badges{margin:0}
+#page-clientes .badge-cartao-selo{position:absolute;top:0;left:0;padding:7px 26px 7px 16px;border-radius:24px 0 0 0;font-size:14px;
+  clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%);box-shadow:none}
+#page-clientes .badge-cartao-sem{position:absolute;top:0;left:0;padding:8px 24px 8px 16px;border-radius:24px 0 0 0;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+#page-clientes .cliente-card-nome{font-size:19px;font-weight:800;color:#fff}
+#page-clientes .cliente-card-status-badge .badge{border-radius:999px;border:1px solid currentColor;padding:5px 12px;font-weight:700;background:rgba(0,0,0,.25);box-shadow:0 0 12px -3px currentColor}
+#page-clientes .cliente-card-body{grid-area:body;padding:2px 0 10px}
+#page-clientes .cliente-card-col+.cliente-card-col{border-left:1px solid rgba(201,162,75,.18);padding-left:12px}
+#page-clientes .card-metric-label{font-size:10px;letter-spacing:.08em;color:var(--muted)}
+#page-clientes .card-metric-val{font-size:13.5px;font-weight:600}
+#page-clientes .cliente-card-actions{grid-area:act;border-top:1px solid rgba(201,162,75,.18);gap:8px;padding-top:10px}
+#page-clientes .cliente-card-actions .btn,#page-clientes .cliente-card-actions .icon-btn{border-radius:12px}
+#page-clientes .cliente-card-actions .btn-outline,#page-clientes .cliente-card-actions .icon-btn{background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.35);color:var(--text)}
+#page-clientes .cliente-card-actions .btn-outline .ic,#page-clientes .cliente-card-actions .icon-btn.edit .ic{color:var(--cg2)}
+#page-clientes .cliente-card-actions .icon-btn.del{border-color:rgba(229,96,79,.55)}
+@media (max-width:380px){#page-clientes .cli-actions .btn{font-size:12px;padding:11px 6px}#page-clientes .cli-actions .btn .ic{display:none}}
