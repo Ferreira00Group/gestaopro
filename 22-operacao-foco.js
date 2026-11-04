@@ -260,6 +260,48 @@ function popularClientesPDV() {
   sel.innerHTML = opts;
 }
 
+let _pdvHistoricoAcoes = [];
+
+function diminuirItemDiretoPDV(produtoId) {
+  const idx = _pdvCesta.findIndex(it => it.produtoId === produtoId);
+  if (idx !== -1) {
+    const nome = _pdvCesta[idx].nome;
+    alterarQtdPDV(idx, -1);
+    if (typeof showToast === 'function') {
+      showToast(`Removido 1 un de ${nome}`, 'gold');
+    }
+  }
+}
+
+function desfazerUltimoItemPDV() {
+  if (_pdvHistoricoAcoes.length > 0) {
+    const acao = _pdvHistoricoAcoes.pop();
+    const idx = _pdvCesta.findIndex(it => it.produtoId === acao.produtoId);
+    if (idx !== -1) {
+      const nome = _pdvCesta[idx].nome;
+      alterarQtdPDV(idx, -1);
+      if (typeof showToast === 'function') {
+        showToast(`Desfeito: 1 un removida de ${nome} ↩️`, 'gold');
+      }
+      return;
+    }
+  }
+
+  // Fallback: se não tiver histórico mas tiver item na cesta, diminui o último
+  if (_pdvCesta.length > 0) {
+    const ultimoIdx = _pdvCesta.length - 1;
+    const nome = _pdvCesta[ultimoIdx].nome;
+    alterarQtdPDV(ultimoIdx, -1);
+    if (typeof showToast === 'function') {
+      showToast(`Desfeito: 1 un removida de ${nome} ↩️`, 'gold');
+    }
+  } else {
+    if (typeof showToast === 'function') {
+      showToast('Nada para desfazer', 'muted');
+    }
+  }
+}
+
 function renderizarGradeProdutosPDV(termo = '') {
   const container = document.getElementById('pdv-produtos-grid');
   if (!container || typeof state === 'undefined' || !Array.isArray(state.produtos)) return;
@@ -287,7 +329,12 @@ function renderizarGradeProdutosPDV(termo = '') {
       <div class="pdv-card-prod ${qtdNaCesta > 0 ? 'selecionado' : ''}" onclick="adicionarItemPDV(${p.id})" style="${semEstoque ? 'opacity:.65;' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
           <div style="font-size:13px;font-weight:700;color:#FFF;line-height:1.3;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.nome}</div>
-          ${qtdNaCesta > 0 ? `<span class="pdv-card-badge">${qtdNaCesta}</span>` : ''}
+          ${qtdNaCesta > 0 ? `
+            <div style="display:flex;align-items:center;gap:3px" onclick="event.stopPropagation()">
+              <button type="button" class="pdv-card-menos-btn" onclick="diminuirItemDiretoPDV(${p.id})" title="Diminuir 1 un">-1</button>
+              <span class="pdv-card-badge">${qtdNaCesta}</span>
+            </div>
+          ` : ''}
         </div>
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
           <strong style="color:var(--gold,#C9A24B);font-size:14px">${preco}</strong>
@@ -312,6 +359,7 @@ function adicionarItemPDV(produtoId) {
       qtd: 1
     });
   }
+  _pdvHistoricoAcoes.push({ produtoId, delta: 1 });
   renderizarGradeProdutosPDV(document.getElementById('pdv-busca-item')?.value || '');
   renderizarCestaPDV();
 }

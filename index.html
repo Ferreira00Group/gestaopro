@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.85.0">
+<link rel="stylesheet" href="styles.css?v=5.86.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -64,7 +64,7 @@
   <div class="topbar-alerts">
     <button id="btn-sair-foco" class="btn btn-outline btn-xs" onclick="toggleModoFoco(false)" style="display:none;border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);gap:4px"><i data-lucide="minimize-2" style="width:13px;height:13px"></i> Sair do Foco</button>
     <button class="alert-bell" id="btn-topbar-foco" onclick="toggleModoFoco()" title="Modo Foco (Alt+F)" style="display:flex;align-items:center;justify-content:center"><i data-lucide="scan" class="ic"></i></button>
-    <a href="/download" download="gestaopro-v5.85.zip" class="alert-bell" title="Baixar ZIP do Sistema (v5.85.0)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
+    <a href="/download" download="gestaopro-v5.86.zip" class="alert-bell" title="Baixar ZIP do Sistema (v5.86.0)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
     <button class="alert-bell" onclick="abrirAssistenteIA()" title="Copiloto IA Gemini" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center"><i data-lucide="sparkles" class="ic"></i></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
   </div>
@@ -149,13 +149,13 @@
   </div>
 
   <div class="sidebar-footer">
-    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual">5.85.0</span> · GestãoPRO · Dados salvos localmente</div>
+    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual">5.86.0</span> · GestãoPRO · Dados salvos localmente</div>
     <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
       <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>
     </a>
     <div id="footer-actions-collapsible" style="display:none">
       <div class="footer-actions">
-        <a href="/download" download="gestaopro-v5.85.zip" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.85.0)</a>
+        <a href="/download" download="gestaopro-v5.86.zip" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.86.0)</a>
         <a onclick="compartilharBackup()" class="footer-action-link"><i data-lucide="download" class="ic"></i>Exportar JSON</a>
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
@@ -223,7 +223,7 @@
 
   <!-- PARTE 1: cards grandes -->
   <div class="dash-grid2" id="dash-cards-grid" style="margin-bottom:10px">
-    <div class="card-hero red" style="cursor:pointer" onclick="goto('receber')" title="Ver contas a receber"><div class="label">Total a Receber</div><div class="value debt-pulse" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
+    <div class="card-hero red" style="cursor:pointer" onclick="gotoClientesDevendo()" title="Ver clientes devendo"><div class="label">Total a Receber</div><div class="value debt-pulse" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
     <div class="card-hero green" style="cursor:pointer" onclick="goto('relatorio')" title="Lucro do mês (vendas − gastos)"><div class="label">Lucro</div><div class="value" id="dash-lucro">R$ 0</div><div class="sub" id="dash-lucro-pct" title="Margem real: lucro ÷ vendas do mês">0%</div></div>
     <div class="card-hero blue" style="cursor:pointer" onclick="goto('financeiro')" title="Gastos do mês"><div class="label">Gastos do Mês</div><div class="value" id="dash-gastos-mes">R$ 0</div><div class="sub" id="dash-gastos-mes-insumos" title="Parte do gasto que foi de insumos / matéria-prima">R$ 0,00</div></div>
     <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
@@ -234,16 +234,16 @@
   <div class="qa-grid">
     <button type="button" class="qa-btn" onclick="abrirMenuNovaVenda()"><span class="qa-ic"><i data-lucide="circle-plus"></i></span><span class="qa-lb">Nova venda</span></button>
     <button type="button" class="qa-btn" onclick="openModal('modal-cliente')"><span class="qa-ic"><i data-lucide="user-plus"></i><span class="qa-count" id="qa-clientes-count" title="Clientes cadastrados">0</span></span><span class="qa-lb">Novo cliente</span></button>
-    <button type="button" class="qa-btn" onclick="abrirConfigPix()"><span class="qa-ic"><i data-lucide="qr-code"></i></span><span class="qa-lb">Pix Offline</span></button>
+    <button type="button" class="qa-btn" onclick="pixMostrarNaTela()"><span class="qa-ic"><i data-lucide="qr-code"></i></span><span class="qa-lb">Pix Offline</span></button>
     <button type="button" class="qa-btn" onclick="abrirNovoGasto()"><span class="qa-ic"><i data-lucide="receipt"></i></span><span class="qa-lb">Novo gasto</span></button>
-    <button type="button" class="qa-btn" onclick="goto('receber')"><span class="qa-ic"><i data-lucide="wallet"></i></span><span class="qa-lb">Receber</span></button>
+    <button type="button" class="qa-btn" onclick="gotoClientesDevendo()"><span class="qa-ic"><i data-lucide="wallet"></i></span><span class="qa-lb">Receber</span></button>
   </div>
 
   <!-- PARTE 2: alertas (sem mudança) -->
   <div class="dash-section-title"><i data-lucide="triangle-alert" class="ic"></i>Alertas</div>
   <div class="dash-grid2" id="dash-cards-grid-2" style="margin-bottom:10px">
-    <div class="card-compacto alerta" style="cursor:pointer" onclick="goto('receber')" title="Ver contas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
-    <div class="card-compacto aviso" style="cursor:pointer" onclick="goto('receber')" title="Vencimentos de hoje"><div class="icon"><i data-lucide="calendar-clock"></i></div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
+    <div class="card-compacto alerta" style="cursor:pointer" onclick="gotoClientesDevendo()" title="Ver clientes devendo"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
+    <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoClientesDevendo()" title="Ver clientes devendo"><div class="icon"><i data-lucide="calendar-clock"></i></div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
     <div class="card-compacto aviso" style="cursor:pointer" onclick="goto('estoque')" title="Ver estoque"><div class="icon"><i data-lucide="package"></i></div><div class="info"><span class="label">Estoque Baixo</span><span class="value" id="dash-estoque-baixo">0</span><span class="sub">abaixo do mínimo</span></div></div>
     <div class="card-compacto" style="cursor:pointer" onclick="filterVendaTipo('orcamento');goto('vendas')" title="Ver orçamentos"><div class="icon"><i data-lucide="clipboard-list"></i></div><div class="info"><span class="label">Orçamentos</span><span class="value" id="dash-orc-pendentes">0</span><span class="sub" id="dash-orc-sub">aguardando aprovação</span></div></div>
   </div>
@@ -1320,7 +1320,12 @@
         </div>
         <div style="font-size:11.5px;color:var(--muted)">Aponte a câmera do aplicativo do banco para escanear</div>
       </div>
-      <button class="modal-close" style="position:static" onclick="closeModal('modal-pix-tela')"><i data-lucide="x" class="ic"></i></button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button type="button" class="btn btn-outline btn-xs" onclick="closeModal('modal-pix-tela');abrirConfigPix()" title="Configurar ou alterar chave Pix" style="font-size:11px;padding:4px 8px;border-color:rgba(255,255,255,.2);color:var(--muted);gap:4px">
+          <i data-lucide="settings" style="width:12px;height:12px"></i> Configurar Chave
+        </button>
+        <button class="modal-close" style="position:static" onclick="closeModal('modal-pix-tela')"><i data-lucide="x" class="ic"></i></button>
+      </div>
     </div>
 
     <div class="modal-body" style="padding:16px 18px 20px">
@@ -2415,36 +2420,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.85.0"></script>
-<script src="00-core.js?v=5.85.0"></script>
-<script src="lib-qrcode.js?v=5.85.0"></script>
-<script src="01-ui-nav.js?v=5.85.0"></script>
-<script src="02-dashboard.js?v=5.85.0"></script>
-<script src="03-clientes.js?v=5.85.0"></script>
-<script src="04-vendas.js?v=5.85.0"></script>
-<script src="04b-pix-extrato.js?v=5.85.0"></script>
-<script src="11b-meu-dia.js?v=5.85.0"></script>
-<script src="11c-promessa-reneg.js?v=5.85.0"></script>
-<script src="11d-aprovar-lote.js?v=5.85.0"></script>
-<script src="05-producao.js?v=5.85.0"></script>
-<script src="06-estoque.js?v=5.85.0"></script>
-<script src="07-precificacao.js?v=5.85.0"></script>
-<script src="08-compras-fornecedores.js?v=5.85.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.85.0"></script>
-<script src="10-fab-inline.js?v=5.85.0"></script>
-<script src="10b-planejamento.js?v=5.85.0"></script>
-<script src="13-crm.js?v=5.85.0"></script>
-<script src="14-relacionamento.js?v=5.85.0"></script>
-<script src="15-cliente360.js?v=5.85.0"></script>
-<script src="16-automacoes.js?v=5.85.0"></script>
-<script src="17-banco.js?v=5.85.0"></script>
-<script src="18-credito.js?v=5.85.0"></script>
-<script src="19-conectores.js?v=5.85.0"></script>
-<script src="20-cartoes.js?v=5.85.0"></script>
-<script src="12-drive-backup.js?v=5.85.0"></script>
-<script src="11-app-init.js?v=5.85.0"></script>
-<script src="21-gemini-ia.js?v=5.85.0"></script>
-<script src="22-operacao-foco.js?v=5.85.0"></script>
+<script src="00a-config.js?v=5.86.0"></script>
+<script src="00-core.js?v=5.86.0"></script>
+<script src="lib-qrcode.js?v=5.86.0"></script>
+<script src="01-ui-nav.js?v=5.86.0"></script>
+<script src="02-dashboard.js?v=5.86.0"></script>
+<script src="03-clientes.js?v=5.86.0"></script>
+<script src="04-vendas.js?v=5.86.0"></script>
+<script src="04b-pix-extrato.js?v=5.86.0"></script>
+<script src="11b-meu-dia.js?v=5.86.0"></script>
+<script src="11c-promessa-reneg.js?v=5.86.0"></script>
+<script src="11d-aprovar-lote.js?v=5.86.0"></script>
+<script src="05-producao.js?v=5.86.0"></script>
+<script src="06-estoque.js?v=5.86.0"></script>
+<script src="07-precificacao.js?v=5.86.0"></script>
+<script src="08-compras-fornecedores.js?v=5.86.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.86.0"></script>
+<script src="10-fab-inline.js?v=5.86.0"></script>
+<script src="10b-planejamento.js?v=5.86.0"></script>
+<script src="13-crm.js?v=5.86.0"></script>
+<script src="14-relacionamento.js?v=5.86.0"></script>
+<script src="15-cliente360.js?v=5.86.0"></script>
+<script src="16-automacoes.js?v=5.86.0"></script>
+<script src="17-banco.js?v=5.86.0"></script>
+<script src="18-credito.js?v=5.86.0"></script>
+<script src="19-conectores.js?v=5.86.0"></script>
+<script src="20-cartoes.js?v=5.86.0"></script>
+<script src="12-drive-backup.js?v=5.86.0"></script>
+<script src="11-app-init.js?v=5.86.0"></script>
+<script src="21-gemini-ia.js?v=5.86.0"></script>
+<script src="22-operacao-foco.js?v=5.86.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -2861,8 +2866,11 @@
               <option value="">Consumidor Final (Balcão)</option>
             </select>
           </div>
-          <div style="position:relative;width:100%">
-            <input type="text" id="pdv-busca-item" class="form-input" placeholder="🔍 Buscar nome, código ou leitor..." oninput="renderizarGradeProdutosPDV(this.value)" style="width:100%;padding:9px 12px;font-size:13.5px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12)">
+          <div style="display:flex;gap:6px;width:100%">
+            <input type="text" id="pdv-busca-item" class="form-input" placeholder="🔍 Buscar nome, código ou leitor..." oninput="renderizarGradeProdutosPDV(this.value)" style="flex:1;padding:9px 12px;font-size:13.5px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12)">
+            <button type="button" class="btn btn-outline btn-sm" onclick="desfazerUltimoItemPDV()" title="Desfazer último clique" style="border-color:rgba(255,255,255,.25);color:#FFF;padding:8px 12px;font-size:12px;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:4px">
+              <i data-lucide="undo-2" style="width:14px;height:14px"></i> Desfazer
+            </button>
           </div>
         </div>
 
@@ -2873,16 +2881,21 @@
 
         <!-- Barra Inferior Flutuante Móvel (Bottom Drawer) -->
         <div id="pdv-bottom-bar" class="pdv-bottom-bar" style="display:none" onclick="trocarAbaPDV('cesta')">
-          <div style="display:flex;align-items:center;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px">
             <span class="pdv-bottom-badge"><span id="pdv-bottom-qtd">0</span> un</span>
             <div>
               <div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px">Total Cesta</div>
               <strong id="pdv-bottom-total" style="font-size:16px;color:#FFF">R$ 0,00</strong>
             </div>
           </div>
-          <button type="button" class="btn btn-sm" style="background:#FFF;color:#000;font-weight:800;border:none;border-radius:20px;padding:7px 16px;display:flex;align-items:center;gap:6px">
-            Cobrar Cesta →
-          </button>
+          <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+            <button type="button" class="btn btn-outline btn-sm" onclick="desfazerUltimoItemPDV()" title="Desfazer último clique (-1 un)" style="border-color:rgba(255,255,255,.3);color:#FFF;padding:6px 10px;font-size:12px;border-radius:18px;display:flex;align-items:center;gap:4px">
+              <i data-lucide="undo-2" style="width:13px;height:13px"></i> Desfazer
+            </button>
+            <button type="button" class="btn btn-sm" onclick="trocarAbaPDV('cesta')" style="background:#FFF;color:#000;font-weight:800;border:none;border-radius:20px;padding:7px 14px;display:flex;align-items:center;gap:4px">
+              Cobrar →
+            </button>
+          </div>
         </div>
       </div>
 

@@ -560,7 +560,31 @@ function toggleNavGroup(id){
   const g=document.getElementById('grp-'+id);
   if(g) g.classList.toggle('open');
 }
+function gotoClientesDevendo(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  const pgCl = document.getElementById('page-clientes');
+  if(pgCl) pgCl.classList.add('active');
+  const navLink=document.querySelector('nav a[data-page="clientes"]');
+  if(navLink) navLink.classList.add('active');
+  closeSidebar();
+  if(typeof state !== 'undefined' && state){
+    state.cliente_status_filter = 'devendo';
+    state.cliente_filter = '';
+  }
+  const sel = document.getElementById('cliente-status-filter');
+  if(sel) sel.value = 'devendo';
+  const inpBusca = document.getElementById('cliente-busca-input');
+  if(inpBusca) inpBusca.value = '';
+  if(typeof renderClientes === 'function') renderClientes();
+  requestAnimationFrame(ajustarStickyTabela);
+}
+
 function goto(page){
+  if(page === 'receber'){
+    gotoClientesDevendo();
+    return;
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
