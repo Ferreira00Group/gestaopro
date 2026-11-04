@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-<title>GestãoPRO - ERP & Inteligência Empresarial</title>
-<meta name="description" content="Sistema completo de gestão comercial, vendas, estoque, produção, financeiro e CRM potencializado com inteligência artificial Gemini.">
-<meta property="og:title" content="GestãoPRO - ERP & Inteligência Empresarial">
-<meta property="og:description" content="Sistema completo de gestão comercial, vendas, estoque, produção, financeiro e CRM potencializado com inteligência artificial Gemini.">
+<title>GestãoPRO - ERP com IA Autônoma em Tempo Real</title>
+<meta name="description" content="Sistema completo de gestão comercial, vendas, estoque, produção e financeiro potencializado com IA Gemini 3.8 Flash para análise preditiva e gerenciamento autônomo de ações em tempo real.">
+<meta property="og:title" content="GestãoPRO - ERP com IA Autônoma em Tempo Real">
+<meta property="og:description" content="Sistema completo de gestão comercial, vendas, estoque, produção e financeiro potencializado com IA Gemini 3.8 Flash para análise preditiva e gerenciamento autônomo de ações em tempo real.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.json">
@@ -64,8 +64,8 @@
   <div class="topbar-alerts">
     <button id="btn-sair-foco" class="btn btn-outline btn-xs" onclick="toggleModoFoco(false)" style="display:none;border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);gap:4px"><i data-lucide="minimize-2" style="width:13px;height:13px"></i> Sair do Foco</button>
     <button class="alert-bell" id="btn-topbar-foco" onclick="toggleModoFoco()" title="Modo Foco (Alt+F)" style="display:flex;align-items:center;justify-content:center"><i data-lucide="scan" class="ic"></i></button>
-    <a href="/download" download="gestaopro-v5.86.zip" class="alert-bell" title="Baixar ZIP do Sistema (v5.86.0)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;text-decoration:none"><i data-lucide="download" class="ic"></i></a>
-    <button class="alert-bell" onclick="abrirAssistenteIA()" title="Copiloto IA Gemini" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center"><i data-lucide="sparkles" class="ic"></i></button>
+    <button type="button" onclick="abrirModalDownloadSistema()" class="alert-bell" title="Baixar ZIP do Sistema (v5.86.0)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;cursor:pointer"><i data-lucide="download" class="ic"></i></button>
+    <button class="alert-bell" onclick="abrirAssistenteIA()" title="Central de IA Autônoma & Copiloto" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center;position:relative"><i data-lucide="sparkles" class="ic"></i><span id="ia-badge-acoes" style="background:#00bdae;display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%"></span></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
   </div>
 </div>
@@ -120,6 +120,8 @@
   <nav>
     <a class="active" onclick="goto('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard" class="icon"></i> Início</a>
     <a onclick="abrirAssistenteIA()" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="sparkles" class="icon" style="color:var(--gold,#C9A24B)"></i> Copiloto IA <span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:9.5px;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:800">GEMINI</span></a>
+    <a onclick="abrirAssistenteIA('', 'acoes')" style="color:#00bdae;font-weight:700"><i data-lucide="zap" class="icon" style="color:#00bdae"></i> Ações Autônomas <span class="badge" style="background:#00bdae;color:#000;font-size:9.5px;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:800">PILOTO</span></a>
+    <a onclick="abrirAssistenteIA('', 'analise')"><i data-lucide="bar-chart-3" class="icon"></i> Análise de Dados</a>
     <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
     <a onclick="goto('crm')" data-page="crm"><i data-lucide="handshake" class="icon"></i> CRM</a>
     <a onclick="goto('meudia')" data-page="meudia"><i data-lucide="route" class="icon"></i> Meu dia</a>
@@ -155,7 +157,7 @@
     </a>
     <div id="footer-actions-collapsible" style="display:none">
       <div class="footer-actions">
-        <a href="/download" download="gestaopro-v5.86.zip" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.86.0)</a>
+        <a onclick="abrirModalDownloadSistema()" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700;cursor:pointer"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.86.0)</a>
         <a onclick="compartilharBackup()" class="footer-action-link"><i data-lucide="download" class="ic"></i>Exportar JSON</a>
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
@@ -194,11 +196,14 @@
       <button class="btn btn-outline btn-sm" onclick="abrirFilaSeparacao()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="boxes" class="ic"></i> Expedição
       </button>
-      <button class="btn btn-outline btn-sm" onclick="executarDiagnosticoIA()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="activity" class="ic"></i> Diagnóstico
+      <button class="btn btn-outline btn-sm" onclick="abrirAssistenteIA('', 'acoes')" style="border-color:#00bdae;color:#00bdae;display:inline-flex;align-items:center;gap:6px;font-weight:700">
+        <i data-lucide="zap" class="ic"></i> Ações Autônomas
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="abrirAssistenteIA('', 'analise')" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="bar-chart-3" class="ic"></i> Análise de Dados
       </button>
       <button class="btn btn-primary btn-sm" onclick="abrirAssistenteIA()" style="display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="sparkles" class="ic"></i> Chat IA
+        <i data-lucide="sparkles" class="ic"></i> Copiloto IA
       </button>
     </div>
   </div>
@@ -2698,36 +2703,92 @@
 
 <!-- MODAL ASSISTENTE IA GEMINI -->
 <div class="modal-overlay" id="modal-ia-assistente">
-  <div class="modal ia-modal-dialog">
+  <div class="modal ia-modal-dialog" style="max-width:750px !important">
     <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.08);padding:14px 18px">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0">
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0;border:1px solid rgba(201,162,75,.4)">
           <i data-lucide="sparkles" class="ic"></i>
         </div>
         <div>
           <h3 style="margin:0;font-size:16px;color:#FFF;display:flex;align-items:center;gap:6px">
-            Copiloto IA GestãoPRO
+            Central de IA Autônoma &amp; Copiloto
             <span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:10px;font-weight:800;padding:2px 6px">Gemini 3.8 Flash</span>
           </h3>
-          <span style="font-size:11px;color:var(--muted)">Inteligência Executiva & Operacional em Tempo Real</span>
+          <span style="font-size:11px;color:var(--muted)">Análise preditiva em tempo real &amp; Gerenciamento autônomo de ações</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn btn-outline btn-xs" id="btn-toggle-piloto" onclick="alternarPilotoAutomatico()" title="Alternar modo de autonomia">
+          <span style="color:var(--muted)">○ Supervisionado</span>
+        </button>
         <button class="btn btn-outline btn-xs" onclick="limparHistoricoIA()" title="Limpar conversa">
-          <i data-lucide="rotate-ccw" class="ic"></i> Limpar
+          <i data-lucide="rotate-ccw" class="ic"></i>
         </button>
         <button class="modal-close" onclick="fecharAssistenteIA()"><i data-lucide="x" class="ic"></i></button>
       </div>
     </div>
-    <div class="ia-chat-container">
-      <div id="ia-chat-mensagens"></div>
-      <div class="ia-chat-footer">
-        <input type="text" class="form-control" id="ia-chat-input" placeholder="Faça uma pergunta sobre finanças, estoque, vendas ou cobrança..." onkeydown="if(event.key==='Enter')enviarMensagemIA()">
-        <button class="btn btn-primary" onclick="enviarMensagemIA()" style="display:inline-flex;align-items:center;gap:6px;padding:0 16px">
-          <i data-lucide="send" class="ic"></i>
-        </button>
+
+    <!-- ABAS DA CENTRAL DE IA -->
+    <div class="ia-modal-tabs">
+      <button class="ia-tab-btn active" data-tab="chat" onclick="mudarAbaIA('chat')">
+        <i data-lucide="message-square" style="width:14px;height:14px"></i> Copiloto Chat
+      </button>
+      <button class="ia-tab-btn" data-tab="acoes" onclick="mudarAbaIA('acoes')">
+        <i data-lucide="zap" style="width:14px;height:14px;color:#00bdae"></i> Ações Autônomas
+        <span class="ia-tab-badge" id="ia-tab-badge-acoes">⚡</span>
+      </button>
+      <button class="ia-tab-btn" data-tab="analise" onclick="mudarAbaIA('analise')">
+        <i data-lucide="bar-chart-3" style="width:14px;height:14px"></i> Análise Preditiva
+      </button>
+      <button class="ia-tab-btn" data-tab="log" onclick="mudarAbaIA('log')">
+        <i data-lucide="history" style="width:14px;height:14px"></i> Log de Execução
+      </button>
+    </div>
+
+    <!-- ABA 1: CHAT COPILOTO -->
+    <div class="ia-tab-content active" id="ia-tab-view-chat">
+      <div class="ia-chat-container">
+        <div id="ia-chat-mensagens"></div>
+        <div class="ia-chat-footer">
+          <input type="text" class="form-control" id="ia-chat-input" placeholder="Faça uma pergunta sobre finanças, estoque, vendas ou cobrança..." onkeydown="if(event.key==='Enter')enviarMensagemIA()">
+          <button class="btn btn-primary" onclick="enviarMensagemIA()" style="display:inline-flex;align-items:center;gap:6px;padding:0 16px">
+            <i data-lucide="send" class="ic"></i>
+          </button>
+        </div>
       </div>
     </div>
+
+    <!-- ABA 2: AÇÕES AUTÔNOMAS DO SISTEMA -->
+    <div class="ia-tab-content" id="ia-tab-view-acoes" style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <h4 style="margin:0;font-size:14px;color:#FFF">Ações Operacionais Autônomas</h4>
+          <span style="font-size:11.5px;color:var(--muted)">O motor analisa anomalias e gera comandos diretos no sistema.</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="executarTodasAcoesPrioritarias()" style="background:#00bdae;border-color:#00bdae;color:#000;font-weight:700">
+          ⚡ Executar Todas as Prioritárias
+        </button>
+      </div>
+      <div id="ia-acoes-lista" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:55vh">
+        <!-- Cartões de ação renderizados dinamicamente -->
+      </div>
+    </div>
+
+    <!-- ABA 3: ANÁLISE PREDITIVA EM TEMPO REAL -->
+    <div class="ia-tab-content" id="ia-tab-view-analise" style="padding:16px">
+      <div id="ia-analise-conteudo" style="overflow-y:auto;max-height:60vh">
+        <!-- KPIs, Curva ABC e Runway de Estoque -->
+      </div>
+    </div>
+
+    <!-- ABA 4: LOG DE AUDITORIA -->
+    <div class="ia-tab-content" id="ia-tab-view-log" style="padding:16px">
+      <h4 style="margin:0 0 10px;font-size:14px;color:#FFF">Histórico de Ações Executadas pela IA</h4>
+      <div id="ia-log-conteudo" style="overflow-y:auto;max-height:60vh">
+        <!-- Log de auditoria -->
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2980,6 +3041,45 @@
 
     <div style="padding:16px 20px;overflow-y:auto;flex:1;min-height:0" id="fila-separacao-lista">
       <!-- Pedidos pendentes de separação renderizados dinamicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DOWNLOAD SEGURO DO SISTEMA (DESBLOQUEIO DE NAVEGADOR & IFRAME) -->
+<div class="modal-overlay" id="modal-download-sistema">
+  <div class="modal" style="max-width:540px;width:95%">
+    <div class="modal-header">
+      <h3 style="display:flex;align-items:center;gap:8px">
+        <i data-lucide="download" class="ic" style="color:var(--gold,#C9A24B)"></i>
+        Download do Sistema GestãoPRO (ZIP)
+      </h3>
+      <button class="modal-close" onclick="closeModal('modal-download-sistema')"><i data-lucide="x" class="ic"></i></button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:rgba(201,162,75,0.08);border:1px solid rgba(201,162,75,0.25);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--text);line-height:1.45">
+        💡 <strong>Dica de Desbloqueio:</strong> Se o seu navegador bloquear downloads diretos dentro de janelas incorporadas (iframes), você pode usar o <strong>Download em Nova Aba</strong> ou o <strong>Blob em Memória</strong> abaixo:
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- Opção 1: Blob em Memória -->
+        <button type="button" class="btn btn-primary" onclick="executarDownloadBlob()" style="width:100%;justify-content:center;gap:8px;padding:12px;font-size:13.5px;font-weight:700">
+          <i data-lucide="download-cloud" class="ic"></i> 1. Baixar ZIP Direto (Blob em Memória)
+        </button>
+
+        <!-- Opção 2: Nova Aba (Garante que nunca seja bloqueado pelo iframe) -->
+        <a id="btn-download-nova-aba" href="/download" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="width:100%;justify-content:center;gap:8px;padding:12px;font-size:13.5px;border-color:#00bdae;color:#00bdae;text-decoration:none;font-weight:700" onclick="showToast('Abrindo download nativo em nova guia...', '#00bdae')">
+          <i data-lucide="external-link" class="ic"></i> 2. Abrir Download em Nova Aba (Sem Bloqueio)
+        </a>
+
+        <!-- Opção 3: Exportar JSON dos Dados -->
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-download-sistema');compartilharBackup()" style="width:100%;justify-content:center;gap:8px;padding:12px;font-size:13px">
+          <i data-lucide="file-json" class="ic"></i> 3. Exportar Apenas Dados (Backup JSON)
+        </button>
+      </div>
+
+      <div style="font-size:11.5px;color:var(--muted);text-align:center">
+        Versão atualizada v5.86.0 com IA Gemini 3.8 Flash &amp; Piloto Autônomo.
+      </div>
     </div>
   </div>
 </div>

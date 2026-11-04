@@ -1713,5 +1713,163 @@ body.modo-foco .dica-box {
   }
 }
 
+/* ═══ CENTRAL DE IA AUTÔNOMA & PILOTO AUTOMÁTICO (v5.86.0) ═══ */
+.ia-modal-tabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 16px;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.ia-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted, #8E897C);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  transition: all .15s ease;
+}
+
+.ia-tab-btn:hover {
+  color: #FFF;
+}
+
+.ia-tab-btn.active {
+  color: var(--gold, #C9A24B);
+  border-bottom-color: var(--gold, #C9A24B);
+}
+
+.ia-tab-badge {
+  background: #00bdae;
+  color: #000;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.ia-tab-content {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.ia-tab-content.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Banner de Monitoramento Autônomo em Tempo Real */
+.ia-smart-banner {
+  background: linear-gradient(135deg, rgba(0, 189, 174, 0.12), rgba(201, 162, 75, 0.1));
+  border: 1px solid rgba(0, 189, 174, 0.35);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  animation: iaPulseGlow 3s ease-in-out infinite;
+}
+
+@keyframes iaPulseGlow {
+  0%, 100% { border-color: rgba(0, 189, 174, 0.35); }
+  50% { border-color: rgba(201, 162, 75, 0.6); box-shadow: 0 4px 25px rgba(201, 162, 75, 0.15); }
+}
+
+/* Cartões de Ação Autônoma */
+.ia-action-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all .2s ease;
+  position: relative;
+}
+
+.ia-action-card:hover {
+  border-color: rgba(201, 162, 75, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.ia-action-card.executado {
+  border-color: rgba(76, 195, 138, 0.4);
+  background: rgba(76, 195, 138, 0.04);
+}
+
+.ia-tag-urgencia {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: .5px;
+}
+
+.ia-tag-alta {
+  background: rgba(235, 87, 87, 0.18);
+  color: #EB5757;
+  border: 1px solid rgba(235, 87, 87, 0.3);
+}
+
+.ia-tag-media {
+  background: rgba(242, 201, 76, 0.18);
+  color: #F2C94C;
+  border: 1px solid rgba(242, 201, 76, 0.3);
+}
+
+.ia-tag-baixa {
+  background: rgba(76, 195, 138, 0.18);
+  color: #4CC38A;
+  border: 1px solid rgba(76, 195, 138, 0.3);
+}
+
+/* Grid de Métricas Preditivas */
+.ia-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ia-kpi-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ia-kpi-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #FFF;
+}
+
+.ia-kpi-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+
 
 
