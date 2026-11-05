@@ -250,14 +250,52 @@ function abrirPDVRapido() {
   }, 250);
 }
 
-function popularClientesPDV() {
-  const sel = document.getElementById('pdv-cliente-select');
-  if (!sel || typeof state === 'undefined' || !Array.isArray(state.clientes)) return;
-  let opts = '<option value="">Consumidor Final (Balcão)</option>';
-  state.clientes.filter(c => !c.arquivado).forEach(c => {
-    opts += `<option value="${c.id}">${c.nome}</option>`;
+// Cliente do PDV: só "Consumidor Final (Balcão)" ou cliente identificado pelo Scanner de Cartão
+function popularClientesPDV() { pdvUsarBalcao(true); }
+
+function pdvAtualizarSeletor() {
+  const comCli = !!_pdvClienteId;
+  const gold = 'var(--gold,#C9A24B)';
+  const bB = document.getElementById('pdv-btn-balcao');
+  const bC = document.getElementById('pdv-btn-cartao');
+  const tx = document.getElementById('pdv-btn-cartao-txt');
+  if (bB) { bB.style.borderColor = comCli ? 'rgba(255,255,255,.12)' : gold; bB.style.background = comCli ? 'transparent' : 'rgba(201,162,75,.15)'; }
+  if (bC) { bC.style.borderColor = comCli ? gold : 'rgba(255,255,255,.12)'; bC.style.background = comCli ? 'rgba(201,162,75,.15)' : 'transparent'; }
+  if (tx) {
+    const cli = comCli && typeof getCliente === 'function' ? getCliente(_pdvClienteId) : null;
+    let n = null;
+    if (comCli && typeof cartoesDoCliente === 'function') n = cartoesDoCliente(_pdvClienteId);
+    tx.textContent = cli ? ((n != null ? 'Cartão ' + String(n).padStart(3, '0') + ' · ' : '') + cli.nome) : 'Scanner Cartão';
+  }
+  const hid = document.getElementById('pdv-cliente-select');
+  if (hid) hid.value = comCli ? String(_pdvClienteId) : '';
+}
+
+function pdvUsarBalcao(silencioso) {
+  _pdvClienteId = null;
+  pdvAtualizarSeletor();
+}
+
+function pdvLerCartao() {
+  if (typeof cartoesAbrirScan !== 'function') {
+    if (typeof showToast === 'function') showToast('Módulo de cartões indisponível', 'red');
+    return;
+  }
+  cartoesAbrirScan(function (n) {
+    const st = typeof cartoesState === 'function' ? cartoesState() : null;
+    if (st && !(n >= 1 && n <= st.total)) {
+      if (typeof showToast === 'function') showToast('Cartão ' + n + ' não existe', 'red');
+      return;
+    }
+    const c = typeof cartoesClienteDe === 'function' ? cartoesClienteDe(n) : null;
+    if (!c) {
+      if (typeof showToast === 'function') showToast('Cartão ' + String(n).padStart(3, '0') + ' ainda não está vinculado a um cliente', 'red');
+      return;
+    }
+    _pdvClienteId = c.id;
+    pdvAtualizarSeletor();
+    if (typeof showToast === 'function') showToast('Cliente: ' + c.nome, 'green');
   });
-  sel.innerHTML = opts;
 }
 
 let _pdvHistoricoAcoes = [];
@@ -478,9 +516,14 @@ function finalizarVendaPDV(formaPagamento) {
     return;
   }
 
+  if (formaPagamento === 'Fiado' && !_pdvClienteId) {
+    if (typeof showToast === 'function') showToast('Fiado exige cliente: use o Scanner Cartão', 'red');
+    return;
+  }
+
   const total = calcularTotalPDV();
   const selCl = document.getElementById('pdv-cliente-select');
-  const clienteId = selCl && selCl.value ? parseInt(selCl.value) : null;
+  const clienteId = _pdvClienteId || (selCl && selCl.value ? parseInt(selCl.value) : null);
   const clienteNome = clienteId && typeof getCliente === 'function' ? (getCliente(clienteId)?.nome || 'Cliente') : 'Consumidor Final';
 
   // Cria a venda no state
@@ -555,6 +598,7 @@ function finalizarVendaPDV(formaPagamento) {
   }
 
   _pdvCesta = [];
+  pdvUsarBalcao();
   renderizarCestaPDV();
   const inputRecebido = document.getElementById('pdv-valor-recebido');
   if (inputRecebido) inputRecebido.value = '';

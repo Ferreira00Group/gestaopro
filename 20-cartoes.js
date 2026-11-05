@@ -321,9 +321,16 @@ function cartoesVincularExistenteDoSemCliente(){
 function cartoesAbrirDigitado(){
   const n=cartoesExtrair(document.getElementById('cartao-scan-num').value);
   if(!n){ showToast('Digite o número do cartão','red'); return; }
-  cartoesFecharScan(); cartoesAbrir(n);
+  cartoesFecharScan(); cartoesAposLeitura(n);
 }
-async function cartoesAbrirScan(){
+// Quem pediu a leitura (ex.: PDV) pode registrar um callback; sem callback abre o cartão normalmente
+let _cartaoScanCb=null;
+function cartoesAposLeitura(n){
+  const cb=_cartaoScanCb; _cartaoScanCb=null;
+  if(typeof cb==='function') cb(n); else cartoesAbrir(n);
+}
+async function cartoesAbrirScan(cb){
+  _cartaoScanCb=(typeof cb==='function')?cb:null;
   cartoesGaranteModais();
   const msg=document.getElementById('cartao-scan-msg'), vid=document.getElementById('cartao-video');
   document.getElementById('cartao-scan-num').value='';
@@ -339,12 +346,13 @@ async function cartoesAbrirScan(){
     const det=new BarcodeDetector({formats:['qr_code']}); let busy=false;
     _scanTimer=setInterval(async()=>{
       if(busy) return; busy=true;
-      try{ const r=await det.detect(vid); if(r.length){ const n=cartoesExtrair(r[0].rawValue); if(n){ cartoesFecharScan(); cartoesAbrir(n); } } }catch(e){}
+      try{ const r=await det.detect(vid); if(r.length){ const n=cartoesExtrair(r[0].rawValue); if(n){ cartoesFecharScan(); cartoesAposLeitura(n); } } }catch(e){}
       busy=false;
     },300);
   }catch(e){ msg.textContent='Não consegui usar a câmera (permissão negada?). Digite o número do cartão abaixo.'; }
 }
 function cartoesFecharScan(){
+  _cartaoScanCb=null;
   if(_scanTimer){ clearInterval(_scanTimer); _scanTimer=null; }
   if(_scanStream){ _scanStream.getTracks().forEach(t=>t.stop()); _scanStream=null; }
   cartoesFecharModal('modal-cartao-scan');
