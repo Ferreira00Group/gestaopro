@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.87.2">
+<link rel="stylesheet" href="styles.css?v=5.87.3">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -64,7 +64,7 @@
   <div class="topbar-alerts">
     <button id="btn-sair-foco" class="btn btn-outline btn-xs" onclick="toggleModoFoco(false)" style="display:none;border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);gap:4px"><i data-lucide="minimize-2" style="width:13px;height:13px"></i> Sair do Foco</button>
     <button class="alert-bell" id="btn-topbar-foco" onclick="toggleModoFoco()" title="Modo Foco (Alt+F)" style="display:flex;align-items:center;justify-content:center"><i data-lucide="scan" class="ic"></i></button>
-    <button type="button" onclick="abrirModalDownloadSistema()" class="alert-bell" title="Baixar ZIP do Sistema (v5.87.2)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;cursor:pointer"><i data-lucide="download" class="ic"></i></button>
+    <button type="button" onclick="abrirModalDownloadSistema()" class="alert-bell" title="Baixar ZIP do Sistema (v5.87.3)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;cursor:pointer"><i data-lucide="download" class="ic"></i></button>
     <button class="alert-bell" onclick="abrirAssistenteIA()" title="Central de IA Autônoma & Copiloto" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center;position:relative"><i data-lucide="sparkles" class="ic"></i><span id="ia-badge-acoes" style="background:#00bdae;display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%"></span></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
   </div>
@@ -151,13 +151,13 @@
   </div>
 
   <div class="sidebar-footer">
-    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual">5.87.2</span> · GestãoPRO · Dados salvos localmente</div>
+    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual">5.87.3</span> · GestãoPRO · Dados salvos localmente</div>
     <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
       <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>
     </a>
     <div id="footer-actions-collapsible" style="display:none">
       <div class="footer-actions">
-        <a onclick="abrirModalDownloadSistema()" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700;cursor:pointer"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.87.2)</a>
+        <a onclick="abrirModalDownloadSistema()" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700;cursor:pointer"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.87.3)</a>
         <a onclick="compartilharBackup()" class="footer-action-link"><i data-lucide="download" class="ic"></i>Exportar JSON</a>
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
@@ -242,6 +242,7 @@
     <button type="button" class="qa-btn" onclick="pixMostrarNaTela()"><span class="qa-ic"><i data-lucide="qr-code"></i></span><span class="qa-lb">Pix Offline</span></button>
     <button type="button" class="qa-btn" onclick="abrirNovoGasto()"><span class="qa-ic"><i data-lucide="receipt"></i></span><span class="qa-lb">Novo gasto</span></button>
     <button type="button" class="qa-btn" onclick="gotoClientesDevendo()"><span class="qa-ic"><i data-lucide="wallet"></i></span><span class="qa-lb">Receber</span></button>
+    <button type="button" class="qa-btn" onclick="cartoesAbrirScan()"><span class="qa-ic"><i data-lucide="scan-line"></i></span><span class="qa-lb">Ler cartão</span></button>
   </div>
 
   <!-- PARTE 2: alertas (sem mudança) -->
@@ -2403,36 +2404,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.87.2"></script>
-<script src="00-core.js?v=5.87.2"></script>
-<script src="lib-qrcode.js?v=5.87.2"></script>
-<script src="01-ui-nav.js?v=5.87.2"></script>
-<script src="02-dashboard.js?v=5.87.2"></script>
-<script src="03-clientes.js?v=5.87.2"></script>
-<script src="04-vendas.js?v=5.87.2"></script>
-<script src="04b-pix-extrato.js?v=5.87.2"></script>
-<script src="11b-meu-dia.js?v=5.87.2"></script>
-<script src="11c-promessa-reneg.js?v=5.87.2"></script>
-<script src="11d-aprovar-lote.js?v=5.87.2"></script>
-<script src="05-producao.js?v=5.87.2"></script>
-<script src="06-estoque.js?v=5.87.2"></script>
-<script src="07-precificacao.js?v=5.87.2"></script>
-<script src="08-compras-fornecedores.js?v=5.87.2"></script>
-<script src="09-financeiro-relatorios.js?v=5.87.2"></script>
-<script src="10-fab-inline.js?v=5.87.2"></script>
-<script src="10b-planejamento.js?v=5.87.2"></script>
-<script src="13-crm.js?v=5.87.2"></script>
-<script src="14-relacionamento.js?v=5.87.2"></script>
-<script src="15-cliente360.js?v=5.87.2"></script>
-<script src="16-automacoes.js?v=5.87.2"></script>
-<script src="17-banco.js?v=5.87.2"></script>
-<script src="18-credito.js?v=5.87.2"></script>
-<script src="19-conectores.js?v=5.87.2"></script>
-<script src="20-cartoes.js?v=5.87.2"></script>
-<script src="12-drive-backup.js?v=5.87.2"></script>
-<script src="11-app-init.js?v=5.87.2"></script>
-<script src="21-gemini-ia.js?v=5.87.2"></script>
-<script src="22-operacao-foco.js?v=5.87.2"></script>
+<script src="00a-config.js?v=5.87.3"></script>
+<script src="00-core.js?v=5.87.3"></script>
+<script src="lib-qrcode.js?v=5.87.3"></script>
+<script src="01-ui-nav.js?v=5.87.3"></script>
+<script src="02-dashboard.js?v=5.87.3"></script>
+<script src="03-clientes.js?v=5.87.3"></script>
+<script src="04-vendas.js?v=5.87.3"></script>
+<script src="04b-pix-extrato.js?v=5.87.3"></script>
+<script src="11b-meu-dia.js?v=5.87.3"></script>
+<script src="11c-promessa-reneg.js?v=5.87.3"></script>
+<script src="11d-aprovar-lote.js?v=5.87.3"></script>
+<script src="05-producao.js?v=5.87.3"></script>
+<script src="06-estoque.js?v=5.87.3"></script>
+<script src="07-precificacao.js?v=5.87.3"></script>
+<script src="08-compras-fornecedores.js?v=5.87.3"></script>
+<script src="09-financeiro-relatorios.js?v=5.87.3"></script>
+<script src="10-fab-inline.js?v=5.87.3"></script>
+<script src="10b-planejamento.js?v=5.87.3"></script>
+<script src="13-crm.js?v=5.87.3"></script>
+<script src="14-relacionamento.js?v=5.87.3"></script>
+<script src="15-cliente360.js?v=5.87.3"></script>
+<script src="16-automacoes.js?v=5.87.3"></script>
+<script src="17-banco.js?v=5.87.3"></script>
+<script src="18-credito.js?v=5.87.3"></script>
+<script src="19-conectores.js?v=5.87.3"></script>
+<script src="20-cartoes.js?v=5.87.3"></script>
+<script src="12-drive-backup.js?v=5.87.3"></script>
+<script src="11-app-init.js?v=5.87.3"></script>
+<script src="21-gemini-ia.js?v=5.87.3"></script>
+<script src="22-operacao-foco.js?v=5.87.3"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -3056,7 +3057,7 @@
       </div>
 
       <div style="font-size:11.5px;color:var(--muted);text-align:center">
-        Versão atualizada v5.87.2 com IA Gemini 3.8 Flash &amp; Piloto Autônomo.
+        Versão atualizada v5.87.3 com IA Gemini 3.8 Flash &amp; Piloto Autônomo.
       </div>
     </div>
   </div>
