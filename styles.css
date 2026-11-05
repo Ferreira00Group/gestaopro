@@ -1950,3 +1950,4 @@ body.modo-foco .dica-box {
 #page-estoque .cliente-avatar-btn{cursor:default}
 #page-estoque .cliente-card-body.um-col{grid-template-columns:1fr}
 .cartoes-lista-vazia{grid-column:1/-1;text-align:center;color:var(--muted);padding:28px}
+#page-estoque .cliente-card-nome{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}

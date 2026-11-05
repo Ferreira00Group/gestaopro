@@ -748,24 +748,23 @@ function renderFornecedores(){
   }
   if(state.fornecedor_status_filter)list=list.filter(f=>f.status===state.fornecedor_status_filter);
   const tb=document.getElementById('fornecedores-table');
-  if(list.length===0){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhum fornecedor encontrado</span></div></td></tr>';return;}
+  if(list.length===0){tb.innerHTML=estoqueVazioHtml('Nenhum fornecedor encontrado');return;}
   tb.innerHTML=list.map(f=>{
     const materiasVinc=state.materias.filter(m=>m.fornecedorId===f.id);
     const materiasTxt=materiasVinc.length?materiasVinc.map(m=>`<span class="variante-tag">${escapeHtml(m.nome)}</span>`).join(''):'<span style="color:var(--muted);font-size:12px">—</span>';
-    return `<tr>
-      <td data-label="Nome"><strong>${escapeHtml(f.nome)}</strong>${f.obs?`<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(f.obs)}</span>`:''}</td>
-      <td data-label="Contato">${escapeHtml(f.contato||'-')}</td>
-      <td data-label="Telefone">${escapeHtml(f.tel||'-')}</td>
-      <td data-label="Fornece" style="font-size:12px">${escapeHtml(f.categoria||'-')}</td>
-      <td data-label="Matérias Vinculadas" class="td-block" style="max-width:220px">${materiasTxt}</td>
-      <td data-label="Compras" style="white-space:nowrap">${(()=>{const comprasForn=state.compras.filter(c=>c.fornecedorId===f.id);const totalGasto=comprasForn.reduce((s,c)=>s+c.total,0);return comprasForn.length?`<span style="font-size:12px"><strong>${comprasForn.length}</strong> compra(s)<br><span style="color:var(--muted)">${fmt(totalGasto)}</span></span>`:`<span style="color:var(--muted);font-size:12px">—</span>`;})()}</td>
-      <td data-label="Status"><span class="badge ${f.status==='ativo'?'badge-green':'badge-red'}">${f.status==='ativo'?'Ativo':'Inativo'}</span></td>
-      <td><div class="actions-cell">
-        <button class="icon-btn" onclick="abrirRegistrarCompra(${f.id})" title="Registrar Compra" style="color:var(--green)"><i data-lucide="shopping-cart" class="ic"></i></button>
+    const comprasForn=state.compras.filter(c=>c.fornecedorId===f.id);
+    const totalGasto=comprasForn.reduce((s,c)=>s+c.total,0);
+    const comprasTxt=comprasForn.length?`<span style="font-size:12.5px"><strong>${comprasForn.length}</strong> compra(s) · <span style="color:var(--muted)">${fmt(totalGasto)}</span></span>`:`<span style="color:var(--muted);font-size:12px">—</span>`;
+    return estoqueCardHtml({
+      icone:'truck',rotulo:'Fornecedor',selo:'Fornecedor',nome:escapeHtml(f.nome),
+      sub:f.obs?`<div style="font-size:11px;color:var(--muted)">${escapeHtml(f.obs)}</div>`:'',
+      badge:`<span class="badge ${f.status==='ativo'?'badge-green':'badge-red'}">${f.status==='ativo'?'Ativo':'Inativo'}</span>`,
+      col1:[['Contato',escapeHtml(f.contato||'-')],['Telefone',escapeHtml(f.tel||'-')],['Fornece',escapeHtml(f.categoria||'-')]],
+      col2:[['Compras',comprasTxt],['Matérias vinculadas',materiasTxt]],
+      acoes:`<button class="icon-btn" onclick="abrirRegistrarCompra(${f.id})" title="Registrar Compra" style="color:var(--green)"><i data-lucide="shopping-cart" class="ic"></i></button>
         <button class="icon-btn edit" onclick="editarFornecedor(${f.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
-        <button class="icon-btn del" onclick="excluirFornecedor(${f.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>
-      </div></td>
-    </tr>`;
+        <button class="icon-btn del" onclick="excluirFornecedor(${f.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>`
+    });
   }).join('');
 }
 function filterFornecedores(v){state.fornecedor_filter=v.toLowerCase();renderFornecedores();}

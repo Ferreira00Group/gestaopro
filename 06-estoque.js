@@ -135,7 +135,7 @@ function estoqueCardHtml(o){
       <div class="cliente-card-col">${o.col1.map(item).join('')}</div>
       <div class="cliente-card-col">${o.col2.map(item).join('')}</div>
     </div>
-    <div class="cliente-card-actions"><div style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${o.acoes}</div></div>
+    ${o.acoes?`<div class="cliente-card-actions"><div style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${o.acoes}</div></div>`:''}
   </div>`;
 }
 const estoqueVazioHtml=txt=>`<div class="cartoes-lista-vazia">${txt}</div>`;
@@ -275,7 +275,7 @@ function renderMovEstoque(){
   if(total===0){
     if(resumo) resumo.textContent='';
     const semNada=!(state.movEstoque&&state.movEstoque.length);
-    tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px"><div class="empty-inline"><i data-lucide="inbox"></i><span>${semNada?'Nenhuma movimentação registrada ainda. A partir desta versão, toda venda, produção, compra, baixa, entrada e ajuste − n + aparece aqui.':'Nenhuma movimentação com esses filtros.'}</span></div></td></tr>`;
+    tb.innerHTML=estoqueVazioHtml(`${semNada?'Nenhuma movimentação registrada ainda. A partir desta versão, toda venda, produção, compra, baixa, entrada e ajuste − n + aparece aqui.':'Nenhuma movimentação com esses filtros.'}`);
     return;
   }
   const mostrar=lista.slice(-MOV_LINHAS_MAX).reverse(); // mais recentes primeiro
@@ -284,13 +284,13 @@ function renderMovEstoque(){
     const [rot,cls]=MOV_ORIGENS[m.origem]||MOV_ORIGENS.outro;
     const quando=new Date(m.ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const cor=m.delta>0?'var(--green)':'var(--red)';
-    return `<tr>
-      <td data-label="Data/hora" style="font-size:12px;color:var(--muted)">${quando}</td>
-      <td data-label="Item"><strong>${escapeHtml(m.nome)}</strong></td>
-      <td data-label="Origem"><span class="badge ${cls}">${rot}</span></td>
-      <td data-label="Variação"><strong style="color:${cor}">${fmtMovQtd(m.delta,m.un,true)}</strong></td>
-      <td data-label="Saldo após">${fmtMovQtd(m.saldo,m.un,false)}</td>
-    </tr>`;
+    return estoqueCardHtml({
+      icone:'arrow-left-right',rotulo:'Movimento',selo:quando,nome:escapeHtml(m.nome),
+      badge:`<span class="badge ${cls}">${rot}</span>`,
+      col1:[['Variação',`<strong style="color:${cor}">${fmtMovQtd(m.delta,m.un,true)}</strong>`]],
+      col2:[['Saldo após',fmtMovQtd(m.saldo,m.un,false)]],
+      acoes:''
+    });
   }).join('');
 }
 
