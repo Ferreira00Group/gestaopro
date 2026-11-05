@@ -1,4 +1,4 @@
-// ============ SERVICE WORKER — GestãoPRO v5.86.1 ============
+// ============ SERVICE WORKER — GestãoPRO v5.86.2 ============
 // Estratégia: rede primeiro, sempre — com internet, o app sempre busca a
 // versão mais nova de cada arquivo (evita a inconsistência de um arquivo
 // atualizar e outro ficar preso na versão antiga). O cache só é usado como
@@ -7,7 +7,7 @@
 // O cache é nomeado com a APP_VERSION (00a-config.js) — ao subir uma nova
 // versão, um novo cache é criado e o antigo é limpo no activate.
 
-importScripts('00a-config.js?v=5.86.1');
+importScripts('00a-config.js?v=5.86.2');
 
 const CACHE_NAME = 'gestaopro-cache-v' + APP_VERSION;
 
