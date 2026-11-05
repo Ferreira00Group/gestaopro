@@ -68,7 +68,7 @@ function renderVendas(){
   const tb=document.getElementById('vendas-table');
   const tfoot=document.getElementById('vendas-tfoot');
   if(list.length===0){
-    tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma venda encontrada</span></div></td></tr>';
+    tb.innerHTML='<div class="cartoes-lista-vazia">Nenhuma venda encontrada</div>';
     if(tfoot) tfoot.innerHTML='';
     return;
   }
@@ -76,12 +76,9 @@ function renderVendas(){
   tb.innerHTML=list.map(v=>{
     const isOrc=v.tipo==='orcamento';
     const sit=isOrc?null:sitDe(v);
-    const itensTxt=v.itens&&v.itens.length>0?`<div style="display:flex;flex-direction:column;gap:4px">${v.itens.map(it=>
-      `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nomeItemVenda(it)}</span>
-        <span class="qtd-pill">${String(it.qtd).padStart(2,'0')} L</span>
-      </div>`
-    ).join('')}</div>`:'—';
+    const itensTxt=v.itens&&v.itens.length>0?v.itens.map(it=>
+      `<div><span>${nomeItemVenda(it)}</span><span class="qtd-pill">${String(it.qtd).padStart(2,'0')} L</span></div>`
+    ).join(''):'—';
     const expandido=vendasExpandidas.has(v.id);
     const formaTxt=isOrc?'—':(v.parcelado
       ? `Fiado parcelado <button class="icon-btn" style="width:auto;height:auto;padding:1px 6px;font-size:11px;vertical-align:middle" onclick="toggleExpandirParcelas(${v.id})">${sit.pagas}/${sit.totalParcelas} pagas ${expandido?'▾':'▸'}</button>`
@@ -105,26 +102,34 @@ function renderVendas(){
          <button class="icon-btn" onclick="duplicarVenda(${v.id})" title="Duplicar"><i data-lucide="copy" class="ic"></i></button>
          <button class="icon-btn edit" onclick="editarVenda(${v.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
          <button class="icon-btn del" onclick="excluirVenda(${v.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>`;
-    const linhaPrincipal=`<tr style="${sel?'background:var(--gold-soft);':''}" id="venda-row-${v.id}">
-    <td><input type="checkbox" class="venda-check" data-id="${v.id}" ${sel?'checked':''} onchange="toggleSelecaoVenda(${v.id},this.checked)" style="cursor:pointer;width:15px;height:15px"></td>
-    <td data-label="Código" style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">${isOrc?'OR':'VD'}${String(v.id).padStart(4,'0')}</td>
-    <td data-label="Data">${fmtDate(v.data)}</td>
-    <td data-label="Cliente"><strong style="cursor:pointer;color:var(--blue)" onclick="gotoCliente(${v.clienteId})">${escapeHtml(getCliente(v.clienteId).nome)}</strong></td>
-    <td data-label="Itens" class="td-block" style="max-width:200px;white-space:normal">${itensTxt}</td>
-    <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
-    <td data-label="Forma" style="font-size:12px">${formaTxt}</td>
-    <td data-label="Vencimento">${vencHtml}</td>
-    <td data-label="Pedido">${pedidoCell}</td>
-    <td data-label="Status">${statusCell}</td>
-    <td><div class="actions-cell">${acoes}</div></td>
-  </tr>`;
-    if(!isOrc && v.parcelado && expandido && sit.parcelas){
-      const detalhe=`<tr id="venda-row-${v.id}-detalhe"><td></td><td colspan="10" style="padding:2px 14px 12px 14px;background:var(--card-2)">
-        <div class="parcelas-wrap">${sit.parcelas.map(p=>renderLinhaParcela(v,p,hoje2)).join('')}</div>
-      </td></tr>`;
-      return linhaPrincipal+detalhe;
-    }
-    return linhaPrincipal;
+    const codigo=(isOrc?'OR':'VD')+String(v.id).padStart(4,'0');
+    const cli=getCliente(v.clienteId);
+    const parcelasHtml=(!isOrc && v.parcelado && expandido && sit.parcelas)
+      ? `<div class="venda-parcelas parcelas-wrap">${sit.parcelas.map(p=>renderLinhaParcela(v,p,hoje2)).join('')}</div>` : '';
+    return `<div class="cliente-card ${sel?'selecionada':''}" id="venda-row-${v.id}">
+    <input type="checkbox" class="venda-check venda-sel" data-id="${v.id}" ${sel?'checked':''} onchange="toggleSelecaoVenda(${v.id},this.checked)" title="Selecionar">
+    <div class="cliente-avatar-btn"><span class="cliente-avatar"><i data-lucide="${isOrc?'file-text':'shopping-bag'}" class="ic"></i></span><span class="card-metric-label">${isOrc?'Orçamento':'Venda'}</span></div>
+    <div class="cliente-card-header">
+      <div class="cliente-card-title-group">
+        <div class="cliente-card-badges"><span class="badge-cartao-selo">${codigo}</span></div>
+        <div class="cliente-card-nome venda-cliente" onclick="gotoCliente(${v.clienteId})">${escapeHtml(cli.nome)}</div>
+      </div>
+      <div class="cliente-card-status-badge">${statusCell}${isOrc?'':pedidoCell}</div>
+    </div>
+    <div class="cliente-card-body">
+      <div class="cliente-card-col">
+        <div class="card-metric-item"><span class="card-metric-label">Data</span><span class="card-metric-val">${fmtDate(v.data)}</span></div>
+        <div class="card-metric-item"><span class="card-metric-label">Total</span><strong class="card-metric-val">${fmt(v.total)}</strong></div>
+        <div class="card-metric-item"><span class="card-metric-label">Forma</span><span class="card-metric-val" style="display:block;font-size:12.5px">${formaTxt}</span></div>
+      </div>
+      <div class="cliente-card-col">
+        <div class="card-metric-item"><span class="card-metric-label">Itens</span><div class="venda-itens">${itensTxt}</div></div>
+        <div class="card-metric-item"><span class="card-metric-label">Vencimento</span><span class="card-metric-val">${vencHtml}</span></div>
+      </div>
+    </div>
+    ${parcelasHtml}
+    <div class="cliente-card-actions"><div style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${acoes}</div></div>
+  </div>`;
   }).join('');
 
   // TOTALIZADOR RODAPÉ
@@ -132,17 +137,13 @@ function renderVendas(){
   const totalPago=listVendasOnly.filter(v=>sitDe(v).status==='pago').reduce((s,v)=>s+v.total,0);
   const totalAberto=listVendasOnly.filter(v=>sitDe(v).status!=='pago').reduce((s,v)=>s+v.total,0);
   const totalGeral=list.reduce((s,v)=>s+v.total,0);
-  if(tfoot) tfoot.innerHTML=`<tr style="background:var(--card-2);border-top:2px solid var(--border)">
-    <td colspan="6" style="padding:11px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">
-      TOTAL (${list.length} ${state.venda_tipo_filter==='orcamento'?'orçamento':'venda'}${list.length!==1?'s':''} filtrada${list.length!==1?'s':''})
-    </td>
-    <td style="padding:11px 14px;font-size:14px;font-weight:800;color:var(--navy)">${fmt(totalGeral)}</td>
-    <td colspan="4" style="padding:11px 14px;font-size:12px;color:var(--muted)">
-      <span style="color:var(--green);font-weight:600">${fmt(totalPago)} pagos</span>
-      <span style="margin:0 6px;opacity:.4">·</span>
-      <span style="color:var(--red);font-weight:600">${fmt(totalAberto)} em aberto</span>
-    </td>
-  </tr>`;
+  if(tfoot) tfoot.innerHTML=`<div class="cliente-card" style="display:block;padding:14px 16px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">TOTAL (${list.length} ${state.venda_tipo_filter==='orcamento'?'orçamento':'venda'}${list.length!==1?'s':''} filtrada${list.length!==1?'s':''})</div>
+    <div style="font-size:20px;font-weight:800;margin:2px 0 4px">${fmt(totalGeral)}</div>
+    <span style="color:var(--green);font-weight:600;font-size:12.5px">${fmt(totalPago)} pagos</span>
+    <span style="margin:0 6px;opacity:.4">·</span>
+    <span style="color:var(--red);font-weight:600;font-size:12.5px">${fmt(totalAberto)} em aberto</span>
+  </div>`;
 
   // sync check-all state
   const allCheck=document.getElementById('vendas-check-all');
@@ -153,7 +154,7 @@ function toggleSelecaoVenda(id,checked){
   if(checked) vendasSelecionadas.add(id);
   else vendasSelecionadas.delete(id);
   const row=document.getElementById('venda-row-'+id);
-  if(row) row.style.background=checked?'#EBF5FB':'';
+  if(row) row.classList.toggle('selecionada',checked);
   // sync check-all
   const boxes=document.querySelectorAll('.venda-check');
   const allCheck=document.getElementById('vendas-check-all');
@@ -167,7 +168,7 @@ function toggleTodosVendas(checked){
     if(checked) vendasSelecionadas.add(id);
     else vendasSelecionadas.delete(id);
     const row=document.getElementById('venda-row-'+id);
-    if(row) row.style.background=checked?'#EBF5FB':'';
+    if(row) row.classList.toggle('selecionada',checked);
   });
   atualizarBarraLote();
 }

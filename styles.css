@@ -1873,3 +1873,80 @@ body.modo-foco .dica-box {
 
 
 
+
+/* v5.87: Vendas e Estoque em cards (mesmo visual do card de cliente) */
+#page-vendas .cliente-card{display:grid;grid-template-columns:60px minmax(0,1fr);grid-template-areas:"av head" "av body" "act act";column-gap:12px;justify-content:stretch;
+  padding:38px 14px 12px;border-radius:24px;border:1px solid rgba(201,162,75,.5);
+  background:radial-gradient(120% 90% at 0% 0%,rgba(201,162,75,.09),transparent 55%),linear-gradient(165deg,#18181b,#0b0b0d);
+  box-shadow:0 0 0 1px rgba(0,0,0,.7) inset,0 0 22px rgba(201,162,75,.16),0 12px 26px rgba(0,0,0,.55)}
+#page-vendas .cliente-card:hover{transform:none;border-color:rgba(246,181,42,.8);box-shadow:0 0 0 1px rgba(0,0,0,.7) inset,0 0 28px rgba(246,181,42,.26),0 12px 26px rgba(0,0,0,.55)}
+#page-vendas .cliente-card::before{content:"";position:absolute;left:18%;right:18%;bottom:0;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--cg2),transparent);opacity:.7}
+#page-vendas .cliente-avatar{grid-area:av;align-self:start;margin-top:4px;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(201,162,75,.75);background:radial-gradient(circle at 35% 30%,#2a2417,#0d0d0f);box-shadow:0 0 14px rgba(201,162,75,.3)}
+#page-vendas .cliente-avatar .ic{width:28px;height:28px;color:var(--cg2);fill:var(--cg2)}
+#page-vendas .cliente-card-header{grid-area:head;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(201,162,75,.18)}
+#page-vendas .cliente-card-badges{margin:0}
+#page-vendas .badge-cartao-selo{position:absolute;top:0;left:0;padding:7px 26px 7px 16px;border-radius:24px 0 0 0;font-size:14px;
+  clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%);box-shadow:none}
+#page-vendas .badge-cartao-sem{position:absolute;top:0;left:0;padding:8px 24px 8px 16px;border-radius:24px 0 0 0;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+#page-vendas .cliente-card-nome{font-size:19px;font-weight:800;color:#fff}
+#page-vendas .cliente-card-status-badge .badge{border-radius:999px;border:1px solid currentColor;padding:5px 12px;font-weight:700;background:rgba(0,0,0,.25);box-shadow:0 0 12px -3px currentColor}
+#page-vendas .cliente-card-body{grid-area:body;padding:2px 0 10px}
+#page-vendas .cliente-card-col+.cliente-card-col{border-left:1px solid rgba(201,162,75,.18);padding-left:12px}
+#page-vendas .card-metric-label{font-size:10px;letter-spacing:.08em;color:var(--muted)}
+#page-vendas .card-metric-val{font-size:13.5px;font-weight:600}
+#page-vendas .cliente-card-actions{grid-area:act;border-top:1px solid rgba(201,162,75,.18);gap:8px;padding-top:10px}
+#page-vendas .cliente-card-actions .btn,#page-vendas .cliente-card-actions .icon-btn{border-radius:12px}
+#page-vendas .cliente-card-actions .btn-outline,#page-vendas .cliente-card-actions .icon-btn{background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.35);color:var(--text)}
+#page-vendas .cliente-card-actions .btn-outline .ic,#page-vendas .cliente-card-actions .icon-btn.edit .ic{color:var(--cg2)}
+#page-vendas .cliente-card-actions .icon-btn.del{border-color:rgba(229,96,79,.55)}
+#page-vendas .cliente-avatar-btn{grid-area:av;align-self:start;margin-top:4px;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:pointer;color:inherit;-webkit-tap-highlight-color:transparent}
+#page-vendas .cliente-avatar-btn .cliente-avatar{margin-top:0}
+#page-vendas .cliente-avatar-btn:active .cliente-avatar{transform:scale(.94);box-shadow:0 0 20px rgba(246,181,42,.5)}
+#page-vendas .cliente-avatar-btn .card-metric-label{margin:0}
+#page-vendas .cliente-card-status-badge{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+#page-vendas .cliente-card-status-badge .badge-score{border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;background:rgba(0,0,0,.25);box-shadow:0 0 12px -3px currentColor}
+#page-estoque .cliente-card{display:grid;grid-template-columns:60px minmax(0,1fr);grid-template-areas:"av head" "av body" "act act";column-gap:12px;justify-content:stretch;
+  padding:38px 14px 12px;border-radius:24px;border:1px solid rgba(201,162,75,.5);
+  background:radial-gradient(120% 90% at 0% 0%,rgba(201,162,75,.09),transparent 55%),linear-gradient(165deg,#18181b,#0b0b0d);
+  box-shadow:0 0 0 1px rgba(0,0,0,.7) inset,0 0 22px rgba(201,162,75,.16),0 12px 26px rgba(0,0,0,.55)}
+#page-estoque .cliente-card:hover{transform:none;border-color:rgba(246,181,42,.8);box-shadow:0 0 0 1px rgba(0,0,0,.7) inset,0 0 28px rgba(246,181,42,.26),0 12px 26px rgba(0,0,0,.55)}
+#page-estoque .cliente-card::before{content:"";position:absolute;left:18%;right:18%;bottom:0;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--cg2),transparent);opacity:.7}
+#page-estoque .cliente-avatar{grid-area:av;align-self:start;margin-top:4px;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(201,162,75,.75);background:radial-gradient(circle at 35% 30%,#2a2417,#0d0d0f);box-shadow:0 0 14px rgba(201,162,75,.3)}
+#page-estoque .cliente-avatar .ic{width:28px;height:28px;color:var(--cg2);fill:var(--cg2)}
+#page-estoque .cliente-card-header{grid-area:head;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(201,162,75,.18)}
+#page-estoque .cliente-card-badges{margin:0}
+#page-estoque .badge-cartao-selo{position:absolute;top:0;left:0;padding:7px 26px 7px 16px;border-radius:24px 0 0 0;font-size:14px;
+  clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%);box-shadow:none}
+#page-estoque .badge-cartao-sem{position:absolute;top:0;left:0;padding:8px 24px 8px 16px;border-radius:24px 0 0 0;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+#page-estoque .cliente-card-nome{font-size:19px;font-weight:800;color:#fff}
+#page-estoque .cliente-card-status-badge .badge{border-radius:999px;border:1px solid currentColor;padding:5px 12px;font-weight:700;background:rgba(0,0,0,.25);box-shadow:0 0 12px -3px currentColor}
+#page-estoque .cliente-card-body{grid-area:body;padding:2px 0 10px}
+#page-estoque .cliente-card-col+.cliente-card-col{border-left:1px solid rgba(201,162,75,.18);padding-left:12px}
+#page-estoque .card-metric-label{font-size:10px;letter-spacing:.08em;color:var(--muted)}
+#page-estoque .card-metric-val{font-size:13.5px;font-weight:600}
+#page-estoque .cliente-card-actions{grid-area:act;border-top:1px solid rgba(201,162,75,.18);gap:8px;padding-top:10px}
+#page-estoque .cliente-card-actions .btn,#page-estoque .cliente-card-actions .icon-btn{border-radius:12px}
+#page-estoque .cliente-card-actions .btn-outline,#page-estoque .cliente-card-actions .icon-btn{background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.35);color:var(--text)}
+#page-estoque .cliente-card-actions .btn-outline .ic,#page-estoque .cliente-card-actions .icon-btn.edit .ic{color:var(--cg2)}
+#page-estoque .cliente-card-actions .icon-btn.del{border-color:rgba(229,96,79,.55)}
+#page-estoque .cliente-avatar-btn{grid-area:av;align-self:start;margin-top:4px;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:pointer;color:inherit;-webkit-tap-highlight-color:transparent}
+#page-estoque .cliente-avatar-btn .cliente-avatar{margin-top:0}
+#page-estoque .cliente-avatar-btn:active .cliente-avatar{transform:scale(.94);box-shadow:0 0 20px rgba(246,181,42,.5)}
+#page-estoque .cliente-avatar-btn .card-metric-label{margin:0}
+#page-estoque .cliente-card-status-badge{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+#page-estoque .cliente-card-status-badge .badge-score{border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;background:rgba(0,0,0,.25);box-shadow:0 0 12px -3px currentColor}
+#page-vendas .cliente-card,#page-estoque .cliente-card{margin-bottom:0}
+#page-vendas .cliente-card{grid-template-areas:"av head" "av body" "par par" "act act"}
+#page-vendas .venda-parcelas{grid-area:par;padding:0 0 10px}
+#page-vendas .cliente-card.selecionada{border-color:#F6B52A;box-shadow:0 0 0 2px rgba(246,181,42,.55),0 0 26px rgba(246,181,42,.3)}
+#page-vendas .venda-sel{position:absolute;top:10px;right:12px;width:20px;height:20px;cursor:pointer;z-index:2}
+#page-vendas .cliente-card-nome,#page-estoque .cliente-card-nome{cursor:default}
+#page-vendas .venda-cliente{cursor:pointer;color:#fff}
+#page-vendas .venda-itens{display:flex;flex-direction:column;gap:4px}
+#page-vendas .venda-itens>div{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+#page-vendas .venda-itens span:first-child{min-width:0;white-space:normal;line-height:1.25}
+#page-estoque .cliente-avatar-btn{cursor:default}
+#page-estoque .cliente-card-body.um-col{grid-template-columns:1fr}
+.cartoes-lista-vazia{grid-column:1/-1;text-align:center;color:var(--muted);padding:28px}

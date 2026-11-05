@@ -119,9 +119,29 @@ function stepperDigitado(el,tipo,id,vid){
   if(isNaN(n)||n<0){showToast('Quantidade inválida','red');renderEstoque();return;}
   stepperAplicar(tipo,id,vid,n);
 }
+// ---- cartão de estoque (mesmo visual do card de cliente) ----
+function estoqueCardHtml(o){
+  const item=(par)=>`<div class="card-metric-item"><span class="card-metric-label">${par[0]}</span><span class="card-metric-val" style="display:block">${par[1]}</span></div>`;
+  return `<div class="cliente-card ${o.arquivado?'arquivado':''}">
+    <div class="cliente-avatar-btn"><span class="cliente-avatar"><i data-lucide="${o.icone}" class="ic"></i></span><span class="card-metric-label">${o.rotulo}</span></div>
+    <div class="cliente-card-header">
+      <div class="cliente-card-title-group">
+        <div class="cliente-card-badges"><span class="badge-cartao-selo">${o.selo}</span>${o.arquivado?'<span class="badge badge-gray">Arquivado</span>':''}</div>
+        <div class="cliente-card-nome">${o.nome}</div>${o.sub||''}
+      </div>
+      <div class="cliente-card-status-badge">${o.badge}</div>
+    </div>
+    <div class="cliente-card-body">
+      <div class="cliente-card-col">${o.col1.map(item).join('')}</div>
+      <div class="cliente-card-col">${o.col2.map(item).join('')}</div>
+    </div>
+    <div class="cliente-card-actions"><div style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${o.acoes}</div></div>
+  </div>`;
+}
+const estoqueVazioHtml=txt=>`<div class="cartoes-lista-vazia">${txt}</div>`;
 function renderEstoque(){
   if(state.estoque_tab==='movimentos'){renderMovEstoque();return;}
-  const head=document.getElementById('estoque-head');
+  const head={};
   const tb=document.getElementById('estoque-table');
   renderCategoriaPills();
   if(state.estoque_tab==='produtos'){
@@ -143,21 +163,16 @@ function renderEstoque(){
       const baixo=temVariantes?p.variantes.some(v=>v.estoque<=p.minimo):p.estoque<=p.minimo;
       const variantesTxt=temVariantes?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${p.variantes.map(v=>`<span class="variante-tag" title="Código ${fmtProdutoCod(p.id,v.id)}">${fmtProdutoCod(p.id,v.id)} · ${escapeHtml(v.nome)}: ${v.estoque}</span>`).join('')}</div>`:'';
       const arquivado=!estaAtivo(p);
-      return `<tr style="${arquivado?'opacity:.6':''}">
-      <td data-label="Cód."><span style="font-family:monospace;color:var(--muted);font-weight:600">${fmtProdutoCod(p.id)}</span></td>
-      <td data-label="Produto"><strong>${escapeHtml(p.nome)}</strong>${arquivado?' <span class="badge badge-gray">Arquivado</span>':''}${variantesTxt}</td>
-      <td data-label="SKU" style="font-size:12px;color:var(--muted)">${escapeHtml(p.sku||'-')}</td>
-      <td data-label="Categoria">${p.categoria?`<span class="cat-pill" style="cursor:default">${escapeHtml(p.categoria)}</span>`:'-'}</td>
-      <td data-label="Preço Venda">${fmt(p.preco)}</td>
-      <td data-label="Estoque"${temVariantes&&!arquivado?' class="td-block"':''}>${arquivado?`<strong>${estoqueTotal}</strong>`:estoqueProdutoHtml(p,temVariantes,estoqueTotal,baixo)}</td>
-      <td data-label="Mínimo">${p.minimo}</td>
-      <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span></td>
-      <td><div class="actions-cell">
-        ${arquivado?`<button class="btn btn-outline btn-sm" onclick="reativarProduto(${p.id})">↩️ Reativar</button>`:`
+      return estoqueCardHtml({
+        icone:'package',rotulo:'Produto',selo:fmtProdutoCod(p.id),arquivado,nome:escapeHtml(p.nome),
+        sub:variantesTxt,
+        badge:`<span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span>`,
+        col1:[['SKU',escapeHtml(p.sku||'-')],['Categoria',p.categoria?`<span class="cat-pill" style="cursor:default">${escapeHtml(p.categoria)}</span>`:'-'],['Preço venda',fmt(p.preco)]],
+        col2:[['Estoque',arquivado?`<strong>${estoqueTotal}</strong>`:estoqueProdutoHtml(p,temVariantes,estoqueTotal,baixo)],['Mínimo',p.minimo]],
+        acoes:arquivado?`<button class="btn btn-outline btn-sm" onclick="reativarProduto(${p.id})">↩️ Reativar</button>`:`
         <button class="icon-btn edit" onclick="editarProduto(${p.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
-        <button class="icon-btn del" onclick="excluirProduto(${p.id})" title="Excluir/Arquivar"><i data-lucide="trash-2" class="ic"></i></button>`}
-      </div></td>
-    </tr>`;}).join('');
+        <button class="icon-btn del" onclick="excluirProduto(${p.id})" title="Excluir/Arquivar"><i data-lucide="trash-2" class="ic"></i></button>`
+      });}).join('')||estoqueVazioHtml('Nenhum produto encontrado');
   } else if(state.estoque_tab==='semiacabados'){
     renderSemiacabados();
   } else {
@@ -172,30 +187,25 @@ function renderEstoque(){
         prevHtml=`<span style="color:${cor};font-weight:600;font-size:12px">${prev.diasRestantes}d restantes</span><div style="font-size:10px;color:var(--muted)">~${prev.consumoDiario.toFixed(2)}${m.unidade}/dia</div>`;
       }
       const forn=m.fornecedorId?getFornecedor(m.fornecedorId):null;
-      return `<tr>
-      <td data-label="Matéria-Prima"><strong>${escapeHtml(m.nome)}</strong></td>
-      <td data-label="Estoque">${stepperHtml('m',m.id,null,m.qtd,m.qtd<=m.minimo)}</td>
-      <td data-label="Unidade">${m.unidade}</td>
-      <td data-label="Custo/un">${fmt(m.custo)}</td>
-      <td data-label="Mínimo">${m.minimo} ${m.unidade}</td>
-      <td data-label="Fornecedor">${forn?`<span style="font-size:12px;cursor:pointer;color:var(--blue)" onclick="gotoFornecedores()">${escapeHtml(forn.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'}</td>
-      <td data-label="Status"><span class="badge ${m.qtd<=m.minimo?'badge-red badge-alert':'badge-green'}">${m.qtd<=m.minimo?'Baixo':'OK'}</span></td>
-      <td data-label="Previsão">${prevHtml}</td>
-      <td><div class="actions-cell">
-        <button class="icon-btn edit" onclick="editarMateria(${m.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
-        <button class="icon-btn del" onclick="excluirMateria(${m.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>
-      </div></td>
-    </tr>`;}).join('');
+      const baixoM=m.qtd<=m.minimo;
+      return estoqueCardHtml({
+        icone:'flask-conical',rotulo:'Matéria-prima',selo:'Matéria-prima',nome:escapeHtml(m.nome),
+        badge:`<span class="badge ${baixoM?'badge-red badge-alert':'badge-green'}">${baixoM?'Baixo':'OK'}</span>`,
+        col1:[['Estoque',stepperHtml('m',m.id,null,m.qtd,baixoM)],['Unidade',m.unidade],['Mínimo',m.minimo+' '+m.unidade]],
+        col2:[['Custo médio/un',fmt(m.custo)],['Fornecedor',forn?`<span style="font-size:12px;cursor:pointer;color:var(--blue)" onclick="gotoFornecedores()">${escapeHtml(forn.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'],['Previsão',prevHtml]],
+        acoes:`<button class="icon-btn edit" onclick="editarMateria(${m.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirMateria(${m.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>`
+      });}).join('')||estoqueVazioHtml('Nenhuma matéria-prima encontrada');
   }
 }
 function renderSemiacabados(){
-  const head=document.getElementById('estoque-head');
+  const head={};
   const tb=document.getElementById('estoque-table');
   const searchWrap=document.querySelector('#page-estoque .search-bar');
   if(searchWrap) searchWrap.style.display='none';
   head.innerHTML='<tr><th>Nome</th><th>Estoque</th><th>Mínimo</th><th>MP Utilizadas</th><th>Status</th><th>Ações</th></tr>';
   if(!state.semiacabados||state.semiacabados.length===0){
-    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Nenhum semiacabado cadastrado.</td></tr>';
+    tb.innerHTML=estoqueVazioHtml('Nenhum semiacabado cadastrado.');
     return;
   }
   tb.innerHTML=(state.semiacabados||[]).map(s=>{
@@ -204,17 +214,15 @@ function renderSemiacabados(){
       const m=state.materias.find(x=>x.id===mp.mpId);
       return m?`<span class="variante-tag">${escapeHtml(m.nome)}: ${mp.qtd}${m.unidade}/un</span>`:'';
     }).join('');
-    return `<tr>
-      <td data-label="Nome"><strong>${escapeHtml(s.nome)}</strong><div style="font-size:11px;color:var(--muted)">${s.unidade}</div></td>
-      <td data-label="Estoque">${stepperHtml('s',s.id,null,s.estoque,baixo,s.unidade)}</td>
-      <td data-label="Mínimo">${s.minimo} ${s.unidade}</td>
-      <td data-label="MP Utilizadas" class="td-block" style="font-size:12px">${mps||'<span style="color:var(--muted)">—</span>'}</td>
-      <td data-label="Status"><span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span></td>
-      <td><div class="actions-cell">
-        <button class="icon-btn edit" onclick="editarSemiacabado(${s.id})"><i data-lucide="pencil" class="ic"></i></button>
-        <button class="icon-btn del" onclick="excluirSemiacabado(${s.id})"><i data-lucide="trash-2" class="ic"></i></button>
-      </div></td>
-    </tr>`;
+    return estoqueCardHtml({
+      icone:'droplets',rotulo:'Semiacabado',selo:'Semiacabado',nome:escapeHtml(s.nome),
+      sub:`<div style="font-size:11px;color:var(--muted)">${s.unidade}</div>`,
+      badge:`<span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span>`,
+      col1:[['Estoque',stepperHtml('s',s.id,null,s.estoque,baixo,s.unidade)],['Mínimo',s.minimo+' '+s.unidade]],
+      col2:[['MP utilizadas',mps||'<span style="color:var(--muted)">—</span>']],
+      acoes:`<button class="icon-btn edit" onclick="editarSemiacabado(${s.id})"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirSemiacabado(${s.id})"><i data-lucide="trash-2" class="ic"></i></button>`
+    });
   }).join('');
 }
 // ============ MOVIMENTAÇÕES DE ESTOQUE (histórico) ============
