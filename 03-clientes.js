@@ -67,7 +67,7 @@ function renderClientes(){
         <div class="cliente-card-title-group">
           <div class="cliente-card-badges">
             ${nCartao != null 
-              ? `<span class="badge-cartao-selo" title="Número único do cartão"><i data-lucide="credit-card" class="ic ic-sm"></i> #${cartoesNum(nCartao)}</span>` 
+              ? `<span class="badge-cartao-selo" style="cursor:pointer" title="Abrir este cartão na tela Cartões" onclick="event.stopPropagation();cartoesIrPara(${nCartao})"><i data-lucide="credit-card" class="ic ic-sm"></i> #${cartoesNum(nCartao)}</span>` 
               : `<span class="badge-cartao-sem" title="Sem cartão vinculado">Sem cartão</span>`}
             ${arquivado ? `<span class="badge badge-gray">Arquivado</span>` : ''}
           </div>

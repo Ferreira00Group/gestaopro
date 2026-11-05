@@ -104,14 +104,21 @@ function formatarNomeCartao(nome){
 
 function formatarEnderecoCartao(end){
   if(!end) return "";
-  let parte = String(end).split(",")[0].trim();
-  let palavras = parte.split(/\s+/).filter(Boolean);
-  if(palavras.length > 0 && PREFIXOS_ENDERECO.has(palavras[0].toLowerCase())){
-    if(palavras.length - 1 >= 2){
-      palavras.shift();
-    }
+  let palavras = String(end).split(",")[0].trim().split(/\s+/).filter(Boolean);
+  if(palavras.length > 0 && PREFIXOS_ENDERECO.has(palavras[0].toLowerCase()) && palavras.length - 1 >= 2){
+    palavras.shift();
   }
-  return palavras.slice(0, 2).join(" ");
+  // pula conectivos no começo ("das Flores" -> "Flores") e junta até 2 termos, mantendo conectivos do meio
+  while(palavras.length > 1 && CONECTIVOS_NOME.has(palavras[0].toLowerCase())) palavras.shift();
+  const res = []; let termos = 0;
+  for(const p of palavras){
+    const conectivo = CONECTIVOS_NOME.has(p.toLowerCase());
+    if(!conectivo && termos >= 2) break;
+    res.push(p);
+    if(!conectivo) termos++;
+  }
+  while(res.length > 1 && CONECTIVOS_NOME.has(res[res.length-1].toLowerCase())) res.pop();
+  return res.join(" ");
 }
 
 function formatarRotaCartao(rota){
@@ -120,7 +127,7 @@ function formatarRotaCartao(rota){
   return palavras[0] || "";
 }
 
-let _cartoesDe=1, _cartoesAte='', _cartoesFiltro='todos', _cartoesBusca='', _cartaoPendente=null, _scanStream=null, _scanTimer=null;
+let _cartoesDe=1, _cartoesAte='', _cartoesFiltro='todos', _cartoesBusca='', _cartoesSo=null, _cartaoPendente=null, _scanStream=null, _scanTimer=null;
 
 function cartoesState(){
   if(!state.cartoes||typeof state.cartoes!=='object'||Array.isArray(state.cartoes)) state.cartoes={};
@@ -351,14 +358,17 @@ function cartoesTratarLink(){
 }
 
 // ---------- tela ----------
-function cartoesFiltrar(f){ _cartoesFiltro=f; renderCartoes(); }
-function cartoesBuscar(v){ _cartoesBusca=v; renderCartoes(true); }
+function cartoesFiltrar(f){ _cartoesFiltro=f; _cartoesSo=null; renderCartoes(); }
+function cartoesBuscar(v){ _cartoesBusca=v; _cartoesSo=null; renderCartoes(true); }
+// clicar no #001 do cliente: abre a tela Cartões já mostrando só esse cartão
+function cartoesIrPara(n){ _cartoesFiltro='todos'; _cartoesBusca=''; _cartoesSo=Number(n); goto('cartoes'); }
+function cartoesMostrarTodos(){ _cartoesSo=null; renderCartoes(); }
 function renderCartoes(mantemBusca){
   const root=document.getElementById('cartoes-conteudo'); if(!root) return;
   const st=cartoesState(); const linhas=[]; let vinc=0;
   for(let n=1;n<=st.total;n++){ const c=cartoesClienteDe(n); if(c) vinc++; linhas.push({n,c}); }
   const q=normBusca(_cartoesBusca);
-  const lista=linhas.filter(l=>(_cartoesFiltro==='todos'||(_cartoesFiltro==='livres'?!l.c:!!l.c))&&(!q||String(l.n).includes(q.replace(/^0+/,''))&&/^\d+$/.test(q)||(l.c&&normBusca(l.c.nome).includes(q))));
+  const lista=_cartoesSo!=null?linhas.filter(l=>l.n===_cartoesSo):linhas.filter(l=>(_cartoesFiltro==='todos'||(_cartoesFiltro==='livres'?!l.c:!!l.c))&&(!q||String(l.n).includes(q.replace(/^0+/,''))&&/^\d+$/.test(q)||(l.c&&normBusca(l.c.nome).includes(q))));
   const aba=(f,t)=>`<button class="tab ${_cartoesFiltro===f?'active':''}" onclick="cartoesFiltrar('${f}')">${t}</button>`;
   const html=`
     <div class="conectores-resumo"><div><span class="conector-kicker">CARTÕES DE CLIENTE</span><h3>${vinc} de ${st.total} cartões em uso</h3><p>O QR guarda só o número do cartão. Troque o cliente de um cartão a qualquer momento, sem reimprimir.</p></div></div>
@@ -371,6 +381,7 @@ function renderCartoes(mantemBusca){
       <input class="form-control" id="cartoes-ate" type="number" min="1" value="${_cartoesAte||Math.min(st.total,CARTOES_LOTE)}" style="width:80px" oninput="_cartoesAte=this.value">
       <button class="btn btn-outline btn-sm" onclick="cartoesImprimirUI()"><i data-lucide="printer" class="ic"></i> Gerar PDF</button>
       <span style="color:var(--muted);font-size:12px">PDF A4 • 10 cartões por folha • salva em Downloads</span></div>
+    ${_cartoesSo!=null?`<div style="margin:0 0 10px;font-size:13px">Mostrando só o cartão ${cartoesNum(_cartoesSo)} <button class="btn btn-outline btn-sm" onclick="cartoesMostrarTodos()">Ver todos</button></div>`:''}
     <div class="tabs" style="margin-bottom:10px">${aba('todos','Todos')}${aba('livres','Livres')}${aba('vinculados','Vinculados')}</div>
     <input class="form-control" id="cartoes-busca" placeholder="Buscar por nº do cartão ou nome do cliente" value="${escapeHtml(_cartoesBusca)}" oninput="cartoesBuscar(this.value)" style="margin-bottom:10px" autocomplete="off">
     <div class="table-card table-cards"><div class="table-scroll"><table>
@@ -389,56 +400,10 @@ function renderCartoes(mantemBusca){
   if(typeof lucide!=='undefined') lucide.createIcons();
 }
 
-// ---------- impressão (folha A4, 2 × 5 cartões por página) ----------
-// Modelo "GestãoPRO preto e dourado": logo, nº do cartão, QR e 3 campos em branco para preencher à mão
-// (nome, endereço/casa, localidade). Tudo em CSS/SVG (sem imagem) e medido em "u" = 1% da largura do cartão.
-const CARTOES_ICONES={
-  user:'<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
-  house:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-  pin:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>'
-};
-const cartoesIcone=(k,top)=>`<svg class="cp-ic" style="top:${top}u" viewBox="0 0 24 24" fill="none" stroke="#FDBE32" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${CARTOES_ICONES[k]}</svg>`;
-function cartoesHtmlCartao(n){
-  const cli = cartoesClienteDe(n);
-  const nomeFmt = cli ? formatarNomeCartao(cli.nome) : '';
-  const endFmt = cli ? formatarEnderecoCartao(cli.end) : '';
-  const rotaObj = (cli && cli.rotaId && typeof getRota === 'function') ? getRota(cli.rotaId) : null;
-  const rotaFmt = cli ? formatarRotaCartao(rotaObj ? rotaObj.nome : '') : '';
-  return `<div class="cartao-print">
-    <div class="cp-logo"><img src="logo.png" alt="GestãoPro" style="height:9.5u;max-width:38u;object-fit:contain;vertical-align:middle;display:inline-block"></div>
-    <div class="cp-n">${cartoesNum(n)}</div>
-    <div class="cp-qr">${QR.svg(cartoesLink(n))}</div>
-    <div class="cp-div"></div>
-    ${cartoesIcone('user',21.2)}<div class="cp-campo" style="top:21.2u;display:flex;align-items:center;padding:0 5px;font-size:3.6u;font-weight:700;color:#000;overflow:hidden;white-space:nowrap">${escapeHtml(nomeFmt)}</div>
-    ${cartoesIcone('house',29.8)}<div class="cp-campo" style="top:29.8u;display:flex;align-items:center;padding:0 5px;font-size:3.6u;font-weight:700;color:#000;overflow:hidden;white-space:nowrap">${escapeHtml(endFmt)}</div>
-    ${cartoesIcone('pin',38.4)}<div class="cp-campo" style="top:38.4u;display:flex;align-items:center;padding:0 5px;font-size:3.6u;font-weight:700;color:#000;overflow:hidden;white-space:nowrap">${escapeHtml(rotaFmt)}</div>
-  </div>`;
-}
-const CARTOES_CSS_BASE=`
-.cartao-print{--u:.085cm;position:relative;width:calc(var(--u)*100);height:calc(var(--u)*57.14);box-sizing:border-box;overflow:hidden;break-inside:avoid;page-break-inside:avoid;
-  border-radius:calc(var(--u)*2.6);border:calc(var(--u)*.35) solid #E8A71C;color:#fff;font-family:'Arial Black','Segoe UI',Arial,Helvetica,sans-serif;
-  background:
-    linear-gradient(135deg,#F6B52A 0%,#D79A18 4%,#7a5408 8%,#000 11%,#000 14%,#C98C14 15.5%,#000 17.5%,transparent 30%),
-    linear-gradient(135deg,transparent 62%,#000 63%,#8a5f0a 70%,#000 72%,#000 80%,#E5A21B 85%,#000 87%,#000 89%,#F6B52A 94%,#FFD25C 100%),
-    #000;
-  -webkit-print-color-adjust:exact;print-color-adjust:exact}
-.cartao-print *{position:absolute;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.cartao-print .cp-logo{left:5.3u;top:4.2u;font-size:7.5u;line-height:1;font-weight:900;letter-spacing:-.03em;white-space:nowrap;text-shadow:0 0 .12cm #000,0 0 .2cm #000}
-.cartao-print .cp-logo span{position:static;color:#FDBE32}
-.cartao-print .cp-n{right:3.6u;top:4.4u;font-size:12u;line-height:1;font-weight:900;letter-spacing:-.02em;text-shadow:0 0 .12cm #000}
-.cartao-print .cp-qr{left:4.1u;top:17.2u;width:36.2u;height:32.2u;background:#fff;border:.4u solid #E8A71C;border-radius:3.2u;display:flex;align-items:center;justify-content:center}
-.cartao-print .cp-qr svg{position:static;width:30.6u;height:30.6u}
-.cartao-print .cp-div{left:41.6u;top:17.8u;width:.45u;height:31.7u;border-radius:1u;background:linear-gradient(#C98C14,#FDBE32,#C98C14)}
-.cartao-print .cp-ic{left:43.7u;width:7.2u;height:7.2u;margin-top:-0.05u}
-.cartao-print .cp-campo{left:51.5u;width:45.4u;height:7.1u;background:#fff;border:.35u solid #E8A71C;border-radius:3.6u}
-`;
-// "u" não existe em CSS: troca "<número>u" por calc(var(--u)*<número>) (no CSS e nos style inline)
-const cartoesCssU=t=>t.replace(/(-?\d*\.?\d+)u(?![a-z%])/g,(m,v)=>`calc(var(--u)*${v})`);
-
 // ---------- geração de PDF local (sem janela de impressão) ----------
 // O PDF é montado em vetor: QR nítido, textos e formas. Funciona offline.
 function cartoesPDFAscii(s){
-  return String(s).replace(/[^\x20-\x7E]/g,'?');
+  return String(s).replace(/[^\x20-\x7E]/g,ch=>{ const c=ch.charCodeAt(0); return (c>=0xA0&&c<=0xFF)?'\\'+c.toString(8).padStart(3,'0'):'?'; });
 }
 function cartoesPDFBuild(de,ate){
   const W=595.276, H=841.89, mm=72/25.4;
@@ -454,7 +419,7 @@ function cartoesPDFBuild(de,ate){
     return `${fill?`${fill} rg `:''}${stroke?`${stroke} RG ${fmt(lw)} w `:''}${q}\n`;
   };
   const line=(x1,y1,x2,y2,color,width=1)=>`${color} RG ${fmt(width)} w ${fmt(x1)} ${fmt(y1)} m ${fmt(x2)} ${fmt(y2)} l S\n`;
-  const txt=(x,y,size,str,color='1 1 1',font='F2')=>`BT /${font} ${fmt(size)} Tf ${color} rg ${fmt(x)} ${fmt(y)} Td (${cartoesPDFAscii(str).replace(/([\\()])/g,'\\$1')}) Tj ET\n`;
+  const txt=(x,y,size,str,color='1 1 1',font='F2')=>`BT /${font} ${fmt(size)} Tf ${color} rg ${fmt(x)} ${fmt(y)} Td (${cartoesPDFAscii(String(str).replace(/([\\()])/g,'\\$1'))}) Tj ET\n`;
   for(let base=de;base<=ate;base+=porPagina){
     let c='';
     const nFim=Math.min(ate,base+porPagina-1);
@@ -470,8 +435,8 @@ function cartoesPDFBuild(de,ate){
       // faixas angulares douradas nas extremidades
       c+=`0.82 0.56 0.08 rg ${fmt(x)} ${fmt(y+ch-3)} m ${fmt(x+cw*.32)} ${fmt(y+ch)} l ${fmt(x+cw*.25)} ${fmt(y+ch)} l ${fmt(x)} ${fmt(y+ch-9)} l f\n`;
       c+=`0.72 0.48 0.06 rg ${fmt(x+cw*.78)} ${fmt(y)} m ${fmt(x+cw)} ${fmt(y+ch*.22)} l ${fmt(x+cw)} ${fmt(y+ch*.30)} l ${fmt(x+cw*.72)} ${fmt(y)} l f\n`;
-      c+=txt(x+13,y+ch-19,12,'Gestao','1 1 1','F2');
-      c+=txt(x+48,y+ch-19,12,'PRO','0.99 0.72 0.18','F2');
+      c+=txt(x+13,y+ch-19,12,'Gestão','1 1 1','F2');
+      c+=txt(x+56,y+ch-19,12,'PRO','0.99 0.72 0.18','F2');
       c+=txt(x+cw-48,y+ch-20,18,cartoesNum(n),'1 1 1','F2');
       // QR em vetor com zona de silencio de 4 modulos
       const mat=QR.codificar(cartoesLink(n)), q=mat.length, quiet=4;
@@ -513,7 +478,7 @@ function cartoesPDFBuild(de,ate){
   }
   const objs=[];
   const add=o=>(objs.push(o),objs.length);
-  const catalog=add(''), pagesObj=add(''), f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'), f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+  const catalog=add(''), pagesObj=add(''), f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'), f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
   const pageIds=[];
   for(const content of paginas){
     const stream=content;
