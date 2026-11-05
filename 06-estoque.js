@@ -154,7 +154,6 @@ function renderEstoque(){
       list=list.filter(p=>p.nome.toLowerCase().includes(f)||(p.sku||'').toLowerCase().includes(f)||
         (buscaCod&&(fmtProdutoCod(p.id).toLowerCase().includes(fCod)||(p.variantes||[]).some(v=>fmtProdutoCod(p.id,v.id).toLowerCase().includes(fCod)))));
     }
-    if(state.estoque_categoria_filter)list=list.filter(p=>p.categoria===state.estoque_categoria_filter);
     const chkArq=document.getElementById('estoque-mostrar-arquivados');
     if(chkArq){chkArq.style.display='inline-flex';chkArq.querySelector('input').checked=!!state.estoque_mostrar_arquivados;}
     tb.innerHTML=list.map(p=>{
