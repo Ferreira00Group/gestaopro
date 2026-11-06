@@ -115,7 +115,7 @@ function relHtmlClientes(){
     const tg=(x.c.tags||[]).map(t=>`<span class="crm-chip">${escapeHtml(t)}</span>`).join(' ');
     let prox='';
     if(x.proxima){ const atras=x.proxima<hoje; prox=`<span class="${atras&&!x.seg.inativo?'crm-atraso':''}">Próxima prevista: ${fmtDate(x.proxima)}${atras?' ('+relDias(x.proxima,hoje)+'d de atraso)':''}</span>`; }
-    return `<div class="crm-item"><div class="crm-item-main"><strong class="crm-link" onclick="abrirCliente360(${x.c.id})">${i+1}. ${escapeHtml(x.c.nome)}</strong> ${b}${tg}
+    return `<div class="crm-item"><div class="crm-item-main"><strong class="crm-link" onclick="abrirCartaoCliente(${x.c.id})">${i+1}. ${escapeHtml(x.c.nome)}</strong> ${b}${tg}
       <div class="crm-card-sub">12m: <strong>${fmt(x.fat12)}</strong> · Lucro est.: ${fmt(x.lucro)} · ${x.compras} compra(s)${x.intervalo?' · a cada '+x.intervalo+'d':''}</div>
       <div class="crm-card-sub">Última: ${x.ultima?fmtDate(x.ultima)+' ('+x.diasSem+'d)':'—'}${prox?' · '+prox:''}</div></div>
       <div class="actions-cell">${x.c.tel?`<button class="btn btn-whatsapp btn-sm" title="WhatsApp" onclick="crmAbrirEnvio(${x.c.id})"><i data-lucide="message-circle" class="ic"></i></button>`:''}

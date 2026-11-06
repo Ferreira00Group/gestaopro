@@ -882,7 +882,7 @@ function renderCobrancaDia(){
         const cor=l.dias>0?'var(--red)':'#d35400';
         const status=l.dias>0?`${l.dias}d atraso`:'Hoje';
         return `<tr style="${l.uc.hoje?'opacity:.6':''}${l.prom&&l.prom.estado==='quebrada'?';background:rgba(192,57,43,.12)':''}">
-          <td data-label="Cliente"><strong>${escapeHtml(l.c.nome)}</strong>${l.uc.hoje?' <span class="badge badge-green">Cobrado hoje</span>':''}${cobrancaPromBadge(l.prom)}<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(l.c.tel||'sem telefone')}</span></td>
+          <td data-label="Cliente"><strong class="nome-cartao-link" onclick="abrirCartaoCliente(${l.c.id})">${escapeHtml(l.c.nome)}</strong>${l.uc.hoje?' <span class="badge badge-green">Cobrado hoje</span>':''}${cobrancaPromBadge(l.prom)}<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(l.c.tel||'sem telefone')}</span></td>
           <td data-label="Vencimento"><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(l.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${status}</span></td>
           <td data-label="Vencido" class="debt-amount">${fmt(l.vencido)}${l.enc>0?`<div style="font-size:11px;color:var(--muted);font-weight:400">+ ${fmt(l.enc)} encargos</div>`:''}</td>
           <td data-label="Última cobrança" style="font-size:12px">${l.uc.txt}</td>

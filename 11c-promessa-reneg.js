@@ -48,7 +48,7 @@ function promessaHtmlReceber(clienteId){
 function cobrancaPrometidosHtml(lista){
   if(!lista || !lista.length) return '';
   const linhas = lista.map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px dashed var(--border);flex-wrap:wrap">
-      <div style="min-width:0"><strong>${escapeHtml(l.c.nome)}</strong><div style="font-size:12px;color:var(--muted)">Prometeu até <strong>${fmtDate(l.prom.data)}</strong> · vencido ${fmt(l.vencido)}${l.prom.obs?' · '+escapeHtml(l.prom.obs):''}</div></div>
+      <div style="min-width:0"><strong class="nome-cartao-link" onclick="abrirCartaoCliente(${l.c.id})">${escapeHtml(l.c.nome)}</strong><div style="font-size:12px;color:var(--muted)">Prometeu até <strong>${fmtDate(l.prom.data)}</strong> · vencido ${fmt(l.vencido)}${l.prom.obs?' · '+escapeHtml(l.prom.obs):''}</div></div>
       <div style="display:flex;gap:6px"><button class="btn btn-green btn-sm" onclick="abrirPagamento(${l.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button><button class="btn btn-outline btn-sm" onclick="abrirPromessa(${l.id})" title="Editar promessa"><i data-lucide="handshake" class="ic"></i></button></div>
     </div>`).join('');
   return `<details style="margin-top:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px">

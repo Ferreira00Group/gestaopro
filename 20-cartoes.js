@@ -293,7 +293,7 @@ function cartoesAbrir(n){
   if(!(n>=1)||n>st.total){ showToast('Cartão '+(n||'?')+' não existe (o app tem '+st.total+' cartões)','red'); return; }
   const c=cartoesClienteDe(n);
   if(c&&estaAtivo(c)){
-    abrirCliente360(c.id);
+    abrirCartaoCliente(c.id);
   } else {
     cartoesAbrirSemCliente(n);
   }
@@ -410,7 +410,7 @@ function renderCartoes(mantemBusca){
       <thead><tr><th>Cartão</th><th>Cliente</th><th>Ações</th></tr></thead><tbody>
       ${lista.length?lista.map(({n,c})=>`<tr>
         <td data-label="Cartão"><span style="font-family:monospace;font-weight:700">${cartoesNum(n)}</span></td>
-        <td data-label="Cliente">${c?`<a style="cursor:pointer;font-weight:600" onclick="abrirCliente360(${c.id})">${escapeHtml(c.nome)}</a>${estaAtivo(c)?'':' <span class="badge badge-gray">Arquivado</span>'}`:'<span class="badge badge-green">Livre</span>'}</td>
+        <td data-label="Cliente">${c?`<a style="cursor:pointer;font-weight:600" onclick="abrirCartaoCliente(${c.id})">${escapeHtml(c.nome)}</a>${estaAtivo(c)?'':' <span class="badge badge-gray">Arquivado</span>'}`:'<span class="badge badge-green">Livre</span>'}</td>
         <td data-label="Ações"><div style="display:flex;flex-wrap:wrap;gap:6px">
           <button class="btn btn-outline btn-sm" onclick="cartoesAbrirVincular(${n})">${c?'Trocar':'Vincular'}</button>
           ${c?`<button class="btn btn-outline btn-sm" onclick="cartoesLiberar(${n})">Liberar</button>`:''}

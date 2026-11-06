@@ -273,7 +273,7 @@ function dashBotoesCliente(id,tel,podeReceber){
   return `<div class="dash-cli-acoes">${podeReceber?`<button class="btn btn-green dash-btn" onclick="abrirPagamento(${id})"><i data-lucide="banknote" class="ic"></i> Receber</button>`:''}${tel?`<button class="btn btn-whatsapp dash-btn" onclick="cobrarWhatsapp(${id})"><i data-lucide="message-circle" class="ic"></i> Cobrar</button>`:''}</div>`;
 }
 function dashCardCliente(c,valor,podeReceber){
-  return `<div class="dash-cli dash-cli-row"><strong class="dash-cli-nome">${escapeHtml(c.nome)}</strong><span class="debt-amount">${fmt(valor)}</span>${dashBotoesCliente(c.id,c.tel,podeReceber)}</div>`;
+  return `<div class="dash-cli dash-cli-row"><strong class="dash-cli-nome nome-cartao-link" onclick="abrirCartaoCliente(${c.id})">${escapeHtml(c.nome)}</strong><span class="debt-amount">${fmt(valor)}</span>${dashBotoesCliente(c.id,c.tel,podeReceber)}</div>`;
 }
 // dias = diasParaVencimento (negativo = atraso). Faixas: 1–15 dias (amarelo), 16–60 (laranja), mais de 60 (vermelho).
 function faixaVencimento(dias){

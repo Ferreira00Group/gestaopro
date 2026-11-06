@@ -14,15 +14,46 @@ function copiarListaClientes(){
   }).join('\n');
   copiarTexto('CLIENTES\n'+txt,ativos.length+' clientes copiados');
 }
+// ---- Cartão do cliente (v5.88.1): UMA função para abrir o card isolado em qualquer tela ----
+// _clienteFoco = {id, num}: enquanto existir, a tela Clientes mostra só esse card (filtros ignorados).
+let _clienteFoco = null;
+function clienteFocoLimpar(){ _clienteFoco = null; }
+function abrirCartaoCliente(id){
+  const c = (state.clientes || []).find(x => x.id == id);
+  if(!c){ showToast('Cliente não encontrado','red'); return; }
+  const num = typeof cartoesDoCliente === 'function' ? cartoesDoCliente(c.id) : (c.cartaoNum != null ? c.cartaoNum : null);
+  try{ if(typeof fecharBuscaGlobal === 'function') fecharBuscaGlobal(); }catch(e){}
+  try{ if(document.getElementById('modal-c360')) closeModal('modal-c360'); }catch(e){}
+  goto('clientes');            // limpa filtros e foco antigo
+  _clienteFoco = { id: c.id, num: num };
+  renderClientes();
+  window.scrollTo({ top: 0 });
+  setTimeout(() => {
+    const el = document.getElementById('cliente-card-' + c.id);
+    if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 80);
+}
+function clienteFocoSair(){ _clienteFoco = null; renderClientes(); }
 function renderClientes(){
   if(typeof dashAtualizarContadorClientes==='function') dashAtualizarContadorClientes();
   let list = state.clientes;
+  let focoBarra = '';
+  if(_clienteFoco){
+    // seleciona pelo número do cartão (não pelo nome); sem cartão, pelo id do cliente
+    let cf = null;
+    if(_clienteFoco.num != null && typeof cartoesClienteDe === 'function') cf = cartoesClienteDe(_clienteFoco.num);
+    if(!cf) cf = state.clientes.find(x => x.id === _clienteFoco.id);
+    list = cf ? [cf] : [];
+    const rotulo = _clienteFoco.num != null ? 'Cartão nº ' + cartoesNum(_clienteFoco.num) : 'Cliente ' + fmtClienteNum(_clienteFoco.id);
+    focoBarra = `<div class="cliente-foco-barra"><span>${rotulo}</span> · <a onclick="clienteFocoSair()">Ver todos os clientes</a></div>`;
+  } else {
   if(!state.cliente_mostrar_arquivados) list = list.filter(c => estaAtivo(c));
   if(state.cliente_filter) list = list.filter(c => clienteCombinaBusca(c, state.cliente_filter));
   if(state.cliente_status_filter === 'devendo') list = list.filter(c => getSaldoCliente(c.id) > 0);
   if(state.cliente_status_filter === 'em-dia') list = list.filter(c => getSaldoCliente(c.id) === 0);
   if(state.cliente_rota_filter === 'none') list = list.filter(c => !c.rotaId);
   else if(state.cliente_rota_filter) list = list.filter(c => String(c.rotaId || '') === String(state.cliente_rota_filter));
+  }
   
   populateRotaFiltro();
   const chkArq = document.getElementById('clientes-mostrar-arquivados');
@@ -32,12 +63,12 @@ function renderClientes(){
   if(!cardsContainer) return;
 
   if(list.length === 0){
-    cardsContainer.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--border);border-radius:12px">Nenhum cliente encontrado</div>';
+    cardsContainer.innerHTML = focoBarra + '<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 16px;background:var(--card);border:1px dashed var(--border);border-radius:12px">Nenhum cliente encontrado</div>';
     return;
   }
 
   // Renderiza em cards modernos, calculando métricas uma única vez por cliente
-  cardsContainer.innerHTML = list.map(c => {
+  cardsContainer.innerHTML = focoBarra + list.map(c => {
     const saldo = getSaldoCliente(c.id);
     const rota = c.rotaId ? getRota(c.rotaId) : null;
     const vendasCliente = (state.vendas || []).filter(v => v.clienteId === c.id);
@@ -64,7 +95,7 @@ function renderClientes(){
     const arquivado = !estaAtivo(c);
 
     return `
-    <div class="cliente-card ${arquivado ? 'arquivado' : ''}" id="cliente-card-${c.id}">
+    <div class="cliente-card ${arquivado ? 'arquivado' : ''} ${_clienteFoco ? 'cliente-card-foco' : ''}" id="cliente-card-${c.id}">
       <button type="button" class="cliente-avatar-btn" onclick="abrirCliente360(${c.id})" title="Abrir ficha 360º de ${escapeHtml(c.nome)}" aria-label="Abrir perfil de ${escapeHtml(c.nome)}">
         <span class="cliente-avatar"><i data-lucide="user" class="ic"></i></span>
         <span class="card-metric-label">Perfil</span>
@@ -77,7 +108,7 @@ function renderClientes(){
               : `<span class="badge-cartao-sem" title="Sem cartão vinculado">Sem cartão</span>`}
             ${arquivado ? `<span class="badge badge-gray">Arquivado</span>` : ''}
           </div>
-          <div class="cliente-card-nome" onclick="abrirCliente360(${c.id})" title="Abrir ficha 360º de ${escapeHtml(c.nome)}">
+          <div class="cliente-card-nome" onclick="abrirCartaoCliente(${c.id})" title="Abrir o cartão de ${escapeHtml(c.nome)}">
             ${escapeHtml(c.nome)}
           </div>
         </div>
@@ -158,6 +189,7 @@ function populateRotaFiltro(){
 function filterClienteArquivados(checked){state.cliente_mostrar_arquivados=checked;renderClientes();}
 // Ao abrir Clientes pelo menu, a lista começa completa (sem busca/filtro de uma visita anterior)
 function limparFiltrosClientes(){
+  _clienteFoco=null;
   state.cliente_filter='';state.cliente_status_filter='';state.cliente_rota_filter='';
   ['cliente-busca-input','cliente-status-filter','clientes-rota-filter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }

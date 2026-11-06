@@ -250,7 +250,7 @@ function meuDiaParadaHtml(p, n){
   return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
       <div style="min-width:0">
-        <div style="font-weight:700;font-size:15px"><span style="color:var(--muted);font-weight:600">${n}.</span> ${escapeHtml(p.c.nome)} <span style="font-size:11px;color:var(--muted);font-weight:500">${fmtClienteNum(p.id)}</span></div>
+        <div style="font-weight:700;font-size:15px"><span style="color:var(--muted);font-weight:600">${n}.</span> <span class="nome-cartao-link" onclick="abrirCartaoCliente(${p.c.id})">${escapeHtml(p.c.nome)}</span> <span style="font-size:11px;color:var(--muted);font-weight:500">${fmtClienteNum(p.id)}</span></div>
         ${end?`<div style="font-size:12px;color:var(--muted)">📍 ${escapeHtml(end)}</div>`:''}
         ${tel?`<div style="font-size:12px;color:var(--muted)">${escapeHtml(tel)}</div>`:''}
       </div>

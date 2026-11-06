@@ -577,6 +577,7 @@ function gotoClientesDevendo(){
   const navLink=document.querySelector('nav a[data-page="clientes"]');
   if(navLink) navLink.classList.add('active');
   closeSidebar();
+  if(typeof clienteFocoLimpar==='function') clienteFocoLimpar();
   if(typeof state !== 'undefined' && state){
     state.cliente_status_filter = 'devendo';
     state.cliente_filter = '';
@@ -604,6 +605,7 @@ function goto(page){
     document.querySelectorAll('.nav-group').forEach(x=>x.classList.toggle('open',x===g));
   }
   closeSidebar();
+  if(page!=='clientes'&&typeof clienteFocoLimpar==='function') clienteFocoLimpar();
   if(page==='clientes'&&typeof limparFiltrosClientes==='function') limparFiltrosClientes();
   render(page);
   requestAnimationFrame(ajustarStickyTabela);
@@ -625,26 +627,7 @@ function gotoFornecedores(){
 }
 // Vai pra aba Clientes já filtrada nesse cliente específico (usado ao clicar no nome do
 // cliente em outras telas, como Vendas), e destaca a linha dele por alguns segundos.
-function gotoCliente(clienteId){
-  const c=getCliente(clienteId);
-  goto('clientes');
-  document.getElementById('cliente-status-filter').value='';
-  document.getElementById('clientes-rota-filter').value='';
-  state.cliente_status_filter='';
-  state.cliente_rota_filter='';
-  document.getElementById('cliente-busca-input').value=c.nome;
-  state.cliente_filter=c.nome.toLowerCase();
-  if(typeof estaAtivo==='function'&&!estaAtivo(c)) state.cliente_mostrar_arquivados=true;
-  renderClientes();
-  setTimeout(()=>{
-    const row=document.getElementById(`cliente-row-${clienteId}`);
-    if(row){
-      row.scrollIntoView({behavior:'smooth',block:'center'});
-      row.classList.add('row-highlight');
-      setTimeout(()=>row.classList.remove('row-highlight'),2000);
-    }
-  },80);
-}
+function gotoCliente(clienteId){ abrirCartaoCliente(clienteId); }
 function imprimirPagina(){
   // atualiza data de impressão
   const pg=document.querySelector('.page.active');
@@ -697,7 +680,7 @@ function openModal(id){
     document.getElementById('modal-lanc-title').textContent='Novo Lançamento';
     document.getElementById('lanc-desc').value='';
     document.getElementById('lanc-valor').value='';
-    document.getElementById('lanc-categoria').value='';
+    lancCategoriaAplicar('');
     document.getElementById('lanc-tipo').value='entrada';
     popularCategoriasDespesaLista();
     toggleCategoriaLanc();

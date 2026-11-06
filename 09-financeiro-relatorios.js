@@ -17,10 +17,53 @@ function popularCategoriasDespesaLista(){
   if(!dl) return;
   dl.innerHTML=getCategoriasDespesaExistentes().map(c=>`<option value="${escapeHtml(c)}">`).join('');
 }
+function setLancTipo(t){
+  document.getElementById('lanc-tipo').value=t;
+  toggleCategoriaLanc();
+}
 function toggleCategoriaLanc(){
   const tipo=document.getElementById('lanc-tipo').value;
   document.getElementById('lanc-categoria-wrap').style.display=tipo==='saida'?'block':'none';
+  ['entrada','saida','retirada'].forEach(t=>{
+    const b=document.getElementById('lanc-tipo-btn-'+t);
+    if(b) b.className=(t===tipo)?'btn btn-sm':'btn btn-outline btn-sm';
+  });
   const _d=document.getElementById('lanc-desc'); if(_d&&tipo==='retirada'&&!_d.value) _d.value='Retirada do dono';
+}
+// Categoria da saída: Gasolina (1 toque) | Outros (abre o campo com sugestões).
+// O valor salvo continua sendo o texto de #lanc-categoria; "Gasolina" é gravado exatamente assim
+// pro card de combustível do Início reconhecer.
+function lancCategoriaAtualizarUI(){
+  const sel=document.getElementById('lanc-categoria-sel').value;
+  const bg=document.getElementById('lanc-cat-btn-gasolina');
+  const bo=document.getElementById('lanc-cat-btn-outros');
+  if(bg) bg.className=(sel==='gasolina')?'btn btn-sm':'btn btn-outline btn-sm';
+  if(bo) bo.className=(sel==='outros')?'btn btn-sm':'btn btn-outline btn-sm';
+  document.getElementById('lanc-categoria-outros-wrap').style.display=(sel==='outros')?'block':'none';
+}
+function setLancCategoria(qual){
+  const selEl=document.getElementById('lanc-categoria-sel');
+  const inp=document.getElementById('lanc-categoria');
+  if(selEl.value===qual){ // tocar de novo desmarca
+    selEl.value='';inp.value='';
+  } else if(qual==='gasolina'){
+    selEl.value='gasolina';inp.value='Gasolina';
+  } else {
+    selEl.value='outros';
+    if(inp.value.trim().toLowerCase()==='gasolina') inp.value='';
+  }
+  lancCategoriaAtualizarUI();
+  if(selEl.value==='outros') setTimeout(()=>inp.focus(),30);
+}
+// Preenche categoria + botões (novo lançamento: valor vazio; edição: categoria salva)
+function lancCategoriaAplicar(valor){
+  const v=(valor||'').trim();
+  const inp=document.getElementById('lanc-categoria');
+  const selEl=document.getElementById('lanc-categoria-sel');
+  if(!v){selEl.value='';inp.value='';}
+  else if(v.toLowerCase()==='gasolina'){selEl.value='gasolina';inp.value='Gasolina';}
+  else {selEl.value='outros';inp.value=v;}
+  lancCategoriaAtualizarUI();
 }
 function renderFinanceiro(){
   const mesEl=document.getElementById('fin-filtro-mes');
@@ -105,7 +148,7 @@ function editarLancamento(id){
   document.getElementById('lanc-valor').value=f.valor;
   document.getElementById('lanc-data').value=f.data;
   popularCategoriasDespesaLista();
-  document.getElementById('lanc-categoria').value=f.categoria||'';
+  lancCategoriaAplicar(f.retirada?'':f.categoria);
   toggleCategoriaLanc();
   document.getElementById('modal-lancamento').classList.add('open');
 }
@@ -200,7 +243,7 @@ function gerarRelatorio(){
   if(vendasPeriodo.length===0) tvs.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma venda no período</span></div></td></tr>';
   else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>`<tr>
     <td data-label="Data">${fmtDate(v.data)}</td>
-    <td data-label="Cliente">${escapeHtml(getCliente(v.clienteId).nome)}</td>
+    <td data-label="Cliente"><span class="nome-cartao-link" onclick="abrirCartaoCliente(${v.clienteId})">${escapeHtml(getCliente(v.clienteId).nome)}</span></td>
     <td data-label="Itens" class="td-block">${escapeHtml(v.itens.map(it=>nomeItemVenda(it)+' ×'+it.qtd).join(', '))}</td>
     <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
     <td data-label="Forma">${v.forma==='fiado'?'Fiado':v.forma==='dinheiro'?'Dinheiro':v.forma==='pix'?'PIX':'Cartão'}</td>
@@ -260,7 +303,7 @@ function gerarRelatorio(){
   const volRanking=Object.entries(volMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const elVol=document.getElementById('rel-clientes-volume');
   if(elVol){if(volRanking.length===0)elVol.innerHTML='<p style="color:var(--muted);font-size:13px;padding:10px 0">Sem dados no período</p>';
-  else elVol.innerHTML=volRanking.map(([cid,total],i)=>{const c=getCliente(parseInt(cid));const saldo=getSaldoCliente(parseInt(cid));return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${escapeHtml(c.nome)}</strong>${saldo>0?`<div style="font-size:11px;color:var(--red)">deve ${fmt(saldo)}</div>`:''}</div><div style="font-weight:700;color:var(--navy)">${fmt(total)}</div></div>`;}).join('');}
+  else elVol.innerHTML=volRanking.map(([cid,total],i)=>{const c=getCliente(parseInt(cid));const saldo=getSaldoCliente(parseInt(cid));return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong class="nome-cartao-link" style="font-size:13px" onclick="abrirCartaoCliente(${c.id})">${i+1}. ${escapeHtml(c.nome)}</strong>${saldo>0?`<div style="font-size:11px;color:var(--red)">deve ${fmt(saldo)}</div>`:''}</div><div style="font-weight:700;color:var(--navy)">${fmt(total)}</div></div>`;}).join('');}
 }
 
 // ============ DRE ============
@@ -541,7 +584,7 @@ function gerarInadimplencia(){
         <thead><tr><th>Cliente</th><th>Telefone</th><th>Vendas em aberto</th><th>Total Devido</th>${encAtivo?'<th>Encargos est.</th>':''}<th>Maior Atraso</th><th>Último Pagto</th><th>Ação</th></tr></thead>
         <tbody>
           ${lista.map(l=>`<tr>
-            <td><strong>${escapeHtml(l.cliente.nome)}</strong></td>
+            <td><strong class="nome-cartao-link" onclick="abrirCartaoCliente(${l.cliente.id})">${escapeHtml(l.cliente.nome)}</strong></td>
             <td style="font-size:12px">${escapeHtml(l.cliente.tel||'—')}</td>
             <td style="font-size:12px">${l.vendas.map(v=>`${fmtDate(v.vencimento)} · ${fmt(v.total)} (${v.diasAtraso}d)`).join('<br>')}</td>
             <td><strong style="color:var(--red)">${fmt(l.totalAberto)}</strong></td>

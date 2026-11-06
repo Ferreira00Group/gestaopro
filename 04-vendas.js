@@ -113,7 +113,7 @@ function renderVendas(){
     <div class="cliente-card-header">
       <div class="cliente-card-title-group">
         <div class="cliente-card-badges"><span class="badge-cartao-selo">${codigo}</span></div>
-        <div class="cliente-card-nome venda-cliente" onclick="gotoCliente(${v.clienteId})">${escapeHtml(cli.nome)}</div>
+        <div class="cliente-card-nome venda-cliente" onclick="abrirCartaoCliente(${v.clienteId})">${escapeHtml(cli.nome)}</div>
       </div>
       <div class="cliente-card-status-badge">${statusCell}${isOrc?'':pedidoCell}</div>
     </div>

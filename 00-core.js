@@ -1469,13 +1469,7 @@ function buscaGlobal(termo){
   el.innerHTML=html;
   el.style.display='block';
 }
-function irParaCliente(id){
-  const c=getCliente(id);
-  goto('clientes');fecharBuscaGlobal();
-  if(!estaAtivo(c)) state.cliente_mostrar_arquivados=true; // cliente arquivado também precisa aparecer na lista
-  const inp=document.getElementById('cliente-busca-input'); if(inp) inp.value=c.nome;
-  setTimeout(()=>filterClientes(c.nome),50);
-}
+function irParaCliente(id){ abrirCartaoCliente(id); }
 function mostrarResultadosBusca(){
   const inp=document.getElementById('busca-global-input');
   if(inp&&inp.value.trim().length>=2) buscaGlobal(inp.value);
