@@ -1,59 +1,121 @@
 // ═══════════════════════════════════════════════════════════════════
-// MÓDULO 21: CENTRAL DE IA GEMINI 3.8 FLASH & PILOTO AUTÔNOMO EM TEMPO REAL
-// GestãoPRO ERP (v5.86.0) - Alta Performance, Análise Preditiva & Ações Autônomas
+// MÓDULO 21: ANÁLISE DE DADOS (100% OFFLINE & LOCAL)
+// GestãoPRO ERP — Painel Preditivo, Gerador de Pacotes para IA Externa,
+// Validador de Importação, Gestão de Resultados com Auditoria e Atalhos
 // ═══════════════════════════════════════════════════════════════════
 
-let historicoChatIA = [];
-let _iaCarregando = false;
+let _subAbaAnaliseAtual = 'painel';
+let _filtroPeriodo = 'mes_atual';
+let _filtroFoco = 'geral';
+let _anonimizarClientes = false;
+let _analiseHistoricoIdx = 0;
 let _acoesAutonomasCache = [];
 let _logAcoesExecutadas = [];
-let _monitorTimer = null;
-let _pilotoAutomaticoAtivo = false;
-let _abaAtualIA = 'chat';
 
-// Carrega preferências salvas do Piloto Automático e Log
+// Carrega preferências e histórico
 try {
-  const salvoPiloto = localStorage.getItem('gestaopro_piloto_automatico');
-  if (salvoPiloto === 'true') _pilotoAutomaticoAtivo = true;
   const salvoLog = localStorage.getItem('gestaopro_log_acoes_ia');
   if (salvoLog) _logAcoesExecutadas = JSON.parse(salvoLog);
 } catch (e) {}
 
 // ───────────────────────────────────────────────────────────────────
-// 1. COLETA PROFUNDA DE CONTEXTO E ANÁLISE DE DADOS EM TEMPO REAL
+// 1. HISTÓRICO DE ANÁLISES & GESTÃO DE ESTADO NO LOCALSTORAGE
 // ───────────────────────────────────────────────────────────────────
-function coletarContextoERP() {
+function obterHistoricoAnalises() {
+  try {
+    const raw = localStorage.getItem('gestaopro_historico_analises_ia');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function salvarHistoricoAnalises(arr) {
+  try {
+    const limitado = (arr || []).slice(0, 12);
+    localStorage.setItem('gestaopro_historico_analises_ia', JSON.stringify(limitado));
+    atualizarSelosAnaliseDados();
+    renderAvisoAnaliseDashboard();
+  } catch (e) {
+    console.warn('Erro ao salvar histórico de análises:', e);
+  }
+}
+
+function obterAnaliseAtiva() {
+  const hist = obterHistoricoAnalises();
+  if (hist.length === 0) return null;
+  const idx = Math.min(Math.max(0, _analiseHistoricoIdx), hist.length - 1);
+  return hist[idx] || hist[0];
+}
+
+// Coleta todos os IDs que já foram marcados como Feito ou Ignorado
+function obterIdsJaResolvidos() {
+  const hist = obterHistoricoAnalises();
+  const resolvidosSet = new Set();
+  hist.forEach(an => {
+    if (an && an.resolvidos && typeof an.resolvidos === 'object') {
+      Object.entries(an.resolvidos).forEach(([id, status]) => {
+        if (status === 'feito' || status === 'ignorado') {
+          resolvidosSet.add(id);
+        }
+      });
+    }
+  });
+  return Array.from(resolvidosSet);
+}
+
+// ───────────────────────────────────────────────────────────────────
+// 2. COLETA DE CONTEXTO E CÁLCULO ANALÍTICO MULTI-PERÍODO (100% LOCAL)
+// ───────────────────────────────────────────────────────────────────
+function coletarContextoERP(periodo = 'mes_atual') {
   if (typeof state === 'undefined' || !state) {
     return {
-      totalClientes: 0,
-      totalProdutos: 0,
+      scoreSaude: 100,
       faturamentoMes: 0,
       despesasMes: 0,
-      aReceber: 0,
-      aPagar: 0,
       saldoCaixa: 0,
-      itensCriticos: 0,
+      aReceber: 0,
+      aReceberVencido: 0,
+      aPagar: 0,
+      aPagarVencido: 0,
+      margemMediaPct: 0,
+      breakEvenMensal: 0,
+      projecaoCaixa: { d7: 0, d15: 0, d30: 0 },
       curvaABC: [],
       runwayEstoque: [],
-      projecaoCaixa: { d7: 0, d15: 0, d30: 0 },
+      produtosParados: [],
+      produtosEstoqueZero: [],
+      produtosEstoqueBaixo: [],
+      materiasBaixas: [],
       clientesDevedores: [],
-      acoesSugeridas: []
+      orcamentosAbertos: 0,
+      valorOrcamentos: 0,
+      serieMensal: []
     };
   }
 
   const hoje = new Date();
-  const mesAtual = hoje.getMonth();
   const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth();
 
-  // Faturamento e vendas
-  let fatMes = 0;
-  let totalVendasMes = 0;
-  let vendasConfirmadas = 0;
+  // Define limite de corte por período
+  let mesesRetroativos = 1;
+  if (periodo === '3_meses') mesesRetroativos = 3;
+  if (periodo === '12_meses') mesesRetroativos = 12;
+
+  const dataCorte = new Date(anoAtual, mesAtual - (mesesRetroativos - 1), 1);
+
+  // Vendas e Faturamento
+  let fatTotalPeriodo = 0;
+  let fatMesAtual = 0;
   let orcamentosAbertos = 0;
   let valorOrcamentos = 0;
   const faturamentoPorProduto = {};
   const qtdVendidaPorProduto = {};
   const margemTotalItens = [];
+  const vendasPorMesMap = {};
 
   if (Array.isArray(state.vendas)) {
     state.vendas.forEach(v => {
@@ -63,49 +125,105 @@ function coletarContextoERP() {
         valorOrcamentos += Number(v.total || 0);
         return;
       }
-      vendasConfirmadas++;
-      const d = v.data ? new Date(v.data) : null;
-      if (d && d.getMonth() === mesAtual && d.getFullYear() === anoAtual) {
-        fatMes += Number(v.total || 0);
-        totalVendasMes++;
-      }
+      const d = v.data ? new Date(v.data + 'T00:00:00') : null;
+      if (d) {
+        const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        vendasPorMesMap[chaveMes] = (vendasPorMesMap[chaveMes] || 0) + Number(v.total || 0);
 
-      if (Array.isArray(v.itens)) {
-        v.itens.forEach(it => {
-          const prodNome = it.nome || (typeof getProduto === 'function' ? getProduto(it.produtoId)?.nome : 'Produto');
-          const receitaItem = Number(it.total || (it.qtd * it.preco) || 0);
-          const qtdItem = Number(it.qtd || 1);
-          faturamentoPorProduto[prodNome] = (faturamentoPorProduto[prodNome] || 0) + receitaItem;
-          qtdVendidaPorProduto[prodNome] = (qtdVendidaPorProduto[prodNome] || 0) + qtdItem;
+        if (d.getMonth() === mesAtual && d.getFullYear() === anoAtual) {
+          fatMesAtual += Number(v.total || 0);
+        }
 
-          // Margem com base na ficha técnica
-          const custoUn = Number(it.custoFichaUn || 0);
-          if (custoUn > 0 && it.preco > 0) {
-            const margemPct = ((it.preco - custoUn) / it.preco) * 100;
-            margemTotalItens.push(margemPct);
+        if (d >= dataCorte) {
+          fatTotalPeriodo += Number(v.total || 0);
+
+          if (Array.isArray(v.itens)) {
+            v.itens.forEach(it => {
+              const prodNome = it.nome || (typeof getProduto === 'function' ? getProduto(it.produtoId)?.nome : 'Produto');
+              const recItem = Number(it.total || (it.qtd * it.preco) || 0);
+              const qtdItem = Number(it.qtd || 1);
+              faturamentoPorProduto[prodNome] = (faturamentoPorProduto[prodNome] || 0) + recItem;
+              qtdVendidaPorProduto[prodNome] = (qtdVendidaPorProduto[prodNome] || 0) + qtdItem;
+
+              const custoUn = Number(it.custoFichaUn || 0);
+              if (custoUn > 0 && it.preco > 0) {
+                const margemPct = ((it.preco - custoUn) / it.preco) * 100;
+                margemTotalItens.push(margemPct);
+              }
+            });
           }
-        });
+        }
       }
     });
   }
 
-  // Curva ABC de Produtos (Pareto 80/20)
+  // Despesas
+  let despesasTotalPeriodo = 0;
+  let despesasMesAtual = 0;
+  const despesasPorMesMap = {};
+
+  const somarDespesa = (dStr, valor) => {
+    if (!dStr) return;
+    const d = new Date(dStr + (dStr.length === 10 ? 'T00:00:00' : ''));
+    const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    despesasPorMesMap[chaveMes] = (despesasPorMesMap[chaveMes] || 0) + Number(valor || 0);
+
+    if (d.getMonth() === mesAtual && d.getFullYear() === anoAtual) {
+      despesasMesAtual += Number(valor || 0);
+    }
+    if (d >= dataCorte) {
+      despesasTotalPeriodo += Number(valor || 0);
+    }
+  };
+
+  if (Array.isArray(state.movimentacoes)) {
+    state.movimentacoes.forEach(m => {
+      if (m.tipo === 'saida' && m.data) somarDespesa(m.data, m.valor);
+    });
+  } else if (Array.isArray(state.financeiro)) {
+    state.financeiro.forEach(f => {
+      if (f.tipo === 'saida' && f.data) somarDespesa(f.data, f.valor);
+    });
+  }
+
+  // Série Mensal do período
+  const serieMensal = [];
+  for (let i = mesesRetroativos - 1; i >= 0; i--) {
+    const dAux = new Date(anoAtual, mesAtual - i, 1);
+    const chave = `${dAux.getFullYear()}-${String(dAux.getMonth() + 1).padStart(2, '0')}`;
+    const fat = vendasPorMesMap[chave] || 0;
+    const desp = despesasPorMesMap[chave] || 0;
+    serieMensal.push({
+      mes: chave,
+      faturamento: Number(fat.toFixed(2)),
+      despesas: Number(desp.toFixed(2)),
+      resultado: Number((fat - desp).toFixed(2))
+    });
+  }
+
+  // Curva ABC Completa
   const rankingProdutos = Object.entries(faturamentoPorProduto)
     .map(([nome, receita]) => ({ nome, receita, qtd: qtdVendidaPorProduto[nome] || 0 }))
     .sort((a, b) => b.receita - a.receita);
 
-  const receitaTotalAcumulada = rankingProdutos.reduce((acc, p) => acc + p.receita, 0);
+  const receitaAcumulada = rankingProdutos.reduce((acc, p) => acc + p.receita, 0);
   let somaParcial = 0;
   const curvaABC = rankingProdutos.map(p => {
     somaParcial += p.receita;
-    const pctAcumulada = receitaTotalAcumulada > 0 ? (somaParcial / receitaTotalAcumulada) * 100 : 0;
+    const pctAcumulada = receitaAcumulada > 0 ? (somaParcial / receitaAcumulada) * 100 : 0;
     let classe = 'C';
     if (pctAcumulada <= 80) classe = 'A';
     else if (pctAcumulada <= 95) classe = 'B';
-    return { ...p, classe, pctDoTotal: receitaTotalAcumulada > 0 ? ((p.receita / receitaTotalAcumulada) * 100).toFixed(1) : '0' };
+    return {
+      nome: p.nome,
+      receita: Number(p.receita.toFixed(2)),
+      qtd: p.qtd,
+      classe,
+      pctDoTotal: receitaAcumulada > 0 ? ((p.receita / receitaAcumulada) * 100).toFixed(1) : '0'
+    };
   });
 
-  // Contas a receber e análise de risco do Fiado
+  // Contas a Receber
   let recAberto = 0;
   let recVencido = 0;
   let rec7Dias = 0;
@@ -118,36 +236,45 @@ function coletarContextoERP() {
       if (!c.pago) {
         const val = Number(c.valor || 0);
         recAberto += val;
-        const venc = c.vencimento ? new Date(c.vencimento) : null;
+        const venc = c.vencimento ? new Date(c.vencimento + 'T00:00:00') : null;
         if (venc) {
           const diffDias = Math.floor((venc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDias < 0) {
             recVencido += val;
-          } else if (diffDias <= 7) {
-            rec7Dias += val;
-          } else if (diffDias <= 15) {
-            rec15Dias += val;
-          } else if (diffDias <= 30) {
-            rec30Dias += val;
-          }
+          } else if (diffDias <= 7) rec7Dias += val;
+          else if (diffDias <= 15) rec15Dias += val;
+          else if (diffDias <= 30) rec30Dias += val;
         }
+
         const nomeCl = c.clienteNome || (typeof getCliente === 'function' ? getCliente(c.clienteId)?.nome : 'Cliente');
         const telCl = typeof getCliente === 'function' ? getCliente(c.clienteId)?.tel : '';
-        if (!devedoresMap[nomeCl]) {
-          devedoresMap[nomeCl] = { id: c.clienteId, nome: nomeCl, tel: telCl, total: 0, atrasado: false, dias: 0, titulos: 0 };
+        const endCl = typeof getCliente === 'function' ? getCliente(c.clienteId)?.endereco : '';
+        const idCl = c.clienteId || nomeCl;
+
+        if (!devedoresMap[idCl]) {
+          devedoresMap[idCl] = {
+            id: idCl,
+            nome: nomeCl,
+            tel: telCl || '',
+            endereco: endCl || '',
+            total: 0,
+            atrasado: false,
+            dias: 0,
+            titulos: 0
+          };
         }
-        devedoresMap[nomeCl].total += val;
-        devedoresMap[nomeCl].titulos++;
+        devedoresMap[idCl].total += val;
+        devedoresMap[idCl].titulos++;
         if (venc && venc < hoje) {
-          devedoresMap[nomeCl].atrasado = true;
+          devedoresMap[idCl].atrasado = true;
           const atraso = Math.floor((hoje.getTime() - venc.getTime()) / (1000 * 60 * 60 * 24));
-          if (atraso > devedoresMap[nomeCl].dias) devedoresMap[nomeCl].dias = atraso;
+          if (atraso > devedoresMap[idCl].dias) devedoresMap[idCl].dias = atraso;
         }
       }
     });
   }
 
-  // Contas a pagar e previsões
+  // Contas a Pagar
   let pagAberto = 0;
   let pagVencido = 0;
   let pag7Dias = 0;
@@ -159,7 +286,7 @@ function coletarContextoERP() {
       if (!p.pago) {
         const val = Number(p.valor || 0);
         pagAberto += val;
-        const venc = p.vencimento ? new Date(p.vencimento) : null;
+        const venc = p.vencimento ? new Date(p.vencimento + 'T00:00:00') : null;
         if (venc) {
           const diffDias = Math.floor((venc.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDias < 0) pagVencido += val;
@@ -171,36 +298,22 @@ function coletarContextoERP() {
     });
   }
 
-  // Despesas operacionais do mês
-  let despMes = 0;
-  if (Array.isArray(state.movimentacoes)) {
-    state.movimentacoes.forEach(m => {
-      if (m.tipo === 'saida' && m.data) {
-        const d = new Date(m.data);
-        if (d.getMonth() === mesAtual && d.getFullYear() === anoAtual) despMes += Number(m.valor || 0);
-      }
-    });
-  } else if (Array.isArray(state.financeiro)) {
-    state.financeiro.forEach(f => {
-      if (f.tipo === 'saida' && f.data) {
-        const d = new Date(f.data);
-        if (d.getMonth() === mesAtual && d.getFullYear() === anoAtual) despMes += Number(f.valor || 0);
-      }
-    });
-  }
-
-  // Estoque, Rupturas & Runway (Velocidade e dias até acabar)
+  // Estoque, Ruptura e Produtos Parados
   const prodZero = [];
   const prodBaixo = [];
   const runwayEstoque = [];
+  const produtosParados = [];
 
   if (Array.isArray(state.produtos)) {
     state.produtos.forEach(p => {
       const min = Number(p.minimo || 0);
       const est = Number(p.estoque || 0);
       const qtdVendida = qtdVendidaPorProduto[p.nome] || 0;
-      const saidaDiariaMedia = qtdVendida > 0 ? (qtdVendida / 30) : 0.2;
-      const diasRestantes = saidaDiariaMedia > 0 ? Math.floor(est / saidaDiariaMedia) : 999;
+      const divisorDias = mesesRetroativos * 30;
+      const giroDiario = qtdVendida > 0 ? (qtdVendida / divisorDias) : 0;
+      const diasRestantes = giroDiario > 0 ? Math.floor(est / giroDiario) : (est > 0 ? 999 : 0);
+
+      const statusItem = est <= 0 ? 'zerado' : (est <= min ? 'baixo' : 'ok');
 
       runwayEstoque.push({
         id: p.id,
@@ -208,8 +321,9 @@ function coletarContextoERP() {
         estoque: est,
         minimo: min,
         preco: Number(p.preco || 0),
+        giroDiario: Number(giroDiario.toFixed(2)),
         diasRestantes: est <= 0 ? 0 : diasRestantes,
-        status: est <= 0 ? 'zerado' : (est <= min ? 'baixo' : 'ok')
+        status: statusItem
       });
 
       if (est <= 0) {
@@ -217,13 +331,25 @@ function coletarContextoERP() {
       } else if (est <= min) {
         prodBaixo.push({ id: p.id, nome: p.nome, estoque: est, minimo: min });
       }
+
+      // Produto parado: tem estoque, mas zero vendas no período
+      if (est > 0 && qtdVendida === 0) {
+        produtosParados.push({
+          id: p.id,
+          nome: p.nome,
+          estoque: est,
+          preco: Number(p.preco || 0),
+          valorParado: Number((est * (p.preco || 0)).toFixed(2))
+        });
+      }
     });
   }
 
-  // Matérias-primas e cálculo exato de reposição
+  // Matérias-Primas
   const matBaixas = [];
   if (Array.isArray(state.materias)) {
-    materiasAtivas().forEach(m => {
+    const ativas = typeof materiasAtivas === 'function' ? materiasAtivas() : state.materias;
+    ativas.forEach(m => {
       const min = Number(m.minimo || 0);
       const qtd = Number(m.qtd || 0);
       const necessidade = Math.max(0, (min * 1.5) - qtd);
@@ -243,9 +369,8 @@ function coletarContextoERP() {
   }
 
   const clientesDevedores = Object.values(devedoresMap).sort((a, b) => b.total - a.total);
-  const saldoCaixa = typeof calcularSaldoCaixa === 'function' ? calcularSaldoCaixa() : (fatMes - despMes);
+  const saldoCaixa = typeof calcularSaldoCaixa === 'function' ? calcularSaldoCaixa() : (fatMesAtual - despesasMesAtual);
 
-  // Custos fixos cadastrados & Break-even point (ponto de equilíbrio)
   let totalCustosFixos = 0;
   if (Array.isArray(state.custosFixos)) {
     totalCustosFixos = state.custosFixos.reduce((acc, c) => acc + Number(c.valor || 0), 0);
@@ -258,50 +383,49 @@ function coletarContextoERP() {
   // Score de Saúde Empresarial (0 a 100)
   let scoreSaude = 100;
   if (prodZero.length > 0) scoreSaude -= Math.min(25, prodZero.length * 8);
-  if (recVencido > 0) scoreSaude -= Math.min(25, Math.floor((recVencido / (fatMes || 1)) * 30));
+  if (recVencido > 0) scoreSaude -= Math.min(25, Math.floor((recVencido / (fatMesAtual || 1)) * 30));
   if (saldoCaixa < 0) scoreSaude -= 20;
   if (matBaixas.length > 0) scoreSaude -= Math.min(15, matBaixas.length * 5);
   scoreSaude = Math.max(10, Math.min(100, Math.round(scoreSaude)));
 
   return {
     scoreSaude,
-    totalClientes: Array.isArray(state.clientes) ? state.clientes.length : 0,
-    clientesAtivos: Array.isArray(state.clientes) ? state.clientes.filter(c => !c.arquivado).length : 0,
-    totalProdutos: Array.isArray(state.produtos) ? state.produtos.length : 0,
-    faturamentoMes: fatMes,
-    despesasMes: despMes,
-    saldoCaixa: saldoCaixa,
-    aReceber: recAberto,
-    aReceberVencido: recVencido,
-    aPagar: pagAberto,
-    aPagarVencido: pagVencido,
+    faturamentoMes: Number(fatMesAtual.toFixed(2)),
+    faturamentoPeriodo: Number(fatTotalPeriodo.toFixed(2)),
+    despesasMes: Number(despesasMesAtual.toFixed(2)),
+    despesasPeriodo: Number(despesasTotalPeriodo.toFixed(2)),
+    saldoCaixa: Number(saldoCaixa.toFixed(2)),
+    aReceber: Number(recAberto.toFixed(2)),
+    aReceberVencido: Number(recVencido.toFixed(2)),
+    aPagar: Number(pagAberto.toFixed(2)),
+    aPagarVencido: Number(pagVencido.toFixed(2)),
+    margemMediaPct: Math.round(margemMediaPct),
+    breakEvenMensal: Math.round(breakEvenMensal),
     projecaoCaixa: {
-      d7: rec7Dias - pag7Dias,
-      d15: rec15Dias - pag15Dias,
-      d30: rec30Dias - pag30Dias
+      d7: Number((rec7Dias - pag7Dias).toFixed(2)),
+      d15: Number((rec15Dias - pag15Dias).toFixed(2)),
+      d30: Number((rec30Dias - pag30Dias).toFixed(2))
     },
-    itensCriticos: prodZero.length + prodBaixo.length + matBaixas.length,
+    serieMensal,
+    curvaABC,
+    runwayEstoque: runwayEstoque.sort((a, b) => a.diasRestantes - b.diasRestantes),
+    produtosParados: produtosParados.sort((a, b) => b.valorParado - a.valorParado),
     produtosEstoqueZero: prodZero,
     produtosEstoqueBaixo: prodBaixo,
     materiasBaixas: matBaixas,
-    runwayEstoque: runwayEstoque.sort((a, b) => a.diasRestantes - b.diasRestantes).slice(0, 8),
-    curvaABC: curvaABC.slice(0, 10),
-    clientesDevedores: clientesDevedores,
-    orcamentosAbertos: orcamentosAbertos,
-    valorOrcamentos: valorOrcamentos,
-    breakEvenMensal: Math.round(breakEvenMensal),
-    margemMediaPct: Math.round(margemMediaPct),
-    topProdutos: curvaABC.slice(0, 4).map(p => `${p.nome} (${p.pctDoTotal}%)`)
+    clientesDevedores,
+    orcamentosAbertos,
+    valorOrcamentos: Number(valorOrcamentos.toFixed(2))
   };
 }
 
 // ───────────────────────────────────────────────────────────────────
-// 2. MOTOR DE AÇÕES AUTÔNOMAS DO ERP (AUTONOMOUS ACTION DISPATCHER)
+// 3. GERADOR DE AÇÕES LOCAIS HEURÍSTICAS DO ERP
 // ───────────────────────────────────────────────────────────────────
 function gerarAcoesAutonomasLocais(ctx) {
   const acoes = [];
 
-  // Ação 1: Reposição de Matéria-Prima com Estoque Crítico
+  // Ação 1: Reposição de Matéria-Prima
   if (ctx.materiasBaixas && ctx.materiasBaixas.length > 0) {
     ctx.materiasBaixas.forEach((m, idx) => {
       const custoEstimado = (m.necessidadeCompra * (m.custo || 10));
@@ -309,7 +433,7 @@ function gerarAcoesAutonomasLocais(ctx) {
         id: `acao-mp-${m.id}-${idx}`,
         tipo: 'REPOR_ESTOQUE',
         titulo: `Gerar Pedido de Compra: ${m.nome}`,
-        motivo: `Estoque atual (${m.qtd} ${m.unidade}) está abaixo do mínimo (${m.minimo} ${m.unidade}). Risco iminente de parada na fábrica.`,
+        motivo: `Estoque atual (${m.qtd} ${m.unidade}) abaixo do mínimo (${m.minimo} ${m.unidade}). Risco de parada na fábrica.`,
         impactoFinanceiro: `Custo est. ${custoEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (evita ruptura)`,
         urgencia: 'alta',
         detalhes: {
@@ -325,7 +449,7 @@ function gerarAcoesAutonomasLocais(ctx) {
     });
   }
 
-  // Ação 2: Cobrança dos Maiores Inadimplentes via WhatsApp
+  // Ação 2: Cobrança dos Maiores Inadimplentes
   if (ctx.clientesDevedores && ctx.clientesDevedores.length > 0) {
     ctx.clientesDevedores.filter(c => c.atrasado).slice(0, 3).forEach((c, idx) => {
       const valFmt = c.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -348,7 +472,7 @@ function gerarAcoesAutonomasLocais(ctx) {
     });
   }
 
-  // Ação 3: Otimização de Preço para Produtos Classe A com Margem Abaixo da Meta
+  // Ação 3: Otimização de Preço para Produtos Classe A
   if (ctx.curvaABC && ctx.curvaABC.length > 0) {
     const prodClasseA = ctx.curvaABC.filter(p => p.classe === 'A').slice(0, 2);
     prodClasseA.forEach((p, idx) => {
@@ -401,565 +525,334 @@ function gerarAcoesAutonomasLocais(ctx) {
   return acoes;
 }
 
-// Execução real da ação no banco de dados e estado do ERP
-function executarAcaoAutonoma(acaoId) {
-  const acao = _acoesAutonomasCache.find(a => a.id === acaoId);
-  if (!acao) return;
+// ───────────────────────────────────────────────────────────────────
+// 4. SUB-TELA 2: GERADOR DE PACOTES PARA IA EXTERNA
+// ───────────────────────────────────────────────────────────────────
+function construirPacoteAnalise() {
+  const ctx = coletarContextoERP(_filtroPeriodo);
+  const jaResolvidos = obterIdsJaResolvidos();
 
-  try {
-    if (acao.tipo === 'REPOR_ESTOQUE') {
-      const d = acao.detalhes;
-      if (typeof state !== 'undefined' && Array.isArray(state.materias)) {
-        const mat = state.materias.find(m => m.id === d.materiaId);
-        if (mat) {
-          mat.qtd = Number((mat.qtd + Number(d.qtdComprar)).toFixed(1));
-          
-          // Registra compra formal
-          if (!Array.isArray(state.compras)) state.compras = [];
-          state.compras.push({
-            id: Date.now(),
-            materiaId: mat.id,
-            qtd: d.qtdComprar,
-            valorTotal: d.qtdComprar * (d.custoUn || 10),
-            data: new Date().toISOString().split('T')[0],
-            formaPagamento: 'prazo',
-            status: 'concluido',
-            obs: 'Gerado autonomamente pelo Copiloto IA Gemini'
-          });
+  // Tratamento de anonimização se ativado
+  let devedoresFormatados = ctx.clientesDevedores;
+  if (_anonimizarClientes) {
+    devedoresFormatados = ctx.clientesDevedores.map((c, idx) => ({
+      id: `cartao-${String(idx + 1).padStart(3, '0')}`,
+      nome: `#Cartão ${String(idx + 1).padStart(3, '0')}`,
+      total: c.total,
+      atrasado: c.atrasado,
+      dias: c.dias,
+      titulos: c.titulos
+    }));
+  }
 
-          // Registra movimento de estoque
-          if (Array.isArray(state.movEstoque)) {
-            state.movEstoque.push({
-              data: new Date().toISOString(),
-              tipo: 'entrada_ia',
-              item: mat.nome,
-              qtd: d.qtdComprar,
-              saldoApos: mat.qtd
-            });
-          }
-        }
-      }
-    } else if (acao.tipo === 'COBRANCA_INADIMPLENTE') {
-      const d = acao.detalhes;
-      const vFmt = Number(d.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      const msgTexto = `Olá, ${d.nome}! Tudo bem? Passando para avisar que consta uma pendência de ${vFmt}. Se precisar, posso reenviar a chave Pix para acertar com desconto ou parcelamento. Qualquer dúvida estou à disposição!`;
-      
-      // Registra no CRM
-      if (typeof state !== 'undefined') {
-        if (!Array.isArray(state.crmNotas)) state.crmNotas = [];
-        state.crmNotas.push({
-          id: Date.now(),
-          clienteId: d.clienteId,
-          data: new Date().toISOString(),
-          texto: `[IA AUTÔNOMA] Cobrança de ${vFmt} gerada e enviada via WhatsApp.`
-        });
-      }
+  const pacote = {
+    versao_formato: 1,
+    gerado_em: new Date().toISOString(),
+    periodo: _filtroPeriodo,
+    foco: _filtroFoco,
+    anonimizado: _anonimizarClientes,
+    instrucoes: "Você é um consultor analítico sênior para ERP. Interprete os indicadores e dados fornecidos SEM recalcular os números já computados. Identifique anomalias críticas, riscos de liquidez/ruptura e alavancas de rentabilidade. Sua resposta DEVE ser estritamente no formato JSON a seguir, sem texto antes ou depois: {\"versao_formato\": 1, \"interpretado_por\": \"Claude\", \"data_analise\": \"AAAA-MM-DD\", \"resumo\": \"texto executivo sucinto\", \"alertas\": [{\"id\": \"alt-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}], \"oportunidades\": [{\"id\": \"op-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}], \"acoes\": [{\"id\": \"ac-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}]}",
+    indicadores: {
+      faturamento: ctx.faturamentoMes,
+      faturamento_periodo: ctx.faturamentoPeriodo,
+      despesas: ctx.despesasMes,
+      despesas_periodo: ctx.despesasPeriodo,
+      saldo_caixa: ctx.saldoCaixa,
+      a_receber: ctx.aReceber,
+      a_receber_vencido: ctx.aReceberVencido,
+      a_pagar: ctx.aPagar,
+      a_pagar_vencido: ctx.aPagarVencido,
+      margem_media_pct: ctx.margemMediaPct,
+      ponto_equilibrio: ctx.breakEvenMensal,
+      score_saude: ctx.scoreSaude,
+      projecao_caixa_7d: ctx.projecaoCaixa.d7,
+      projecao_caixa_15d: ctx.projecaoCaixa.d15,
+      projecao_caixa_30d: ctx.projecaoCaixa.d30
+    },
+    serie_mensal: ctx.serieMensal,
+    curva_abc: ctx.curvaABC,
+    runway_estoque: ctx.runwayEstoque,
+    produtos_parados: ctx.produtosParados,
+    devedores_e_atrasos: devedoresFormatados,
+    orcamentos_abertos: {
+      quantidade: ctx.orcamentosAbertos,
+      valor_total: ctx.valorOrcamentos
+    },
+    ja_resolvido: jaResolvidos
+  };
 
-      // Abre WhatsApp
-      const telFormatado = String(d.tel || '').replace(/\D/g, '');
-      const urlWhats = telFormatado 
-        ? `https://api.whatsapp.com/send?phone=55${telFormatado}&text=${encodeURIComponent(msgTexto)}`
-        : `https://api.whatsapp.com/send?text=${encodeURIComponent(msgTexto)}`;
-      window.open(urlWhats, '_blank');
-    } else if (acao.tipo === 'AJUSTE_PRECO_MARGEM') {
-      const d = acao.detalhes;
-      if (typeof state !== 'undefined' && Array.isArray(state.produtos)) {
-        const prod = state.produtos.find(p => p.id === d.produtoId);
-        if (prod) {
-          prod.preco = Number(d.novoPreco);
-        }
-      }
-    } else if (acao.tipo === 'CONVERTER_ORCAMENTO') {
-      const d = acao.detalhes;
-      if (typeof state !== 'undefined' && Array.isArray(state.vendas)) {
-        const orc = state.vendas.find(v => v.id === d.vendaId);
-        if (orc) {
-          orc.tipo = 'venda';
-          orc.status = 'em_aberto';
-          orc.data = new Date().toISOString().split('T')[0];
-        }
-      }
-    }
+  return pacote;
+}
 
-    // Gravação imediata e persistente
-    if (typeof gravarLocalAgora === 'function') {
-      gravarLocalAgora();
-    } else if (typeof salvarDados === 'function') {
-      salvarDados();
-    }
+function atualizarPreviewPacote() {
+  const elPre = document.getElementById('analise-pacote-preview');
+  const elTam = document.getElementById('analise-pacote-tamanho');
+  if (!elPre) return;
 
-    // Registra no histórico de auditoria
-    _logAcoesExecutadas.unshift({
-      id: acao.id,
-      tipo: acao.tipo,
-      titulo: acao.titulo,
-      executadoEm: new Date().toLocaleString('pt-BR'),
-      detalhes: acao.detalhes
-    });
-    localStorage.setItem('gestaopro_log_acoes_ia', JSON.stringify(_logAcoesExecutadas.slice(0, 30)));
+  const pacote = construirPacoteAnalise();
+  const jsonStr = JSON.stringify(pacote, null, 2);
+  elPre.value = jsonStr;
 
-    // Marca como executado visualmente
-    acao.executado = true;
-    renderizarAcoesAutonomasNaInterface();
+  const bytes = new Blob([jsonStr]).size;
+  const kb = (bytes / 1024).toFixed(1);
+  if (elTam) {
+    elTam.textContent = `Tamanho: ${kb} KB (${jsonStr.length.toLocaleString('pt-BR')} caracteres)`;
+  }
+}
 
-    // Atualiza views do ERP se existirem
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof renderEstoque === 'function') renderEstoque();
-    if (typeof renderVendas === 'function') renderVendas();
-    if (typeof renderFinanceiro === 'function') renderFinanceiro();
-
+function copiarPacoteJSON() {
+  const elPre = document.getElementById('analise-pacote-preview');
+  if (!elPre) return;
+  const jsonStr = elPre.value;
+  navigator.clipboard.writeText(jsonStr).then(() => {
     if (typeof showToast === 'function') {
-      showToast(`⚡ Ação IA Concluída: ${acao.titulo}`, '#4CC38A');
+      showToast('📋 Pacote JSON copiado para a área de transferência!', '#4CC38A');
     }
-  } catch (err) {
-    console.error('Erro ao executar ação autônoma:', err);
-    if (typeof showToast === 'function') showToast('Erro ao executar ação', 'red');
-  }
-}
-
-function executarTodasAcoesPrioritarias() {
-  const pendentes = _acoesAutonomasCache.filter(a => !a.executado);
-  if (pendentes.length === 0) {
-    if (typeof showToast === 'function') showToast('Nenhuma ação pendente no momento!', '#00bdae');
-    return;
-  }
-
-  let concluidas = 0;
-  pendentes.forEach(a => {
-    executarAcaoAutonoma(a.id);
-    concluidas++;
+  }).catch(() => {
+    elPre.select();
+    document.execCommand('copy');
+    if (typeof showToast === 'function') {
+      showToast('📋 Copiado!', '#4CC38A');
+    }
   });
+}
 
+function exportarPacoteJSON() {
+  const elPre = document.getElementById('analise-pacote-preview');
+  if (!elPre) return;
+  const jsonStr = elPre.value;
+  const dataHoje = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gestaopro-pacote-analise-${dataHoje}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
   if (typeof showToast === 'function') {
-    showToast(`⚡ ${concluidas} ação(ões) autônoma(s) executada(s) com sucesso!`, '#4CC38A');
+    showToast('💾 Arquivo JSON exportado com sucesso!', '#4CC38A');
   }
 }
 
 // ───────────────────────────────────────────────────────────────────
-// 3. MONITOR CONTÍNUO EM TEMPO REAL & PULSE TICKER
+// 5. SUB-TELA 3: IMPORTAÇÃO E VALIDAÇÃO ESTRITA DE ESQUEMA
 // ───────────────────────────────────────────────────────────────────
-async function atualizarAnaliseEAcoesAutonomas() {
-  const contexto = coletarContextoERP();
+function validarEsquemaAnalise(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    return { valido: false, erro: 'O conteúdo informado deve ser um objeto JSON válido.' };
+  }
 
-  let acoes = [];
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2800);
-    const resp = await fetch('/api/gemini/acoes-autonomas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stateContext: contexto }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-    if (resp.ok) {
-      const data = await resp.json();
-      if (Array.isArray(data.acoes) && data.acoes.length > 0) {
-        acoes = data.acoes;
+  if (obj.versao_formato !== 1) {
+    return { valido: false, erro: "O campo 'versao_formato' deve ser exatamente igual a 1." };
+  }
+
+  if (typeof obj.interpretado_por !== 'string' || !obj.interpretado_por.trim()) {
+    return { valido: false, erro: "O campo 'interpretado_por' é obrigatório (ex: 'Claude')." };
+  }
+
+  if (typeof obj.data_analise !== 'string' || !obj.data_analise.trim()) {
+    return { valido: false, erro: "O campo 'data_analise' é obrigatório (ex: '2026-11-06')." };
+  }
+
+  if (typeof obj.resumo !== 'string' || !obj.resumo.trim()) {
+    return { valido: false, erro: "O campo 'resumo' com texto executivo sucinto é obrigatório." };
+  }
+
+  const validarListaItens = (lista, nomeCampo) => {
+    if (!Array.isArray(lista)) {
+      return `O campo '${nomeCampo}' deve ser uma lista (array).`;
+    }
+    for (let i = 0; i < lista.length; i++) {
+      const it = lista[i];
+      if (!it || typeof it !== 'object') {
+        return `Item #${i + 1} de '${nomeCampo}' inválido.`;
+      }
+      if (!it.id || typeof it.id !== 'string') {
+        return `Item #${i + 1} de '${nomeCampo}' deve conter um 'id' em formato string.`;
+      }
+      if (!it.titulo || typeof it.titulo !== 'string') {
+        return `Item #${i + 1} de '${nomeCampo}' deve conter um 'titulo'.`;
+      }
+      if (!it.motivo || typeof it.motivo !== 'string') {
+        return `Item #${i + 1} de '${nomeCampo}' deve conter um 'motivo' detalhado.`;
+      }
+      if (!['alta', 'media', 'baixa'].includes(String(it.urgencia || '').toLowerCase())) {
+        return `Item #${i + 1} de '${nomeCampo}' deve ter urgencia 'alta', 'media' ou 'baixa'.`;
       }
     }
-  } catch (e) {}
+    return null;
+  };
 
-  if (acoes.length === 0) {
-    acoes = gerarAcoesAutonomasLocais(contexto);
-  }
+  const errAlertas = validarListaItens(obj.alertas, 'alertas');
+  if (errAlertas) return { valido: false, erro: errAlertas };
 
-  _acoesAutonomasCache = acoes;
-  renderizarAcoesAutonomasNaInterface();
-  renderizarSmartBannerDashboard(contexto, acoes);
+  const errOportunidades = validarListaItens(obj.oportunidades, 'oportunidades');
+  if (errOportunidades) return { valido: false, erro: errOportunidades };
+
+  const errAcoes = validarListaItens(obj.acoes, 'acoes');
+  if (errAcoes) return { valido: false, erro: errAcoes };
+
+  return { valido: true };
 }
 
-function renderizarSmartBannerDashboard(ctx, acoes) {
-  let banner = document.getElementById('ia-smart-banner-realtime');
-  const dashPage = document.getElementById('page-dashboard');
-  if (!dashPage) return;
+function processarImportacaoJSON() {
+  const txtEl = document.getElementById('analise-import-textarea');
+  const errEl = document.getElementById('analise-import-erro');
+  if (!txtEl || !errEl) return;
 
-  const acoesPendentes = acoes.filter(a => !a.executado);
-  const badgeDot = document.getElementById('ia-badge-acoes');
-  if (badgeDot) {
-    if (acoesPendentes.length > 0) {
-      badgeDot.style.display = 'block';
-      badgeDot.textContent = acoesPendentes.length;
-    } else {
-      badgeDot.style.display = 'none';
-    }
-  }
-
-  if (acoesPendentes.length === 0) {
-    if (banner) banner.style.display = 'none';
+  const raw = txtEl.value.trim();
+  if (!raw) {
+    errEl.textContent = 'Por favor, cole o JSON fornecido pela IA.';
+    errEl.style.display = 'block';
     return;
   }
 
-  const primeiraAcao = acoesPendentes[0];
-
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'ia-smart-banner-realtime';
-    banner.className = 'ia-smart-banner';
-    const refEl = dashPage.querySelector('.dash-date-line') || dashPage.firstChild;
-    if (refEl && refEl.nextSibling) {
-      dashPage.insertBefore(banner, refEl.nextSibling);
-    } else {
-      dashPage.prepend(banner);
-    }
-  }
-
-  banner.style.display = 'flex';
-  banner.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;min-width:240px;flex:1">
-      <div style="width:38px;height:38px;border-radius:10px;background:rgba(0,189,174,0.18);color:#00bdae;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
-        ⚡
-      </div>
-      <div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <strong style="color:#FFF;font-size:13.5px">Monitor IA Autônomo em Tempo Real</strong>
-          <span class="badge" style="background:#00bdae;color:#000;font-size:10px;font-weight:800">${acoesPendentes.length} Ação(ões) Sugerida(s)</span>
-        </div>
-        <div style="font-size:12px;color:var(--text);margin-top:2px">
-          <strong>Prioridade:</strong> ${primeiraAcao.titulo} · <span style="color:var(--gold,#C9A24B)">${primeiraAcao.impactoFinanceiro}</span>
-        </div>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-primary btn-sm" onclick="executarAcaoAutonoma('${primeiraAcao.id}')" style="background:#00bdae;border-color:#00bdae;color:#000;font-weight:700">
-        ⚡ Executar Agora
-      </button>
-      <button class="btn btn-outline btn-sm" onclick="abrirAssistenteIA('', 'acoes')">
-        Ver Central Autônoma (${acoesPendentes.length})
-      </button>
-    </div>
-  `;
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function renderizarAcoesAutonomasNaInterface() {
-  const container = document.getElementById('ia-acoes-lista');
-  if (!container) return;
-
-  if (_acoesAutonomasCache.length === 0) {
-    container.innerHTML = `
-      <div style="text-align:center;padding:36px 16px;color:var(--muted)">
-        <i data-lucide="check-circle" style="width:38px;height:38px;color:#4CC38A;margin:0 auto 10px;display:block"></i>
-        <strong style="color:#FFF;font-size:15px;display:block;margin-bottom:4px">Operação 100% Equilibrada!</strong>
-        Nenhuma anomalia crítica de estoque, margem ou cobrança no momento.
-      </div>
-    `;
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    return;
-  }
-
-  container.innerHTML = _acoesAutonomasCache.map(a => {
-    const tagClass = a.urgencia === 'alta' ? 'ia-tag-alta' : (a.urgencia === 'media' ? 'ia-tag-media' : 'ia-tag-baixa');
-    const isExec = a.executado;
-
-    return `
-      <div class="ia-action-card ${isExec ? 'executado' : ''}" id="card-${a.id}">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span class="ia-tag-urgencia ${tagClass}">Prioridade ${a.urgencia}</span>
-          <span style="font-size:11.5px;color:var(--gold,#C9A24B);font-weight:700">${a.impactoFinanceiro}</span>
-        </div>
-        <div>
-          <h4 style="margin:0 0 4px;font-size:14px;color:#FFF;font-weight:700">${a.titulo}</h4>
-          <p style="margin:0;font-size:12.5px;color:var(--text);line-height:1.4">${a.motivo}</p>
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
-          ${isExec ? `
-            <span style="color:#4CC38A;font-size:12px;display:inline-flex;align-items:center;gap:4px;font-weight:700">
-              <i data-lucide="check" style="width:14px;height:14px"></i> Executado com Sucesso
-            </span>
-          ` : `
-            <button class="btn btn-outline btn-xs" onclick="enviarMensagemIA('Explique mais sobre a ação: ${a.titulo}')">
-              Por que fazer isso?
-            </button>
-            <button class="btn btn-primary btn-xs" onclick="executarAcaoAutonoma('${a.id}')" style="background:#00bdae;border-color:#00bdae;color:#000;font-weight:700">
-              ⚡ Executar em 1 Clique
-            </button>
-          `}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function alternarPilotoAutomatico() {
-  _pilotoAutomaticoAtivo = !_pilotoAutomaticoAtivo;
-  localStorage.setItem('gestaopro_piloto_automatico', _pilotoAutomaticoAtivo ? 'true' : 'false');
-  const btn = document.getElementById('btn-toggle-piloto');
-  if (btn) {
-    btn.innerHTML = _pilotoAutomaticoAtivo 
-      ? '<span style="color:#4CC38A">● Piloto Ativo</span>' 
-      : '<span style="color:var(--muted)">○ Supervisionado</span>';
-  }
-  if (typeof showToast === 'function') {
-    showToast(_pilotoAutomaticoAtivo ? 'Modo Piloto Automático Ativado!' : 'Modo Supervisionado Ativado!');
-  }
-}
-
-// ───────────────────────────────────────────────────────────────────
-// 4. CHAT IA DE ULTRA-ALTA VELOCIDADE (GEMINI 3.8 FLASH SERVER-SIDE)
-// ───────────────────────────────────────────────────────────────────
-async function enviarMensagemIA(textoPersonalizado) {
-  if (_iaCarregando) return;
-
-  const input = document.getElementById('ia-chat-input');
-  const texto = textoPersonalizado || (input ? input.value.trim() : '');
-  if (!texto) return;
-
-  if (input) input.value = '';
-
-  const containerMsgs = document.getElementById('ia-chat-mensagens');
-  if (!containerMsgs) return;
-
-  // Renderiza pergunta do usuário
-  const msgUser = document.createElement('div');
-  msgUser.className = 'ia-msg ia-msg-user';
-  msgUser.innerHTML = `<div class="ia-bolha">${texto.replace(/</g, '&lt;')}</div>`;
-  containerMsgs.appendChild(msgUser);
-
-  // Renderiza indicador animado
-  _iaCarregando = true;
-  const msgLoading = document.createElement('div');
-  msgLoading.className = 'ia-msg ia-msg-assistant ia-loading-msg';
-  msgLoading.innerHTML = `
-    <div class="ia-avatar"><i data-lucide="sparkles" style="width:16px;height:16px;color:#C9A24B"></i></div>
-    <div class="ia-bolha" style="display:flex;align-items:center;gap:8px">
-      <span class="ia-spinner"></span>
-      <span>Gemini 3.8 Flash analisando dados e gerando ações...</span>
-    </div>
-  `;
-  containerMsgs.appendChild(msgLoading);
-  containerMsgs.scrollTop = containerMsgs.scrollHeight;
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-
-  const contexto = coletarContextoERP();
-  let respostaTexto = '';
-
+  let parsed = null;
   try {
-    const controller = new AbortController();
-    const timeoutTimer = setTimeout(() => controller.abort(), 8500);
-
-    const resp = await fetch('/api/gemini/assistente', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: texto,
-        context: contexto,
-        history: historicoChatIA.slice(-6)
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutTimer);
-
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data && data.text) respostaTexto = data.text;
+    // Extrai JSON mesmo se vier envelopado em ```json ```
+    let clean = raw;
+    if (clean.includes('```')) {
+      const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (match && match[1]) clean = match[1];
     }
-  } catch (err) {
-    console.warn('[Copiloto IA] Alternando para o Motor Analítico Local:', err);
+    parsed = JSON.parse(clean);
+  } catch (e) {
+    errEl.textContent = 'Erro de sintaxe JSON: verifique se não faltam aspas ou chaves no texto colado.';
+    errEl.style.display = 'block';
+    return;
   }
 
-  // Fallback rico e matemático se a rede oscilar
-  if (!respostaTexto) {
-    respostaTexto = gerarRespostaInteligenteLocal(texto, contexto);
+  const validacao = validarEsquemaAnalise(parsed);
+  if (!validacao.valido) {
+    errEl.textContent = `Falha de validação: ${validacao.erro}`;
+    errEl.style.display = 'block';
+    return;
   }
 
-  msgLoading.remove();
-  _iaCarregando = false;
+  errEl.style.display = 'none';
 
-  historicoChatIA.push({ role: 'user', text: texto });
-  historicoChatIA.push({ role: 'model', text: respostaTexto });
+  // Salva no histórico das últimas 12 análises
+  const historico = obterHistoricoAnalises();
+  const novaAnalise = {
+    ...parsed,
+    criado_em: new Date().toISOString(),
+    resolvidos: {} // { [cardId]: 'feito' | 'ignorado' }
+  };
 
-  const msgIA = document.createElement('div');
-  msgIA.className = 'ia-msg ia-msg-assistant';
-  const htmlResposta = formatarMarkdownParaHTML(respostaTexto);
-  const idResp = 'ia-resp-' + Date.now();
+  historico.unshift(novaAnalise);
+  salvarHistoricoAnalises(historico);
 
-  msgIA.innerHTML = `
-    <div class="ia-avatar"><i data-lucide="sparkles" style="width:16px;height:16px;color:#C9A24B"></i></div>
-    <div class="ia-bolha">
-      <div id="${idResp}">${htmlResposta}</div>
-      <div style="margin-top:10px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px">
-        <button class="btn btn-outline btn-xs" onclick="copiarTextoIA('${idResp}')">
-          <i data-lucide="copy" class="ic"></i> Copiar
-        </button>
-        <button class="btn btn-outline btn-xs" onclick="mudarAbaIA('acoes')">
-          <i data-lucide="zap" class="ic" style="color:#00bdae"></i> Ações Sugeridas
-        </button>
-      </div>
-    </div>
-  `;
-  containerMsgs.appendChild(msgIA);
-  containerMsgs.scrollTop = containerMsgs.scrollHeight;
+  txtEl.value = '';
+  _analiseHistoricoIdx = 0;
+
+  if (typeof showToast === 'function') {
+    showToast(`✅ Análise importada com sucesso (${parsed.interpretado_por})!`, '#4CC38A');
+  }
+
+  mudarSubAbaAnalise('resultados');
+}
+
+// ───────────────────────────────────────────────────────────────────
+// 6. SUB-TELA 4: RESULTADOS, COMPARATIVO E AUDITORIA
+// ───────────────────────────────────────────────────────────────────
+function marcarCardAnalise(cardId, status) {
+  const hist = obterHistoricoAnalises();
+  if (hist.length === 0) return;
+  const an = hist[_analiseHistoricoIdx] || hist[0];
+  if (!an) return;
+
+  if (!an.resolvidos) an.resolvidos = {};
+  if (an.resolvidos[cardId] === status) {
+    delete an.resolvidos[cardId]; // Alterna
+  } else {
+    an.resolvidos[cardId] = status;
+  }
+
+  salvarHistoricoAnalises(hist);
+  renderSubAbaResultados();
+}
+
+function executarAcaoCard(tipoAcao, ref) {
+  if (tipoAcao === 'repor_estoque') {
+    if (typeof goto === 'function') goto('estoque');
+    if (typeof showToast === 'function') showToast('📦 Redirecionando para Estoque & Reposição...', '#C9A24B');
+  } else if (tipoAcao === 'cobrar_cliente') {
+    if (typeof goto === 'function') goto('receber');
+    if (typeof showToast === 'function') showToast('💬 Redirecionando para Contas a Receber...', '#00bdae');
+  } else if (tipoAcao === 'abrir_produto') {
+    if (typeof goto === 'function') goto('precificacao');
+    if (typeof showToast === 'function') showToast('🏷️ Redirecionando para Precificação...', '#C9A24B');
+  } else {
+    if (typeof showToast === 'function') showToast('Nenhuma ação automática vinculada.', '#8E897C');
+  }
+}
+
+function selecionarAnaliseHistorico(idx) {
+  _analiseHistoricoIdx = idx;
+  renderSubAbaResultados();
+}
+
+function excluirAnaliseHistorico(idx) {
+  if (!confirm('Deseja realmente excluir esta análise do histórico?')) return;
+  const hist = obterHistoricoAnalises();
+  hist.splice(idx, 1);
+  salvarHistoricoAnalises(hist);
+  _analiseHistoricoIdx = 0;
+  renderSubAbaResultados();
+}
+
+// ───────────────────────────────────────────────────────────────────
+// 7. RENDERIZADOR DAS 4 SUB-TELAS
+// ───────────────────────────────────────────────────────────────────
+function mudarSubAbaAnalise(abaId) {
+  _subAbaAnaliseAtual = abaId;
+
+  document.querySelectorAll('.analise-subtab-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-subtab') === abaId);
+  });
+
+  const cPainel = document.getElementById('analise-view-painel');
+  const cGerar = document.getElementById('analise-view-gerar');
+  const cImportar = document.getElementById('analise-view-importar');
+  const cResultados = document.getElementById('analise-view-resultados');
+
+  if (cPainel) cPainel.style.display = abaId === 'painel' ? 'block' : 'none';
+  if (cGerar) cGerar.style.display = abaId === 'gerar' ? 'block' : 'none';
+  if (cImportar) cImportar.style.display = abaId === 'importar' ? 'block' : 'none';
+  if (cResultados) cResultados.style.display = abaId === 'resultados' ? 'block' : 'none';
+
+  if (abaId === 'painel') renderSubAbaPainel();
+  if (abaId === 'gerar') {
+    atualizarPreviewPacote();
+  }
+  if (abaId === 'resultados') renderSubAbaResultados();
+
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// ───────────────────────────────────────────────────────────────────
-// 5. MOTOR LOCAL INTELIGENTE DE CONTINGÊNCIA (OFFLINE RESILIENTE)
-// ───────────────────────────────────────────────────────────────────
-function gerarRespostaInteligenteLocal(prompt, ctx) {
-  const p = String(prompt || '').toLowerCase().trim();
-  const faturamentoFmt = Number(ctx.faturamentoMes || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const aReceberFmt = Number(ctx.aReceber || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const aPagarFmt = Number(ctx.aPagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-  // 1. ESTOQUE & RUNWAY
-  if (p.includes('estoque') || p.includes('compra') || p.includes('materia') || p.includes('falta') || p.includes('ruptura')) {
-    let linhasZero = ctx.produtosEstoqueZero.map(item => `  - ❌ **${item.nome}**: Zerado (mínimo: ${item.minimo})`).join('\n');
-    let linhasMat = ctx.materiasBaixas.map(m => `  - 🧪 **${m.nome}**: ${m.qtd} ${m.unidade} (comprar +${m.necessidadeCompra} ${m.unidade})`).join('\n');
-
-    return `### 📦 Auditoria de Estoque & Reposição Autônoma
-
-**Situação em Tempo Real:**
-- Score de Saúde do Estoque: **${ctx.scoreSaude}/100**
-- Produtos com Ruptura Imediata: **${ctx.produtosEstoqueZero.length}**
-- Insumos Críticos: **${ctx.materiasBaixas.length}**
-
-${linhasZero ? `**Produtos com Estoque Esgotado:**\n${linhasZero}\n` : ''}
-${linhasMat ? `**Insumos Necessários para Produção:**\n${linhasMat}\n` : ''}
-${(!linhasZero && !linhasMat) ? '✅ **Parabéns!** Todos os itens estão com nível seguro de cobertura.\n' : ''}
-**Ação Autônoma Recomendada:**
-Vá até a aba **"Ações Autônomas"** acima e clique em **"Executar em 1 Clique"** para gerar automaticamente o pedido de compra dos insumos com seus fornecedores cadastrados.`;
-  }
-
-  // 2. COBRANÇA & FIADO
-  if (p.includes('cobranca') || p.includes('cobrar') || p.includes('inadimpl') || p.includes('fiado') || p.includes('receber')) {
-    let listaDev = ctx.clientesDevedores.slice(0, 4).map(c => {
-      const valFmt = c.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      return `  - 👤 **${c.nome}**: ${valFmt}${c.dias ? ` (${c.dias} dias em atraso)` : ' (em aberto)'}`;
-    }).join('\n');
-
-    return `### 💬 Estratégia Autônoma de Cobrança e Fiado
-
-**Raio-X de Liquidez:**
-- Total a Receber: **${aReceberFmt}**
-- Em Atraso Vencido: **${Number(ctx.aReceberVencido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}**
-- Projeção de Entradas em 7 Dias: **${Number(ctx.projecaoCaixa.d7 || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}**
-
-${listaDev ? `**Clientes com Maior Concentração de Saldo:**\n${listaDev}\n` : '✅ Todos os clientes em dia!\n'}
-**Modelo de WhatsApp com Gatilho de Recompra:**
-> *"Olá! Tudo bem? Passando para avisar que sua rota de entrega está programada para esta semana. Se puder nos enviar o comprovante do saldo pendente no Pix, já libero seu novo pedido com prioridade total!"*`;
-  }
-
-  // 3. CURVA ABC E LUCRO
-  if (p.includes('abc') || p.includes('pareto') || p.includes('lucro') || p.includes('margem') || p.includes('preco')) {
-    let listaABC = ctx.curvaABC.slice(0, 5).map(p => `  - **Classe ${p.classe}**: ${p.nome} (${p.pctDoTotal}% da receita total)`).join('\n');
-
-    return `### 🎯 Análise Preditiva de Lucratividade & Curva ABC
-
-**Curva de Pareto dos Produtos:**
-${listaABC}
-
-**Indicadores Chave:**
-- Margem Média Bruta Estimada: **${ctx.margemMediaPct}%**
-- Ponto de Equilíbrio Operacional: **${ctx.breakEvenMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês**
-
-**Decisão Estratégica:**
-Concentre o estoque de segurança e o abastecimento imediato nos produtos **Classe A**, pois qualquer ruptura neles paralisa 80% do fluxo de entrada do negócio.`;
-  }
-
-  // 4. DIAGNÓSTICO GERAL
-  return `### ⚡ Diagnóstico do Negócio em Tempo Real
-
-- **Score de Saúde Empresarial:** **${ctx.scoreSaude}/100**
-- **Faturamento no Mês:** ${faturamentoFmt}
-- **Saldo Projetado Caixa (15 dias):** ${Number(ctx.projecaoCaixa.d15 || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-- **Itens Demandando Ação:** ${ctx.itensCriticos}
-
-Para ver as decisões automáticas disponíveis agora, clique na aba **"⚡ Ações Autônomas"** acima!`;
+function renderAnaliseDados() {
+  mudarSubAbaAnalise(_subAbaAnaliseAtual);
+  atualizarSelosAnaliseDados();
 }
 
-// ───────────────────────────────────────────────────────────────────
-// 6. GESTÃO DE ABAS E MODAL DA CENTRAL DE IA
-// ───────────────────────────────────────────────────────────────────
-function abrirAssistenteIA(promptInicial, abaInicial) {
-  const modal = document.getElementById('modal-ia-assistente');
-  if (!modal) return;
-  modal.classList.add('open');
-  modal.classList.add('active');
-
-  const btnFloat = document.getElementById('btn-flutuante-ia');
-  if (btnFloat) btnFloat.style.display = 'none';
-  document.body.classList.add('modal-open');
-
-  mudarAbaIA(abaInicial || 'chat');
-  atualizarAnaliseEAcoesAutonomas();
-
-  const containerMsgs = document.getElementById('ia-chat-mensagens');
-  if (containerMsgs && historicoChatIA.length === 0) {
-    containerMsgs.innerHTML = `
-      <div class="ia-msg ia-msg-assistant">
-        <div class="ia-avatar"><i data-lucide="sparkles" style="width:16px;height:16px;color:#C9A24B"></i></div>
-        <div class="ia-bolha">
-          <strong>Olá! Eu sou o Copiloto IA Gemini 3.8 Flash do GestãoPRO.</strong><br>
-          Tenho acesso aos dados operacionais do seu ERP em tempo real e consigo gerenciar ações diretamente no sistema.
-          <div class="ia-sugestoes" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">
-            <button class="ia-chip" onclick="mudarAbaIA('acoes')">⚡ Ações Autônomas Sugeridas</button>
-            <button class="ia-chip" onclick="enviarMensagemIA('Diagnóstico Completo')">📊 Diagnóstico 360°</button>
-            <button class="ia-chip" onclick="enviarMensagemIA('Curva ABC e Produtos Mais Lucrativos')">🎯 Curva ABC</button>
-            <button class="ia-chip" onclick="enviarMensagemIA('Quais produtos estão prestes a esgotar?')">📦 Runway de Estoque</button>
-          </div>
-        </div>
-      </div>
-    `;
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-  }
-
-  if (promptInicial) {
-    const input = document.getElementById('ia-chat-input');
-    if (input) input.value = promptInicial;
-    enviarMensagemIA(promptInicial);
-  }
-}
-
-function fecharAssistenteIA() {
-  const modal = document.getElementById('modal-ia-assistente');
-  if (modal) {
-    modal.classList.remove('open');
-    modal.classList.remove('active');
-  }
-  const btnFloat = document.getElementById('btn-flutuante-ia');
-  if (btnFloat) btnFloat.style.display = 'flex';
-  document.body.classList.remove('modal-open');
-}
-
-function mudarAbaIA(abaId) {
-  _abaAtualIA = abaId;
-  const botoes = document.querySelectorAll('.ia-tab-btn');
-  botoes.forEach(b => {
-    b.classList.toggle('active', b.getAttribute('data-tab') === abaId);
-  });
-
-  const conteudos = document.querySelectorAll('.ia-tab-content');
-  conteudos.forEach(c => {
-    c.classList.toggle('active', c.id === `ia-tab-view-${abaId}`);
-  });
-
-  if (abaId === 'acoes') {
-    renderizarAcoesAutonomasNaInterface();
-  } else if (abaId === 'analise') {
-    renderizarPainelAnalisePreditiva();
-  } else if (abaId === 'log') {
-    renderizarLogAcoes();
-  }
-}
-
-function renderizarPainelAnalisePreditiva() {
-  const container = document.getElementById('ia-analise-conteudo');
+// Sub-aba 1: Painel
+function renderSubAbaPainel() {
+  const container = document.getElementById('analise-painel-conteudo');
   if (!container) return;
 
-  const ctx = coletarContextoERP();
-  const faturamentoFmt = Number(ctx.faturamentoMes || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const ctx = coletarContextoERP('mes_atual');
+  const faturamentoFmt = ctx.faturamentoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const corScore = ctx.scoreSaude > 75 ? '#4CC38A' : (ctx.scoreSaude > 50 ? '#F2C94C' : '#EB5757');
 
   container.innerHTML = `
+    <!-- KPIS EXECUTIVOS LOCAIS -->
     <div class="ia-kpi-grid">
       <div class="ia-kpi-box">
-        <span class="ia-kpi-sub">Score de Saúde IA</span>
-        <span class="ia-kpi-val" style="color:${ctx.scoreSaude > 75 ? '#4CC38A' : (ctx.scoreSaude > 50 ? '#F2C94C' : '#EB5757')}">${ctx.scoreSaude}/100</span>
+        <span class="ia-kpi-sub">Score de Saúde Operacional</span>
+        <span class="ia-kpi-val" style="color:${corScore}">${ctx.scoreSaude}/100</span>
       </div>
       <div class="ia-kpi-box">
-        <span class="ia-kpi-sub">Ponto de Equilíbrio</span>
+        <span class="ia-kpi-sub">Ponto de Equilíbrio (Mês)</span>
         <span class="ia-kpi-val">${ctx.breakEvenMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
       </div>
       <div class="ia-kpi-box">
@@ -967,51 +860,81 @@ function renderizarPainelAnalisePreditiva() {
         <span class="ia-kpi-val" style="color:var(--gold,#C9A24B)">${ctx.margemMediaPct}%</span>
       </div>
       <div class="ia-kpi-box">
-        <span class="ia-kpi-sub">Fluxo 15 Dias</span>
+        <span class="ia-kpi-sub">Fluxo Projetado (15 Dias)</span>
         <span class="ia-kpi-val" style="color:${ctx.projecaoCaixa.d15 >= 0 ? '#4CC38A' : '#EB5757'}">
-          ${Number(ctx.projecaoCaixa.d15 || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          ${ctx.projecaoCaixa.d15.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
         </span>
       </div>
     </div>
 
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:14px">
+    <!-- PROJEÇÃO DE CAIXA LÍQUIDO -->
+    <div class="table-card" style="margin-bottom:14px;padding:14px">
       <h4 style="margin:0 0 10px;font-size:13.5px;color:var(--gold,#C9A24B);display:flex;align-items:center;gap:6px">
-        <i data-lucide="layers" style="width:14px;height:14px"></i> Curva ABC de Faturamento (Pareto)
+        <i data-lucide="calendar" style="width:16px;height:16px"></i> Projeção de Liquidez (Entradas Previstas − Saídas Agendadas)
       </h4>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${ctx.curvaABC.length > 0 ? ctx.curvaABC.slice(0, 5).map(p => `
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:5px">
-            <div>
-              <span class="badge" style="background:${p.classe === 'A' ? 'var(--gold,#C9A24B)' : (p.classe === 'B' ? '#4CC38A' : '#8E897C')};color:#000;font-size:10px;font-weight:800;margin-right:6px">Classe ${p.classe}</span>
-              <strong>${p.nome}</strong>
-            </div>
-            <div>
-              <span style="color:var(--muted)">${p.pctDoTotal}% do total</span> · 
-              <strong>${p.receita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-            </div>
-          </div>
-        `).join('') : '<p style="color:var(--muted);font-size:12px;margin:0">Nenhuma venda registrada ainda.</p>'}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px">
+        <div style="background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:11px;color:var(--muted)">Próximos 7 dias</div>
+          <strong style="font-size:15px;color:${ctx.projecaoCaixa.d7 >= 0 ? '#4CC38A' : '#EB5757'}">${ctx.projecaoCaixa.d7.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+        </div>
+        <div style="background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:11px;color:var(--muted)">Próximos 15 dias</div>
+          <strong style="font-size:15px;color:${ctx.projecaoCaixa.d15 >= 0 ? '#4CC38A' : '#EB5757'}">${ctx.projecaoCaixa.d15.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+        </div>
+        <div style="background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:11px;color:var(--muted)">Próximos 30 dias</div>
+          <strong style="font-size:15px;color:${ctx.projecaoCaixa.d30 >= 0 ? '#4CC38A' : '#EB5757'}">${ctx.projecaoCaixa.d30.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+        </div>
       </div>
     </div>
 
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px">
-      <h4 style="margin:0 0 10px;font-size:13.5px;color:var(--gold,#C9A24B);display:flex;align-items:center;gap:6px">
-        <i data-lucide="clock" style="width:14px;height:14px"></i> Runway de Estoque (Dias até Acabar)
-      </h4>
+    <!-- CURVA ABC COMPLETA -->
+    <div class="table-card" style="margin-bottom:14px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h4 style="margin:0;font-size:13.5px;color:var(--gold,#C9A24B);display:flex;align-items:center;gap:6px">
+          <i data-lucide="layers" style="width:16px;height:16px"></i> Curva ABC Completa (Pareto 80/15/5)
+        </h4>
+        <span style="font-size:11px;color:var(--muted)">${ctx.curvaABC.length} produtos classificados</span>
+      </div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${ctx.runwayEstoque.length > 0 ? ctx.runwayEstoque.slice(0, 5).map(r => `
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px">
-            <div>
-              <strong>${r.nome}</strong>
-              <span style="font-size:11px;color:var(--muted);margin-left:6px">(${r.estoque} un)</span>
+        ${ctx.curvaABC.length > 0 ? ctx.curvaABC.map(p => `
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="badge" style="background:${p.classe === 'A' ? 'var(--gold,#C9A24B)' : (p.classe === 'B' ? '#4CC38A' : '#8E897C')};color:#000;font-size:10px;font-weight:800;padding:2px 7px">Classe ${p.classe}</span>
+              <strong>${p.nome}</strong>
+              <span style="font-size:11px;color:var(--muted)">(${p.qtd} un vendidas)</span>
             </div>
             <div>
-              <span class="ia-tag-urgencia ${r.diasRestantes <= 2 ? 'ia-tag-alta' : (r.diasRestantes <= 7 ? 'ia-tag-media' : 'ia-tag-baixa')}">
-                ${r.diasRestantes <= 0 ? 'RUPTURA' : `${r.diasRestantes} dias rest.`}
+              <span style="color:var(--muted);font-size:11.5px">${p.pctDoTotal}% da receita</span> · 
+              <strong>${p.receita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+            </div>
+          </div>
+        `).join('') : '<p style="color:var(--muted);font-size:12px;margin:0">Nenhuma venda registrada.</p>'}
+      </div>
+    </div>
+
+    <!-- RUNWAY DE ESTOQUE COMPLETO -->
+    <div class="table-card" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h4 style="margin:0;font-size:13.5px;color:var(--gold,#C9A24B);display:flex;align-items:center;gap:6px">
+          <i data-lucide="package-search" style="width:16px;height:16px"></i> Runway de Cobertura de Estoque (Dias até Ruptura)
+        </h4>
+        <span style="font-size:11px;color:var(--muted)">Ordenado pelos mais críticos</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${ctx.runwayEstoque.length > 0 ? ctx.runwayEstoque.map(r => `
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:6px">
+            <div>
+              <strong>${r.nome}</strong>
+              <span style="font-size:11px;color:var(--muted);margin-left:6px">Estoque: ${r.estoque} un (Mín: ${r.minimo}) · Giro: ${r.giroDiario}/dia</span>
+            </div>
+            <div>
+              <span class="ia-tag-urgencia ${r.diasRestantes <= 0 ? 'ia-tag-alta' : (r.diasRestantes <= 7 ? 'ia-tag-media' : 'ia-tag-baixa')}">
+                ${r.diasRestantes <= 0 ? 'RUPTURA IMEDIATA' : (r.diasRestantes >= 999 ? 'Sem vendas' : `${r.diasRestantes} dias restantes`)}
               </span>
             </div>
           </div>
-        `).join('') : '<p style="color:var(--muted);font-size:12px;margin:0">Estoque sem movimentações registradas.</p>'}
+        `).join('') : '<p style="color:var(--muted);font-size:12px;margin:0">Nenhum produto cadastrado.</p>'}
       </div>
     </div>
   `;
@@ -1019,215 +942,357 @@ function renderizarPainelAnalisePreditiva() {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-function renderizarLogAcoes() {
-  const container = document.getElementById('ia-log-conteudo');
+// Sub-aba 4: Resultados
+function renderSubAbaResultados() {
+  const container = document.getElementById('analise-resultados-conteudo');
   if (!container) return;
 
-  if (_logAcoesExecutadas.length === 0) {
+  const hist = obterHistoricoAnalises();
+  if (hist.length === 0) {
     container.innerHTML = `
-      <div style="text-align:center;padding:30px 16px;color:var(--muted)">
-        <i data-lucide="history" style="width:34px;height:34px;margin:0 auto 8px;display:block"></i>
-        Nenhuma ação autônoma foi executada ainda nesta sessão.
+      <div style="text-align:center;padding:48px 16px;background:var(--card);border:1px dashed var(--border);border-radius:14px">
+        <i data-lucide="file-question" style="width:42px;height:42px;color:var(--gold,#C9A24B);margin:0 auto 12px;display:block"></i>
+        <h3 style="margin:0 0 6px;color:#FFF;font-size:16px">Nenhuma Análise Importada Ainda</h3>
+        <p style="margin:0 0 16px;font-size:13px;color:var(--muted);max-width:440px;margin-left:auto;margin-right:auto">
+          Gere um pacote na aba <strong>"Gerar Pacote"</strong>, envie para a IA da sua preferência (ex: Claude) e cole o resultado na aba <strong>"Importar"</strong>.
+        </p>
+        <button class="btn btn-primary" onclick="mudarSubAbaAnalise('gerar')">
+          <i data-lucide="package" class="ic"></i> Ir para Gerar Pacote
+        </button>
       </div>
     `;
     if (typeof lucide !== 'undefined') lucide.createIcons();
     return;
   }
 
-  container.innerHTML = _logAcoesExecutadas.map(log => `
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <strong style="font-size:13px;color:#FFF">${log.titulo}</strong>
-        <span style="font-size:11px;color:var(--muted)">${log.executadoEm}</span>
+  const anAtual = hist[_analiseHistoricoIdx] || hist[0];
+  const anAnterior = hist[_analiseHistoricoIdx + 1] || null;
+
+  // Checa data (> 30 dias = desatualizada)
+  const dtAnalise = new Date(anAtual.data_analise + 'T00:00:00');
+  const agora = new Date();
+  const diffDias = Math.floor((agora.getTime() - dtAnalise.getTime()) / (1000 * 60 * 60 * 24));
+  const desatualizada = diffDias > 30;
+
+  const dtFmt = dtAnalise.toLocaleDateString('pt-BR');
+
+  // Conta pendências
+  const resolvidos = anAtual.resolvidos || {};
+  const todosItens = [...(anAtual.alertas || []), ...(anAtual.oportunidades || []), ...(anAtual.acoes || [])];
+  const pendentesCount = todosItens.filter(it => !resolvidos[it.id]).length;
+
+  // Renderiza um card
+  const renderItemCard = (it) => {
+    const status = resolvidos[it.id] || 'pendente';
+    const tagClass = it.urgencia === 'alta' ? 'ia-tag-alta' : (it.urgencia === 'media' ? 'ia-tag-media' : 'ia-tag-baixa');
+    const isFeito = status === 'feito';
+    const isIgnorado = status === 'ignorado';
+
+    let acaoBtnHtml = '';
+    if (it.acao && it.acao.tipo && it.acao.tipo !== 'nenhuma') {
+      let labelAcao = 'Ir para Tela';
+      let iconAcao = 'external-link';
+      if (it.acao.tipo === 'repor_estoque') { labelAcao = 'Comprar / Estoque'; iconAcao = 'package'; }
+      if (it.acao.tipo === 'cobrar_cliente') { labelAcao = 'Cobrança / Clientes'; iconAcao = 'message-circle'; }
+      if (it.acao.tipo === 'abrir_produto') { labelAcao = 'Ver Precificação'; iconAcao = 'tag'; }
+
+      acaoBtnHtml = `
+        <button class="btn btn-outline btn-xs" onclick="executarAcaoCard('${it.acao.tipo}', '${it.acao.ref || ''}')" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B)">
+          <i data-lucide="${iconAcao}" style="width:13px;height:13px"></i> ${labelAcao}
+        </button>
+      `;
+    }
+
+    return `
+      <div class="analise-card ${isFeito ? 'card-feito' : ''} ${isIgnorado ? 'card-ignorado' : ''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span class="ia-tag-urgencia ${tagClass}">Urgência ${it.urgencia}</span>
+          ${it.impacto ? `<span style="font-size:11.5px;color:var(--gold,#C9A24B);font-weight:700">${it.impacto}</span>` : ''}
+        </div>
+        <div>
+          <h4 style="margin:4px 0;font-size:14px;color:#FFF;font-weight:700">${it.titulo}</h4>
+          <p style="margin:0;font-size:12.5px;color:var(--text);line-height:1.45">${it.motivo}</p>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;gap:6px">
+            ${acaoBtnHtml}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-xs ${isFeito ? 'btn-green' : 'btn-outline'}" onclick="marcarCardAnalise('${it.id}', 'feito')">
+              <i data-lucide="check" style="width:12px;height:12px"></i> ${isFeito ? 'Feito' : 'Marcar Feito'}
+            </button>
+            <button class="btn btn-xs ${isIgnorado ? 'btn-red' : 'btn-outline'}" onclick="marcarCardAnalise('${it.id}', 'ignorado')">
+              <i data-lucide="x" style="width:12px;height:12px"></i> ${isIgnorado ? 'Ignorado' : 'Ignorar'}
+            </button>
+          </div>
+        </div>
       </div>
-      <div style="font-size:11.5px;color:#4CC38A;display:flex;align-items:center;gap:4px">
-        <i data-lucide="check-circle-2" style="width:13px;height:13px"></i> Executado com sucesso no ERP
+    `;
+  };
+
+  // Comparação com a análise anterior (se houver)
+  let blocoComparativo = '';
+  if (anAnterior) {
+    const alertasAnteriores = (anAnterior.alertas || []).map(a => a.id);
+    const alertasAtuais = (anAtual.alertas || []).map(a => a.id);
+    const alertasPersistentes = alertasAtuais.filter(id => alertasAnteriores.includes(id));
+    const alertasResolvidos = alertasAnteriores.filter(id => !alertasAtuais.includes(id));
+
+    blocoComparativo = `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:16px">
+        <h4 style="margin:0 0 8px;font-size:13.5px;color:var(--gold,#C9A24B);display:flex;align-items:center;gap:6px">
+          <i data-lucide="git-compare" style="width:15px;height:15px"></i> Comparativo com Análise Anterior (${new Date(anAnterior.data_analise + 'T00:00:00').toLocaleDateString('pt-BR')})
+        </h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px">
+          <div style="background:rgba(76,195,138,0.08);border:1px solid rgba(76,195,138,0.25);border-radius:8px;padding:10px">
+            <strong style="color:#4CC38A;display:block;margin-bottom:2px">✓ Alertas Superados / Resolvidos: ${alertasResolvidos.length}</strong>
+            <span style="color:var(--muted);font-size:11px">Itens anteriores que não se repetiram nesta análise.</span>
+          </div>
+          <div style="background:rgba(235,87,87,0.08);border:1px solid rgba(235,87,87,0.25);border-radius:8px;padding:10px">
+            <strong style="color:#EB5757;display:block;margin-bottom:2px">⚠️ Alertas Persistentes: ${alertasPersistentes.length}</strong>
+            <span style="color:var(--muted);font-size:11px">Gargalos que demandam atenção contínua.</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <!-- HEADER DA ANÁLISE SELECIONADA -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <h3 style="margin:0;font-size:16px;color:#FFF">Diagnóstico Executivo: ${dtFmt}</h3>
+            <span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:10px;font-weight:800;padding:2px 8px">${anAtual.interpretado_por}</span>
+            ${desatualizada ? `
+              <span class="badge" style="background:#EB5757;color:#FFF;font-size:10px;font-weight:800;padding:2px 8px">⚠️ Desatualizada (> 30 dias)</span>
+            ` : `
+              <span class="badge" style="background:#4CC38A;color:#000;font-size:10px;font-weight:800;padding:2px 8px">✅ Recente</span>
+            `}
+          </div>
+          <span style="font-size:12px;color:var(--muted);margin-top:2px;display:block">
+            ${pendentesCount > 0 ? `<strong style="color:var(--gold,#C9A24B)">${pendentesCount} item(ns) pendente(s)</strong> de ação` : '<strong style="color:#4CC38A">Todos os itens foram concluídos!</strong>'}
+          </span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-xs" onclick="mudarSubAbaAnalise('gerar')">
+            <i data-lucide="plus" style="width:13px;height:13px"></i> Nova Análise
+          </button>
+        </div>
+      </div>
+
+      <!-- RESUMO EXECUTIVO -->
+      <div style="background:rgba(201,162,75,0.08);border:1px solid rgba(201,162,75,0.3);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;color:var(--text)">
+        <strong style="color:var(--gold,#C9A24B);display:block;margin-bottom:4px">Resumo da Interpretação:</strong>
+        ${anAtual.resumo}
       </div>
     </div>
-  `).join('');
+
+    <!-- COMPARATIVO SE DISPONÍVEL -->
+    ${blocoComparativo}
+
+    <!-- SEÇÃO: ALERTAS CRÍTICOS -->
+    <div style="margin-bottom:18px">
+      <h4 style="font-size:14px;color:#FFF;margin:0 0 8px;display:flex;align-items:center;gap:6px">
+        <i data-lucide="alert-triangle" style="width:16px;height:16px;color:#EB5757"></i> Alertas Críticos (${(anAtual.alertas || []).length})
+      </h4>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(anAtual.alertas && anAtual.alertas.length > 0) ? anAtual.alertas.map(renderItemCard).join('') : '<p style="color:var(--muted);font-size:12px">Nenhum alerta crítico apontado.</p>'}
+      </div>
+    </div>
+
+    <!-- SEÇÃO: OPORTUNIDADES -->
+    <div style="margin-bottom:18px">
+      <h4 style="font-size:14px;color:#FFF;margin:0 0 8px;display:flex;align-items:center;gap:6px">
+        <i data-lucide="sparkles" style="width:16px;height:16px;color:var(--gold,#C9A24B)"></i> Oportunidades Identificadas (${(anAtual.oportunidades || []).length})
+      </h4>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(anAtual.oportunidades && anAtual.oportunidades.length > 0) ? anAtual.oportunidades.map(renderItemCard).join('') : '<p style="color:var(--muted);font-size:12px">Nenhuma oportunidade específica apontada.</p>'}
+      </div>
+    </div>
+
+    <!-- SEÇÃO: AÇÕES PRIORITÁRIAS -->
+    <div style="margin-bottom:24px">
+      <h4 style="font-size:14px;color:#FFF;margin:0 0 8px;display:flex;align-items:center;gap:6px">
+        <i data-lucide="zap" style="width:16px;height:16px;color:#00bdae"></i> Ações Recomendadas (${(anAtual.acoes || []).length})
+      </h4>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(anAtual.acoes && anAtual.acoes.length > 0) ? anAtual.acoes.map(renderItemCard).join('') : '<p style="color:var(--muted);font-size:12px">Nenhuma ação imediata cadastrada.</p>'}
+      </div>
+    </div>
+
+    <!-- HISTÓRICO DE ANÁLISES ANTERIORES -->
+    <div class="table-card" style="padding:14px">
+      <h4 style="margin:0 0 10px;font-size:13.5px;color:#FFF;display:flex;align-items:center;gap:6px">
+        <i data-lucide="history" style="width:15px;height:15px"></i> Histórico de Análises Salvas (${hist.length}/12)
+      </h4>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${hist.map((item, idx) => {
+          const isAtivo = idx === _analiseHistoricoIdx;
+          const dt = new Date(item.data_analise + 'T00:00:00').toLocaleDateString('pt-BR');
+          const itensTotal = (item.alertas?.length || 0) + (item.oportunidades?.length || 0) + (item.acoes?.length || 0);
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;background:${isAtivo ? 'rgba(201,162,75,0.12)' : 'rgba(255,255,255,0.02)'};border:1px solid ${isAtivo ? 'rgba(201,162,75,0.4)' : 'rgba(255,255,255,0.06)'}">
+              <div style="cursor:pointer;flex:1;min-width:0" onclick="selecionarAnaliseHistorico(${idx})">
+                <strong style="color:${isAtivo ? 'var(--gold,#C9A24B)' : '#FFF'};font-size:13px">${dt}</strong>
+                <span style="font-size:11px;color:var(--muted);margin-left:6px">(${item.interpretado_por}) · ${itensTotal} itens</span>
+                <p style="margin:2px 0 0;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.resumo}</p>
+              </div>
+              <div style="display:flex;gap:6px;margin-left:10px">
+                ${!isAtivo ? `<button class="btn btn-outline btn-xs" onclick="selecionarAnaliseHistorico(${idx})">Visualizar</button>` : '<span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:10px;font-weight:800">Em exibição</span>'}
+                <button class="btn btn-outline btn-xs" onclick="excluirAnaliseHistorico(${idx})" style="color:var(--red,#EB5757);border-color:rgba(235,87,87,0.3)"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // ───────────────────────────────────────────────────────────────────
-// 7. FUNÇÕES PÚBLICAS & RETROCOMPATIBILIDADE COM O RESTO DO SISTEMA
+// 8. ATALHOS COPILOTO IA & SELOS DE ALERTA PENDENTE
 // ───────────────────────────────────────────────────────────────────
-function formatarMarkdownParaHTML(md) {
-  if (!md) return '';
-  let txt = String(md)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+function abrirAtalhoCopilotoIA(focoPreDefinido) {
+  if (typeof goto === 'function') goto('analisedados');
 
-  txt = txt.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  txt = txt.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  txt = txt.replace(/^### (.*?)$/gm, '<h4 style="color:var(--gold,#C9A24B);margin:14px 0 6px;font-size:14.5px;font-weight:700">$1</h4>');
-  txt = txt.replace(/^## (.*?)$/gm, '<h3 style="color:#FFF;margin:16px 0 8px;font-size:16px;font-weight:700">$1</h3>');
-  txt = txt.replace(/^- (.*?)$/gm, '<li style="margin-bottom:5px;line-height:1.45">$1</li>');
-  txt = txt.replace(/(<li.*<\/li>)/s, '<ul style="padding-left:18px;margin:6px 0 10px">$1</ul>');
-  txt = txt.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid rgba(255,255,255,.1);margin:12px 0">');
-  txt = txt.replace(/\n\n/g, '<p style="margin-bottom:10px;line-height:1.5"></p>');
-  txt = txt.replace(/\n/g, '<br>');
-
-  return txt;
-}
-
-function copiarTextoIA(elementId) {
-  const el = document.getElementById(elementId);
-  if (!el) return;
-  const texto = el.innerText || el.textContent;
-  navigator.clipboard.writeText(texto).then(() => {
-    if (typeof showToast === 'function') {
-      showToast('Copiado para a área de transferência!');
-    }
-  });
-}
-
-function limparHistoricoIA() {
-  historicoChatIA = [];
-  const containerMsgs = document.getElementById('ia-chat-mensagens');
-  if (containerMsgs) containerMsgs.innerHTML = '';
-  abrirAssistenteIA();
-}
-
-async function executarDiagnosticoIA() {
-  abrirAssistenteIA('Faça um diagnóstico executivo completo da empresa');
-}
-
-async function abrirGeradorCobrancaIA(clienteId, valorDevido) {
-  let clienteNome = 'Cliente';
-  if (typeof state !== 'undefined' && Array.isArray(state.clientes)) {
-    const cl = state.clientes.find(c => c.id === clienteId || c.nome === clienteId);
-    if (cl) clienteNome = cl.nome;
+  if (focoPreDefinido) {
+    _filtroFoco = focoPreDefinido;
+    const selFoco = document.getElementById('analise-filtro-foco');
+    if (selFoco) selFoco.value = focoPreDefinido;
+    mudarSubAbaAnalise('gerar');
+    return;
   }
-  abrirAssistenteIA(`Escreva uma mensagem de cobrança amigável para ${clienteNome} no valor de ${valorDevido || 0}`);
+
+  const hist = obterHistoricoAnalises();
+  if (hist.length === 0) {
+    mudarSubAbaAnalise('gerar');
+    return;
+  }
+
+  const anMaisRecente = hist[0];
+  const resolvidos = anMaisRecente.resolvidos || {};
+  const todosItens = [...(anMaisRecente.alertas || []), ...(anMaisRecente.oportunidades || []), ...(anMaisRecente.acoes || [])];
+  const pendentes = todosItens.filter(it => !resolvidos[it.id]);
+
+  if (pendentes.length > 0) {
+    _analiseHistoricoIdx = 0;
+    mudarSubAbaAnalise('resultados');
+  } else {
+    mudarSubAbaAnalise('painel');
+  }
+}
+
+// Retrocompatibilidade para atalhos existentes no ERP
+function abrirAssistenteIA(prompt, aba) {
+  if (aba === 'analise' || aba === 'painel') {
+    if (typeof goto === 'function') goto('analisedados');
+    mudarSubAbaAnalise('painel');
+    return;
+  }
+  if (aba === 'acoes' || aba === 'resultados') {
+    if (typeof goto === 'function') goto('analisedados');
+    mudarSubAbaAnalise('resultados');
+    return;
+  }
+  abrirAtalhoCopilotoIA();
+}
+
+function fecharAssistenteIA() {
+  // Mantida por segurança
 }
 
 function otimizarPrecoComIA() {
-  abrirAssistenteIA('Como otimizar a precificação e markup dos meus produtos?', 'analise');
+  abrirAtalhoCopilotoIA('precos');
 }
 
 function analisarEstoqueComIA() {
-  abrirAssistenteIA('Quais produtos e insumos estão em nível crítico de estoque?', 'acoes');
+  abrirAtalhoCopilotoIA('estoque');
 }
 
 function otimizarMeuDiaComIA() {
-  abrirAssistenteIA('Como organizar minha rota de hoje priorizando clientes que mais compram e devedores?');
+  abrirAtalhoCopilotoIA('geral');
 }
 
-// ─── 8. SISTEMA DE DOWNLOAD RESILIENTE (ANTI-BLOQUEIO DE NAVEGADOR & IFRAME) ───
-function abrirModalDownloadSistema() {
-  const modal = document.getElementById('modal-download-sistema');
-  if (modal) {
-    modal.classList.add('open');
-    modal.classList.add('active');
-    document.body.classList.add('modal-open');
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-  } else {
-    executarDownloadBlob();
+function abrirGeradorCobrancaIA() {
+  abrirAtalhoCopilotoIA('clientes');
+}
+
+function executarDiagnosticoIA() {
+  abrirAtalhoCopilotoIA('geral');
+}
+
+function atualizarSelosAnaliseDados() {
+  const hist = obterHistoricoAnalises();
+  let pendentesCount = 0;
+  if (hist.length > 0) {
+    const an = hist[0];
+    const resolvidos = an.resolvidos || {};
+    const todos = [...(an.alertas || []), ...(an.oportunidades || []), ...(an.acoes || [])];
+    pendentesCount = todos.filter(it => !resolvidos[it.id]).length;
   }
-}
 
-function fecharModalDownloadSistema() {
-  const modal = document.getElementById('modal-download-sistema');
-  if (modal) {
-    modal.classList.remove('open');
-    modal.classList.remove('active');
-  }
-  document.body.classList.remove('modal-open');
-}
+  const badges = [
+    document.getElementById('nav-badge-analisedados'),
+    document.getElementById('nav-badge-copiloto'),
+    document.getElementById('ia-badge-acoes')
+  ];
 
-async function executarDownloadBlob() {
-  try {
-    if (typeof showToast === 'function') {
-      showToast('📦 Preparando arquivo ZIP atualizado...', '#C9A24B');
-    }
-
-    let blob = null;
-
-    // Tentativa 1: Endpoint binário direto
-    try {
-      const resp = await fetch('/download');
-      if (resp.ok) {
-        blob = await resp.blob();
+  badges.forEach(b => {
+    if (b) {
+      if (pendentesCount > 0) {
+        b.style.display = 'inline-block';
+        b.textContent = pendentesCount;
+      } else {
+        b.style.display = 'none';
       }
-    } catch (e) {
-      console.warn('Tentativa 1 com /download falhou:', e);
-    }
-
-    // Tentativa 2: Endpoint Base64 (ignora bloqueio de Content-Disposition no iframe)
-    if (!blob) {
-      try {
-        const respB64 = await fetch('/api/download/base64');
-        if (respB64.ok) {
-          const json = await respB64.json();
-          if (json && json.data) {
-            const byteCharacters = atob(json.data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            blob = new Blob([byteArray], { type: 'application/zip' });
-          }
-        }
-      } catch (e2) {
-        console.warn('Tentativa 2 com base64 falhou:', e2);
-      }
-    }
-
-    if (!blob) {
-      throw new Error('Falha ao obter os dados do arquivo.');
-    }
-
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'gestaopro-v5.86-ia-autonoma.zip';
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-
-    setTimeout(() => {
-      if (link.parentNode) link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    }, 2000);
-
-    if (typeof showToast === 'function') {
-      showToast('✅ Download do ZIP iniciado com sucesso!', '#4CC38A');
-    }
-  } catch (err) {
-    console.error('Erro no download:', err);
-    if (typeof showToast === 'function') {
-      showToast('⚠️ Bloqueio de iframe detectado. Clique em "Abrir em Nova Aba" no modal.', '#EB5757');
-    }
-    abrirModalDownloadSistema();
-  }
-}
-
-// Inicializador de eventos e monitor contínuo
-document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('modal-ia-assistente');
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) fecharAssistenteIA();
-    });
-  }
-  const modalDownload = document.getElementById('modal-download-sistema');
-  if (modalDownload) {
-    modalDownload.addEventListener('click', (e) => {
-      if (e.target === modalDownload) fecharModalDownloadSistema();
-    });
-  }
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      fecharAssistenteIA();
-      fecharModalDownloadSistema();
     }
   });
 
-  // Inicia o monitor autônomo em tempo real a cada 20 segundos
-  setTimeout(atualizarAnaliseEAcoesAutonomas, 1500);
-  _monitorTimer = setInterval(atualizarAnaliseEAcoesAutonomas, 20000);
-});
+  renderAvisoAnaliseDashboard();
+}
 
+function renderAvisoAnaliseDashboard() {
+  const elAviso = document.getElementById('dash-aviso-analise');
+  if (!elAviso) return;
+
+  const hist = obterHistoricoAnalises();
+  if (hist.length === 0) {
+    elAviso.style.display = 'none';
+    return;
+  }
+
+  const an = hist[0];
+  const resolvidos = an.resolvidos || {};
+  const todos = [...(an.alertas || []), ...(an.oportunidades || []), ...(an.acoes || [])];
+  const pendentesCount = todos.filter(it => !resolvidos[it.id]).length;
+
+  if (pendentesCount === 0) {
+    elAviso.style.display = 'none';
+    return;
+  }
+
+  const dt = new Date(an.data_analise + 'T00:00:00');
+  const diaMes = `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
+
+  elAviso.style.display = 'flex';
+  elAviso.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <i data-lucide="bell-ring" style="width:15px;height:15px;color:var(--gold,#C9A24B)"></i>
+      <span style="color:#FFF"><strong>${pendentesCount} alerta(s) pendente(s)</strong> da análise de ${diaMes}</span>
+    </div>
+    <span style="color:var(--gold,#C9A24B);font-weight:700;display:flex;align-items:center;gap:4px">
+      Ver resultados <i data-lucide="arrow-right" style="width:13px;height:13px"></i>
+    </span>
+  `;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Inicializador de eventos no DOM
+document.addEventListener('DOMContentLoaded', () => {
+  atualizarSelosAnaliseDados();
+  renderAvisoAnaliseDashboard();
+});

@@ -2017,3 +2017,126 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .cliente-foco-barra span{font-weight:700;color:var(--gold,#E8A41A)}
 .cliente-foco-barra a{cursor:pointer;font-weight:700;color:var(--gold,#E8A41A);text-decoration:underline}
 .cliente-card.cliente-card-foco{border:1.5px solid var(--gold,#E8A41A)!important;box-shadow:0 0 0 2px rgba(232,164,26,.25),0 0 22px rgba(232,164,26,.35)!important}
+
+/* ═════ ANÁLISE DE DADOS (v5.89.0) ═════ */
+.analise-subtabs-bar {
+  display: flex;
+  background: var(--card-2, #1B1B1D);
+  border: 1px solid var(--border, #26262A);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.analise-subtab-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted, #8E897C);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex: 1 1 0;
+  justify-content: center;
+  transition: all .15s ease;
+  font-family: inherit;
+}
+
+.analise-subtab-btn:hover {
+  color: #FFF;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.analise-subtab-btn.active {
+  background: var(--card, #141415);
+  color: var(--gold, #C9A24B);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.analise-subtab-view {
+  min-height: 200px;
+}
+
+/* Switch toggle */
+.switch-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-toggle {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #26262A;
+  transition: .25s;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.slider-toggle:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ECE7DA;
+  transition: .25s;
+  border-radius: 50%;
+}
+
+.switch-toggle input:checked + .slider-toggle {
+  background-color: var(--gold, #C9A24B);
+  border-color: var(--gold, #C9A24B);
+}
+
+.switch-toggle input:checked + .slider-toggle:before {
+  transform: translateX(20px);
+  background-color: #000;
+}
+
+/* Cards de Resultados da Análise */
+.analise-card {
+  background: var(--card, #141415);
+  border: 1px solid var(--border, #26262A);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all .15s ease;
+  position: relative;
+}
+
+.analise-card:hover {
+  border-color: rgba(201, 162, 75, 0.35);
+  transform: translateY(-1px);
+}
+
+.analise-card.card-feito {
+  border-color: rgba(76, 195, 138, 0.4);
+  background: rgba(76, 195, 138, 0.04);
+  opacity: 0.85;
+}
+
+.analise-card.card-ignorado {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  opacity: 0.55;
+}

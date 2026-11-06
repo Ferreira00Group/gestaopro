@@ -1578,3 +1578,73 @@ function baixarBackupRapido(){
   showToast('Cópia de segurança baixada com sucesso! ✓', 'green');
 }
 setTimeout(atualizarIndicadorBackup, 1200);
+
+// ============ DOWNLOAD DO SISTEMA / ZIP (v5.89.1) ============
+function abrirModalDownloadSistema(){
+  const m = document.getElementById('modal-download-sistema');
+  if(m){
+    m.classList.add('open');
+    if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  } else if(typeof openModal === 'function') {
+    openModal('modal-download-sistema');
+  } else {
+    executarDownloadBlob();
+  }
+}
+
+async function executarDownloadBlob(){
+  const ver = (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? APP_VERSION : '5.89.1';
+  const nomeZip = `gestaopro-v${ver}.zip`;
+  if(typeof showToast === 'function') showToast('Preparando download do sistema...', '#C9A24B');
+
+  try {
+    const res = await fetch('/download');
+    if(!res.ok) throw new Error('Falha no download direto via /download');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeZip;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 200);
+    if(typeof closeModal === 'function') closeModal('modal-download-sistema');
+    if(typeof showToast === 'function') showToast('Download do sistema concluído! ✓', 'green');
+  } catch(err) {
+    console.warn('Tentando fallback base64 para o download:', err);
+    try {
+      const resApi = await fetch('/api/download/base64');
+      if(resApi.ok){
+        const json = await resApi.json();
+        if(json && json.data){
+          const byteChars = atob(json.data);
+          const byteNumbers = new Array(byteChars.length);
+          for(let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/zip' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = json.filename || nomeZip;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 200);
+          if(typeof closeModal === 'function') closeModal('modal-download-sistema');
+          if(typeof showToast === 'function') showToast('Download do sistema concluído! ✓', 'green');
+          return;
+        }
+      }
+    } catch(err2) {
+      console.warn('Erro no fallback base64:', err2);
+    }
+    // Fallback nativo
+    window.location.href = '/download';
+  }
+}
+

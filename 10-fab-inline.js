@@ -315,5 +315,6 @@ function atualizarAlertBells(){
   const temVencProxPagar=getUnidadesPagarFlat().some(u=>u.vencimento&&u.status!=='pago'&&diasParaVencimento(u.vencimento,hj)<=3&&diasParaVencimento(u.vencimento,hj)>=0);
   const bp=document.getElementById('bell-pagar');if(bp)bp.classList.toggle('has-alert',temAPagar||temVencProxPagar);
   const bpTop=document.getElementById('topbar-bell-pagar');if(bpTop)bpTop.classList.toggle('has-alert',temAPagar||temVencProxPagar);
+  if(typeof atualizarSelosAnaliseDados==='function') atualizarSelosAnaliseDados();
 }
 

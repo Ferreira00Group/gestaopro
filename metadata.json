@@ -1,7 +1,8 @@
 {
-  "name": "GestãoPRO - ERP com IA Autônoma em Tempo Real",
-  "description": "Sistema completo de gestão comercial, vendas, estoque, produção e financeiro potencializado com IA Gemini 3.8 Flash para análise preditiva e gerenciamento autônomo de ações em tempo real.",
+  "name": " Gestãopro.dev",
+  "description": "Imported from GitHub: Ferreira00Group/gestaopro",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
-

@@ -96,6 +96,7 @@ function renderDashboard(){
   dashSet('dash-orc-sub',orcPend.filter(o=>o.statusOrc==='rascunho').length+' rascunho · '+orcPend.filter(o=>o.statusOrc==='aprovado').length+' aprovado');
   renderAlertasBanner();
   renderDashPixBanner();
+  if(typeof renderAvisoAnaliseDashboard==='function') renderAvisoAnaliseDashboard();
   // Contas vencidas e vencem hoje (por parcela)
   const flatFiado=getUnidadesFiadoFlat();
   const pendentesFiado=flatFiado.filter(u=>u.status!=='pago'&&u.vencimento);

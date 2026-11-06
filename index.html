@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.88.2">
+<link rel="stylesheet" href="styles.css?v=5.89.1">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -64,8 +64,8 @@
   <div class="topbar-alerts">
     <button id="btn-sair-foco" class="btn btn-outline btn-xs" onclick="toggleModoFoco(false)" style="display:none;border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);gap:4px"><i data-lucide="minimize-2" style="width:13px;height:13px"></i> Sair do Foco</button>
     <button class="alert-bell" id="btn-topbar-foco" onclick="toggleModoFoco()" title="Modo Foco (Alt+F)" style="display:flex;align-items:center;justify-content:center"><i data-lucide="scan" class="ic"></i></button>
-    <button type="button" onclick="abrirModalDownloadSistema()" class="alert-bell" title="Baixar ZIP do Sistema (v5.88.2)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;cursor:pointer"><i data-lucide="download" class="ic"></i></button>
-    <button class="alert-bell" onclick="abrirAssistenteIA()" title="Central de IA Autônoma & Copiloto" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center;position:relative"><i data-lucide="sparkles" class="ic"></i><span id="ia-badge-acoes" style="background:#00bdae;display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%"></span></button>
+    <button type="button" onclick="abrirModalDownloadSistema()" class="alert-bell" title="Baixar ZIP do Sistema (v5.89.1)" style="color:#FFF;border-color:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;cursor:pointer"><i data-lucide="download" class="ic"></i></button>
+    <button class="alert-bell" onclick="abrirAtalhoCopilotoIA()" title="Análise de Dados &amp; Copiloto" style="color:var(--gold,#C9A24B);border-color:rgba(201,162,75,.4);display:flex;align-items:center;justify-content:center;position:relative"><i data-lucide="sparkles" class="ic"></i><span id="ia-badge-acoes" style="background:#00bdae;color:#000;font-size:9.5px;font-weight:800;display:none;position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:8px;padding:0 3px;line-height:16px;text-align:center"></span></button>
     <button class="alert-bell" id="topbar-bell-backup" onclick="abrirBackupStatusModal()" title="Status do Backup"><i data-lucide="cloud" class="ic"></i><span class="badge-dot" id="backup-badge-dot" style="background:#4CC38A"></span></button>
   </div>
 </div>
@@ -119,9 +119,8 @@
   </div>
   <nav>
     <a class="active" onclick="goto('dashboard')" data-page="dashboard"><i data-lucide="layout-dashboard" class="icon"></i> Início</a>
-    <a onclick="abrirAssistenteIA()" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="sparkles" class="icon" style="color:var(--gold,#C9A24B)"></i> Copiloto IA <span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:9.5px;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:800">GEMINI</span></a>
-    <a onclick="abrirAssistenteIA('', 'acoes')" style="color:#00bdae;font-weight:700"><i data-lucide="zap" class="icon" style="color:#00bdae"></i> Ações Autônomas <span class="badge" style="background:#00bdae;color:#000;font-size:9.5px;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:800">PILOTO</span></a>
-    <a onclick="abrirAssistenteIA('', 'analise')"><i data-lucide="bar-chart-3" class="icon"></i> Análise de Dados</a>
+    <a onclick="goto('analisedados')" data-page="analisedados" style="color:var(--gold,#C9A24B);font-weight:700"><i data-lucide="bar-chart-3" class="icon" style="color:var(--gold,#C9A24B)"></i> Análise de Dados <span class="badge" id="nav-badge-analisedados" style="background:var(--gold,#C9A24B);color:#000;font-size:9.5px;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:800;display:none">0</span></a>
+    <a onclick="abrirAtalhoCopilotoIA()"><i data-lucide="sparkles" class="icon" style="color:var(--gold,#C9A24B)"></i> Copiloto IA <span class="badge" id="nav-badge-copiloto" style="background:#00bdae;color:#000;font-size:9.5px;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:800;display:none">0</span></a>
     <a onclick="goto('clientes')" data-page="clientes"><i data-lucide="users" class="icon"></i> Clientes</a>
     <a onclick="goto('vendas')" data-page="vendas"><i data-lucide="shopping-bag" class="icon"></i> Vendas</a>
     <a onclick="goto('crm')" data-page="crm"><i data-lucide="handshake" class="icon"></i> CRM</a>
@@ -152,13 +151,13 @@
   </div>
 
   <div class="sidebar-footer">
-    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual">5.88.2</span> · GestãoPRO · Dados salvos localmente</div>
+    <div style="margin-bottom:2px;cursor:pointer" onclick="_debugTapCount();tocarVersao()">v<span id="versao-atual">5.89.1</span> · GestãoPRO · Dados salvos localmente</div>
     <a onclick="toggleFooterMenu()" class="footer-action-link" style="color:var(--text);display:flex;justify-content:space-between;align-items:center">
       <span><i data-lucide="settings-2" class="ic"></i>Backup e manutenção</span><span id="footer-toggle-icon"><i data-lucide="chevron-down" class="ic"></i></span>
     </a>
     <div id="footer-actions-collapsible" style="display:none">
       <div class="footer-actions">
-        <a onclick="abrirModalDownloadSistema()" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700;cursor:pointer"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.88.2)</a>
+        <a onclick="abrirModalDownloadSistema()" class="footer-action-link" style="color:var(--gold,#C9A24B);font-weight:700;cursor:pointer"><i data-lucide="file-archive" class="ic"></i>Baixar ZIP do App (v5.89.1)</a>
         <a onclick="compartilharBackup()" class="footer-action-link"><i data-lucide="download" class="ic"></i>Exportar JSON</a>
         <label class="footer-action-link"><i data-lucide="upload" class="ic"></i>Importar JSON
           <input type="file" accept="application/json" style="display:none" onchange="importarBackup(this)">
@@ -179,14 +178,17 @@
   <div class="print-header"><h1>GestãoPRO — Dashboard</h1><p id="print-date-dashboard"></p></div>
   <p id="dash-date" class="dash-date-line">Resumo geral do negócio</p>
 
-  <!-- BANNER INTELIGÊNCIA ARTIFICIAL GEMINI -->
+  <!-- AVISO DISCRETO: ALERTAS PENDENTES DA ANÁLISE -->
+  <div id="dash-aviso-analise" style="display:none;background:rgba(201,162,75,0.08);border:1px solid rgba(201,162,75,0.3);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:12.5px;align-items:center;justify-content:space-between;cursor:pointer" onclick="abrirAtalhoCopilotoIA()"></div>
+
+  <!-- BANNER INTELIGÊNCIA ARTIFICIAL & ANÁLISE -->
   <div style="background:linear-gradient(135deg,rgba(201,162,75,.16),rgba(201,162,75,.04));border:1px solid rgba(201,162,75,.35);border-radius:14px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <div style="display:flex;align-items:center;gap:10px">
       <div style="width:36px;height:36px;border-radius:50%;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0">
         <i data-lucide="sparkles" style="width:20px;height:20px"></i>
       </div>
       <div>
-        <div style="font-size:13.5px;font-weight:700;color:#FFF">Copiloto IA GestãoPRO · Gemini 3.8 Flash</div>
+        <div style="font-size:13.5px;font-weight:700;color:#FFF">Central de Análise de Dados &amp; Copiloto</div>
         <div style="font-size:11.5px;color:var(--muted)">Diagnóstico executivo de fluxo de caixa, alerta de estoque e otimização de faturamento.</div>
       </div>
     </div>
@@ -194,13 +196,13 @@
       <button class="btn btn-outline btn-sm" onclick="abrirFilaSeparacao()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="boxes" class="ic"></i> Expedição
       </button>
-      <button class="btn btn-outline btn-sm" onclick="abrirAssistenteIA('', 'acoes')" style="border-color:#00bdae;color:#00bdae;display:inline-flex;align-items:center;gap:6px;font-weight:700">
-        <i data-lucide="zap" class="ic"></i> Ações Autônomas
+      <button class="btn btn-outline btn-sm" onclick="goto('analisedados');mudarSubAbaAnalise('resultados')" style="border-color:#00bdae;color:#00bdae;display:inline-flex;align-items:center;gap:6px;font-weight:700">
+        <i data-lucide="target" class="ic"></i> Resultados IA
       </button>
-      <button class="btn btn-outline btn-sm" onclick="abrirAssistenteIA('', 'analise')" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="bar-chart-3" class="ic"></i> Análise de Dados
+      <button class="btn btn-outline btn-sm" onclick="goto('analisedados');mudarSubAbaAnalise('painel')" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="bar-chart-3" class="ic"></i> Painel Local
       </button>
-      <button class="btn btn-primary btn-sm" onclick="abrirAssistenteIA()" style="display:inline-flex;align-items:center;gap:6px">
+      <button class="btn btn-primary btn-sm" onclick="abrirAtalhoCopilotoIA()" style="display:inline-flex;align-items:center;gap:6px">
         <i data-lucide="sparkles" class="ic"></i> Copiloto IA
       </button>
     </div>
@@ -930,6 +932,125 @@
     <div><h2>Conectores</h2><p>Central de integrações, serviços externos e controle de custos</p></div>
   </div>
   <div id="conectores-conteudo"></div>
+
+<div id="page-analisedados" class="page">
+  <div class="print-header"><h1>GestãoPRO — Análise de Dados</h1><p id="print-date-analisedados"></p></div>
+  <div class="page-header" style="margin-bottom:14px">
+    <div>
+      <h2>Análise de Dados &amp; Inteligência do ERP</h2>
+      <p>Painel de indicadores, gerador de pacotes para IA, importador e central de resultados</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn btn-outline btn-sm" onclick="abrirAtalhoCopilotoIA('geral')">
+        <i data-lucide="sparkles" class="ic"></i> Nova Análise
+      </button>
+    </div>
+  </div>
+
+  <!-- 4 SUB-TELAS NO TOPO (BOTÕES LADO A LADO) -->
+  <div class="analise-subtabs-bar">
+    <button type="button" class="analise-subtab-btn active" data-subtab="painel" onclick="mudarSubAbaAnalise('painel')">
+      <i data-lucide="layout-dashboard"></i> <span>Painel Local</span>
+    </button>
+    <button type="button" class="analise-subtab-btn" data-subtab="gerar" onclick="mudarSubAbaAnalise('gerar')">
+      <i data-lucide="package-plus"></i> <span>Gerar Pacote</span>
+    </button>
+    <button type="button" class="analise-subtab-btn" data-subtab="importar" onclick="mudarSubAbaAnalise('importar')">
+      <i data-lucide="download"></i> <span>Importar Resposta</span>
+    </button>
+    <button type="button" class="analise-subtab-btn" data-subtab="resultados" onclick="mudarSubAbaAnalise('resultados')">
+      <i data-lucide="target"></i> <span>Resultados</span>
+      <span class="badge" id="subtab-badge-resultados" style="background:#00bdae;color:#000;font-size:9.5px;padding:1px 6px;border-radius:10px;font-weight:800;display:none">0</span>
+    </button>
+  </div>
+
+  <!-- 1. SUB-TELA PAINEL -->
+  <div id="analise-view-painel" class="analise-subtab-view active">
+    <div id="analise-painel-conteudo"></div>
+  </div>
+
+  <!-- 2. SUB-TELA GERAR PACOTE -->
+  <div id="analise-view-gerar" class="analise-subtab-view" style="display:none">
+    <div class="table-card" style="padding:16px;margin-bottom:14px">
+      <h3 style="font-size:15px;margin:0 0 4px;color:#FFF">Configuração do Pacote de Dados para IA</h3>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Selecione o corte temporal e o foco analítico. O GestãoPRO formata um JSON seguro para ser interpretado diretamente pelo Claude, ChatGPT ou qualquer modelo de sua escolha.</p>
+      
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:block">Período de Análise</label>
+          <select class="form-control" id="analise-filtro-periodo" onchange="_filtroPeriodo=this.value;atualizarPreviewPacote()">
+            <option value="mes_atual" selected>Mês Atual</option>
+            <option value="3_meses">Últimos 3 Meses</option>
+            <option value="12_meses">Últimos 12 Meses</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:block">Foco Analítico</label>
+          <select class="form-control" id="analise-filtro-foco" onchange="_filtroFoco=this.value;atualizarPreviewPacote()">
+            <option value="geral" selected>Geral (Visão 360° do Negócio)</option>
+            <option value="caixa">Fluxo de Caixa &amp; Liquidez</option>
+            <option value="estoque">Estoque, Insumos &amp; Ruptura</option>
+            <option value="clientes">Clientes, Fiado &amp; Inadimplência</option>
+            <option value="precos">Preços, Markup &amp; Margem</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SWITCH ANONIMIZAR CLIENTES -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <strong style="font-size:13px;color:#FFF;display:block">Anonimizar Clientes (LGPD &amp; Privacidade)</strong>
+          <span style="font-size:11.5px;color:var(--muted)">Troca os nomes reais por "#Cartão 001" e remove telefones e endereços do pacote.</span>
+        </div>
+        <label class="switch-toggle" style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+          <input type="checkbox" id="analise-switch-anonimizar" onchange="_anonimizarClientes=this.checked;atualizarPreviewPacote()" style="opacity:0;width:0;height:0">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+
+      <!-- PREVIEW E AÇÕES -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <div id="analise-pacote-tamanho" style="font-size:12px;font-weight:700;color:var(--gold,#C9A24B)">Tamanho: calculando...</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="copiarPacoteJSON()">
+            <i data-lucide="copy" class="ic"></i> Copiar Pacote JSON
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="exportarPacoteJSON()" style="background:var(--gold,#C9A24B);color:#000;font-weight:700">
+            <i data-lucide="download" class="ic"></i> Exportar .json
+          </button>
+        </div>
+      </div>
+
+      <textarea id="analise-pacote-preview" readonly style="width:100%;height:280px;background:#0E0E0F;border:1.5px solid var(--border);border-radius:10px;padding:12px;font-family:monospace;font-size:12px;color:#ECE7DA;resize:vertical;outline:none"></textarea>
+    </div>
+  </div>
+
+  <!-- 3. SUB-TELA IMPORTAR -->
+  <div id="analise-view-importar" class="analise-subtab-view" style="display:none">
+    <div class="table-card" style="padding:16px">
+      <h3 style="font-size:15px;margin:0 0 4px;color:#FFF">Importar Diagnóstico da IA</h3>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Cole abaixo a resposta JSON retornada pelo Claude ou outro modelo. O sistema validará a estrutura e carregará os cards em Resultados.</p>
+
+      <div id="analise-import-erro" style="display:none;background:rgba(235,87,87,0.12);border:1px solid rgba(235,87,87,0.4);border-radius:10px;padding:12px;margin-bottom:12px;color:#EB5757;font-size:12.5px;line-height:1.4"></div>
+
+      <div class="form-group">
+        <label style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:block">Cole a Resposta JSON Aqui</label>
+        <textarea id="analise-import-textarea" class="form-control" style="width:100%;height:240px;background:#0E0E0F;font-family:monospace;font-size:12px;resize:vertical" placeholder='{"versao_formato": 1, "interpretado_por": "Claude", "data_analise": "2026-11-06", "resumo": "...", "alertas": [], "oportunidades": [], "acoes": []}'></textarea>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-outline" onclick="document.getElementById('analise-import-textarea').value=''">Limpar</button>
+        <button class="btn btn-primary" onclick="processarImportacaoJSON()" style="background:#00bdae;border-color:#00bdae;color:#000;font-weight:700">
+          <i data-lucide="check-circle" class="ic"></i> Validar &amp; Salvar Análise
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. SUB-TELA RESULTADOS -->
+  <div id="analise-view-resultados" class="analise-subtab-view" style="display:none">
+    <div id="analise-resultados-conteudo"></div>
+  </div>
 </div>
 
 </div><!-- /main -->
@@ -2418,36 +2539,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.88.2"></script>
-<script src="00-core.js?v=5.88.2"></script>
-<script src="lib-qrcode.js?v=5.88.2"></script>
-<script src="01-ui-nav.js?v=5.88.2"></script>
-<script src="02-dashboard.js?v=5.88.2"></script>
-<script src="03-clientes.js?v=5.88.2"></script>
-<script src="04-vendas.js?v=5.88.2"></script>
-<script src="04b-pix-extrato.js?v=5.88.2"></script>
-<script src="11b-meu-dia.js?v=5.88.2"></script>
-<script src="11c-promessa-reneg.js?v=5.88.2"></script>
-<script src="11d-aprovar-lote.js?v=5.88.2"></script>
-<script src="05-producao.js?v=5.88.2"></script>
-<script src="06-estoque.js?v=5.88.2"></script>
-<script src="07-precificacao.js?v=5.88.2"></script>
-<script src="08-compras-fornecedores.js?v=5.88.2"></script>
-<script src="09-financeiro-relatorios.js?v=5.88.2"></script>
-<script src="10-fab-inline.js?v=5.88.2"></script>
-<script src="10b-planejamento.js?v=5.88.2"></script>
-<script src="13-crm.js?v=5.88.2"></script>
-<script src="14-relacionamento.js?v=5.88.2"></script>
-<script src="15-cliente360.js?v=5.88.2"></script>
-<script src="16-automacoes.js?v=5.88.2"></script>
-<script src="17-banco.js?v=5.88.2"></script>
-<script src="18-credito.js?v=5.88.2"></script>
-<script src="19-conectores.js?v=5.88.2"></script>
-<script src="20-cartoes.js?v=5.88.2"></script>
-<script src="12-drive-backup.js?v=5.88.2"></script>
-<script src="11-app-init.js?v=5.88.2"></script>
-<script src="21-gemini-ia.js?v=5.88.2"></script>
-<script src="22-operacao-foco.js?v=5.88.2"></script>
+<script src="00a-config.js?v=5.89.1"></script>
+<script src="00-core.js?v=5.89.1"></script>
+<script src="lib-qrcode.js?v=5.89.1"></script>
+<script src="01-ui-nav.js?v=5.89.1"></script>
+<script src="02-dashboard.js?v=5.89.1"></script>
+<script src="03-clientes.js?v=5.89.1"></script>
+<script src="04-vendas.js?v=5.89.1"></script>
+<script src="04b-pix-extrato.js?v=5.89.1"></script>
+<script src="11b-meu-dia.js?v=5.89.1"></script>
+<script src="11c-promessa-reneg.js?v=5.89.1"></script>
+<script src="11d-aprovar-lote.js?v=5.89.1"></script>
+<script src="05-producao.js?v=5.89.1"></script>
+<script src="06-estoque.js?v=5.89.1"></script>
+<script src="07-precificacao.js?v=5.89.1"></script>
+<script src="08-compras-fornecedores.js?v=5.89.1"></script>
+<script src="09-financeiro-relatorios.js?v=5.89.1"></script>
+<script src="10-fab-inline.js?v=5.89.1"></script>
+<script src="10b-planejamento.js?v=5.89.1"></script>
+<script src="13-crm.js?v=5.89.1"></script>
+<script src="14-relacionamento.js?v=5.89.1"></script>
+<script src="15-cliente360.js?v=5.89.1"></script>
+<script src="16-automacoes.js?v=5.89.1"></script>
+<script src="17-banco.js?v=5.89.1"></script>
+<script src="18-credito.js?v=5.89.1"></script>
+<script src="19-conectores.js?v=5.89.1"></script>
+<script src="20-cartoes.js?v=5.89.1"></script>
+<script src="12-drive-backup.js?v=5.89.1"></script>
+<script src="11-app-init.js?v=5.89.1"></script>
+<script src="21-gemini-ia.js?v=5.89.1"></script>
+<script src="22-operacao-foco.js?v=5.89.1"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -2688,96 +2809,7 @@
   </div>
 </div>
 
-<!-- MODAL ASSISTENTE IA GEMINI -->
-<div class="modal-overlay" id="modal-ia-assistente">
-  <div class="modal ia-modal-dialog" style="max-width:750px !important">
-    <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.08);padding:14px 18px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:10px;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0;border:1px solid rgba(201,162,75,.4)">
-          <i data-lucide="sparkles" class="ic"></i>
-        </div>
-        <div>
-          <h3 style="margin:0;font-size:16px;color:#FFF;display:flex;align-items:center;gap:6px">
-            Central de IA Autônoma &amp; Copiloto
-            <span class="badge" style="background:var(--gold,#C9A24B);color:#000;font-size:10px;font-weight:800;padding:2px 6px">Gemini 3.8 Flash</span>
-          </h3>
-          <span style="font-size:11px;color:var(--muted)">Análise preditiva em tempo real &amp; Gerenciamento autônomo de ações</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <button class="btn btn-outline btn-xs" id="btn-toggle-piloto" onclick="alternarPilotoAutomatico()" title="Alternar modo de autonomia">
-          <span style="color:var(--muted)">○ Supervisionado</span>
-        </button>
-        <button class="btn btn-outline btn-xs" onclick="limparHistoricoIA()" title="Limpar conversa">
-          <i data-lucide="rotate-ccw" class="ic"></i>
-        </button>
-        <button class="modal-close" onclick="fecharAssistenteIA()"><i data-lucide="x" class="ic"></i></button>
-      </div>
-    </div>
 
-    <!-- ABAS DA CENTRAL DE IA -->
-    <div class="ia-modal-tabs">
-      <button class="ia-tab-btn active" data-tab="chat" onclick="mudarAbaIA('chat')">
-        <i data-lucide="message-square" style="width:14px;height:14px"></i> Copiloto Chat
-      </button>
-      <button class="ia-tab-btn" data-tab="acoes" onclick="mudarAbaIA('acoes')">
-        <i data-lucide="zap" style="width:14px;height:14px;color:#00bdae"></i> Ações Autônomas
-        <span class="ia-tab-badge" id="ia-tab-badge-acoes">⚡</span>
-      </button>
-      <button class="ia-tab-btn" data-tab="analise" onclick="mudarAbaIA('analise')">
-        <i data-lucide="bar-chart-3" style="width:14px;height:14px"></i> Análise Preditiva
-      </button>
-      <button class="ia-tab-btn" data-tab="log" onclick="mudarAbaIA('log')">
-        <i data-lucide="history" style="width:14px;height:14px"></i> Log de Execução
-      </button>
-    </div>
-
-    <!-- ABA 1: CHAT COPILOTO -->
-    <div class="ia-tab-content active" id="ia-tab-view-chat">
-      <div class="ia-chat-container">
-        <div id="ia-chat-mensagens"></div>
-        <div class="ia-chat-footer">
-          <input type="text" class="form-control" id="ia-chat-input" placeholder="Faça uma pergunta sobre finanças, estoque, vendas ou cobrança..." onkeydown="if(event.key==='Enter')enviarMensagemIA()">
-          <button class="btn btn-primary" onclick="enviarMensagemIA()" style="display:inline-flex;align-items:center;gap:6px;padding:0 16px">
-            <i data-lucide="send" class="ic"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ABA 2: AÇÕES AUTÔNOMAS DO SISTEMA -->
-    <div class="ia-tab-content" id="ia-tab-view-acoes" style="padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div>
-          <h4 style="margin:0;font-size:14px;color:#FFF">Ações Operacionais Autônomas</h4>
-          <span style="font-size:11.5px;color:var(--muted)">O motor analisa anomalias e gera comandos diretos no sistema.</span>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="executarTodasAcoesPrioritarias()" style="background:#00bdae;border-color:#00bdae;color:#000;font-weight:700">
-          ⚡ Executar Todas as Prioritárias
-        </button>
-      </div>
-      <div id="ia-acoes-lista" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:55vh">
-        <!-- Cartões de ação renderizados dinamicamente -->
-      </div>
-    </div>
-
-    <!-- ABA 3: ANÁLISE PREDITIVA EM TEMPO REAL -->
-    <div class="ia-tab-content" id="ia-tab-view-analise" style="padding:16px">
-      <div id="ia-analise-conteudo" style="overflow-y:auto;max-height:60vh">
-        <!-- KPIs, Curva ABC e Runway de Estoque -->
-      </div>
-    </div>
-
-    <!-- ABA 4: LOG DE AUDITORIA -->
-    <div class="ia-tab-content" id="ia-tab-view-log" style="padding:16px">
-      <h4 style="margin:0 0 10px;font-size:14px;color:#FFF">Histórico de Ações Executadas pela IA</h4>
-      <div id="ia-log-conteudo" style="overflow-y:auto;max-height:60vh">
-        <!-- Log de auditoria -->
-      </div>
-    </div>
-
-  </div>
-</div>
 
 <!-- MODAL DIAGNÓSTICO EXECUTIVO IA -->
 <div class="modal-overlay" id="modal-ia-diagnostico">
@@ -3064,14 +3096,14 @@
       </div>
 
       <div style="font-size:11.5px;color:var(--muted);text-align:center">
-        Versão atualizada v5.88.2 com IA Gemini 3.8 Flash &amp; Piloto Autônomo.
+        Versão atualizada v5.89.1 com Análise de Dados &amp; Copiloto.
       </div>
     </div>
   </div>
 </div>
 
-<!-- BOTÃO FLUTUANTE IA GEMINI -->
-<button id="btn-flutuante-ia" onclick="abrirAssistenteIA()" title="Abrir Copiloto IA Gemini">
+<!-- BOTÃO FLUTUANTE IA -->
+<button id="btn-flutuante-ia" onclick="abrirAtalhoCopilotoIA()" title="Abrir Análise de Dados &amp; Copiloto">
   <i data-lucide="sparkles" style="width:16px;height:16px"></i>
   <span>Copiloto IA</span>
 </button>
