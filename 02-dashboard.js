@@ -29,8 +29,13 @@ function fecharMenuNovaVenda(){
   document.getElementById('qa-sheet-backdrop').classList.remove('open');
   document.getElementById('qa-sheet').classList.remove('open');
 }
-// Venda rápida = orçamento (depois completo e converto em venda)
-function novaVendaRapida(){
+// PDV Balcão: venda à vista no balcão, vinculada ao cliente do cartão 001
+function novaVendaPDV(){
+  fecharMenuNovaVenda();
+  setTimeout(function(){abrirPDVRapido();},120);
+}
+// Orçamento: abre a Nova Venda já no modo Orçamento
+function novaVendaOrcamento(){
   fecharMenuNovaVenda();
   setTimeout(function(){goto('vendas');setTimeout(function(){abrirNovaVenda();setVendaTipo('orcamento');},80);},120);
 }

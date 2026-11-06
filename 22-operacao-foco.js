@@ -225,15 +225,28 @@ function trocarAbaPDV(aba) {
   }
 }
 
+// Cliente do PDV: sempre o cliente vinculado ao cartão 001 (vendas à vista de cliente avulso)
+function pdvClienteAvista() {
+  return typeof cartoesClienteDe === 'function' ? cartoesClienteDe(1) : null;
+}
+
 function abrirPDVRapido() {
+  const cli = pdvClienteAvista();
+  if (!cli) {
+    if (typeof showToast === 'function') showToast('Vincule o cartão 001 ao cliente de pagamento à vista para usar o PDV Balcão', 'red');
+    return;
+  }
   _pdvCesta = [];
-  _pdvClienteId = null;
+  _pdvClienteId = cli.id;
+  _pdvHistoricoAcoes = [];
+  fecharSeletorVariantePDV();
+  const nomeEl = document.getElementById('pdv-cliente-nome');
+  if (nomeEl) nomeEl.textContent = cli.nome + ' · Cartão 001';
   const inputBusca = document.getElementById('pdv-busca-item');
   if (inputBusca) inputBusca.value = '';
   const inputRecebido = document.getElementById('pdv-valor-recebido');
   if (inputRecebido) inputRecebido.value = '';
 
-  popularClientesPDV();
   renderizarGradeProdutosPDV();
   renderizarCestaPDV();
   trocarAbaPDV('catalogo');
@@ -250,94 +263,53 @@ function abrirPDVRapido() {
   }, 250);
 }
 
-// Cliente do PDV: só "Consumidor Final (Balcão)" ou cliente identificado pelo Scanner de Cartão
-function popularClientesPDV() { pdvUsarBalcao(true); }
-
-function pdvAtualizarSeletor() {
-  const comCli = !!_pdvClienteId;
-  const gold = 'var(--gold,#C9A24B)';
-  const bB = document.getElementById('pdv-btn-balcao');
-  const bC = document.getElementById('pdv-btn-cartao');
-  const tx = document.getElementById('pdv-btn-cartao-txt');
-  if (bB) { bB.style.borderColor = comCli ? 'rgba(255,255,255,.12)' : gold; bB.style.background = comCli ? 'transparent' : 'rgba(201,162,75,.15)'; }
-  if (bC) { bC.style.borderColor = comCli ? gold : 'rgba(255,255,255,.12)'; bC.style.background = comCli ? 'rgba(201,162,75,.15)' : 'transparent'; }
-  if (tx) {
-    const cli = comCli && typeof getCliente === 'function' ? getCliente(_pdvClienteId) : null;
-    let n = null;
-    if (comCli && typeof cartoesDoCliente === 'function') n = cartoesDoCliente(_pdvClienteId);
-    tx.textContent = cli ? ((n != null ? 'Cartão ' + String(n).padStart(3, '0') + ' · ' : '') + cli.nome) : 'Scanner Cartão';
-  }
-  const hid = document.getElementById('pdv-cliente-select');
-  if (hid) hid.value = comCli ? String(_pdvClienteId) : '';
-}
-
-function pdvUsarBalcao(silencioso) {
-  _pdvClienteId = null;
-  pdvAtualizarSeletor();
-}
-
-function pdvLerCartao() {
-  if (typeof cartoesAbrirScan !== 'function') {
-    if (typeof showToast === 'function') showToast('Módulo de cartões indisponível', 'red');
-    return;
-  }
-  cartoesAbrirScan(function (n) {
-    const st = typeof cartoesState === 'function' ? cartoesState() : null;
-    if (st && !(n >= 1 && n <= st.total)) {
-      if (typeof showToast === 'function') showToast('Cartão ' + n + ' não existe', 'red');
-      return;
-    }
-    const c = typeof cartoesClienteDe === 'function' ? cartoesClienteDe(n) : null;
-    if (!c) {
-      if (typeof showToast === 'function') showToast('Cartão ' + String(n).padStart(3, '0') + ' ainda não está vinculado a um cliente', 'red');
-      return;
-    }
-    _pdvClienteId = c.id;
-    pdvAtualizarSeletor();
-    if (typeof showToast === 'function') showToast('Cliente: ' + c.nome, 'green');
-  });
-}
-
 let _pdvHistoricoAcoes = [];
 
+// Estoque do produto no PDV: com variantes, soma das variantes (igual à tela de Estoque)
+function pdvEstoqueProduto(p) {
+  if (p.variantes && p.variantes.length) return p.variantes.reduce((s, v) => s + (Number(v.estoque) || 0), 0);
+  return Number(p.estoque || 0);
+}
+
+function pdvQtdProdutoNaCesta(produtoId) {
+  return _pdvCesta.filter(it => it.produtoId === produtoId).reduce((s, it) => s + it.qtd, 0);
+}
+
+function pdvDisponivel(produtoId, varianteId) {
+  const p = (state.produtos || []).find(x => x.id === produtoId);
+  if (!p) return 0;
+  if (varianteId) {
+    const v = (p.variantes || []).find(x => x.id == varianteId);
+    return v ? (Number(v.estoque) || 0) : 0;
+  }
+  return Number(p.estoque || 0);
+}
+
+// -1 no card do produto: tira 1 do último item desse produto que entrou na cesta
 function diminuirItemDiretoPDV(produtoId) {
-  const idx = _pdvCesta.findIndex(it => it.produtoId === produtoId);
+  let idx = -1;
+  for (let i = _pdvCesta.length - 1; i >= 0; i--) {
+    if (_pdvCesta[i].produtoId === produtoId) { idx = i; break; }
+  }
   if (idx !== -1) {
     const nome = _pdvCesta[idx].nome;
     alterarQtdPDV(idx, -1);
-    if (typeof showToast === 'function') {
-      showToast(`Removido 1 un de ${nome}`, 'gold');
-    }
+    if (typeof showToast === 'function') showToast(`Removido 1 un de ${nome}`, 'gold');
   }
 }
 
 function desfazerUltimoItemPDV() {
-  if (_pdvHistoricoAcoes.length > 0) {
+  while (_pdvHistoricoAcoes.length > 0) {
     const acao = _pdvHistoricoAcoes.pop();
-    const idx = _pdvCesta.findIndex(it => it.produtoId === acao.produtoId);
+    const idx = _pdvCesta.findIndex(it => it.produtoId === acao.produtoId && (it.varianteId || null) === (acao.varianteId || null));
     if (idx !== -1) {
       const nome = _pdvCesta[idx].nome;
       alterarQtdPDV(idx, -1);
-      if (typeof showToast === 'function') {
-        showToast(`Desfeito: 1 un removida de ${nome} ↩️`, 'gold');
-      }
+      if (typeof showToast === 'function') showToast(`Desfeito: 1 un removida de ${nome} ↩️`, 'gold');
       return;
     }
   }
-
-  // Fallback: se não tiver histórico mas tiver item na cesta, diminui o último
-  if (_pdvCesta.length > 0) {
-    const ultimoIdx = _pdvCesta.length - 1;
-    const nome = _pdvCesta[ultimoIdx].nome;
-    alterarQtdPDV(ultimoIdx, -1);
-    if (typeof showToast === 'function') {
-      showToast(`Desfeito: 1 un removida de ${nome} ↩️`, 'gold');
-    }
-  } else {
-    if (typeof showToast === 'function') {
-      showToast('Nada para desfazer', 'muted');
-    }
-  }
+  if (typeof showToast === 'function') showToast('Nada para desfazer', 'muted');
 }
 
 function renderizarGradeProdutosPDV(termo = '') {
@@ -346,7 +318,7 @@ function renderizarGradeProdutosPDV(termo = '') {
 
   const t = String(termo || '').trim().toLowerCase();
   const prods = state.produtos.filter(p => {
-    if (p.arquivado) return false;
+    if (!estaAtivo(p)) return false;
     if (!t) return true;
     return (p.nome + ' ' + (p.codigo || '')).toLowerCase().includes(t);
   });
@@ -358,15 +330,14 @@ function renderizarGradeProdutosPDV(termo = '') {
 
   container.innerHTML = prods.slice(0, 30).map(p => {
     const preco = Number(p.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const est = Number(p.estoque || 0);
+    const est = pdvEstoqueProduto(p);
     const semEstoque = est <= 0;
-    const naCesta = _pdvCesta.find(it => it.produtoId === p.id);
-    const qtdNaCesta = naCesta ? naCesta.qtd : 0;
+    const qtdNaCesta = pdvQtdProdutoNaCesta(p.id);
 
     return `
-      <div class="pdv-card-prod ${qtdNaCesta > 0 ? 'selecionado' : ''}" onclick="adicionarItemPDV(${p.id})" style="${semEstoque ? 'opacity:.65;' : ''}">
+      <div class="pdv-card-prod ${qtdNaCesta > 0 ? 'selecionado' : ''}" onclick="tocarProdutoPDV(${p.id})" style="${semEstoque ? 'opacity:.65;' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
-          <div style="font-size:13px;font-weight:700;color:#FFF;line-height:1.3;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.nome}</div>
+          <div style="font-size:13px;font-weight:700;color:#FFF;line-height:1.3;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escapeHtml(p.nome)}</div>
           ${qtdNaCesta > 0 ? `
             <div style="display:flex;align-items:center;gap:3px" onclick="event.stopPropagation()">
               <button type="button" class="pdv-card-menos-btn" onclick="diminuirItemDiretoPDV(${p.id})" title="Diminuir 1 un">-1</button>
@@ -383,27 +354,81 @@ function renderizarGradeProdutosPDV(termo = '') {
   }).join('');
 }
 
-function adicionarItemPDV(produtoId) {
+// Toque no card: produto simples entra direto; produto com opções abre o seletor flutuante
+function tocarProdutoPDV(produtoId) {
   const p = (state.produtos || []).find(x => x.id === produtoId);
   if (!p) return;
-  const itemExistente = _pdvCesta.find(it => it.produtoId === produtoId);
+  if (p.variantes && p.variantes.length) abrirSeletorVariantePDV(produtoId);
+  else adicionarItemPDV(produtoId, null);
+}
+
+function abrirSeletorVariantePDV(produtoId) {
+  const p = (state.produtos || []).find(x => x.id === produtoId);
+  if (!p || !p.variantes || !p.variantes.length) return;
+  fecharSeletorVariantePDV();
+  const ov = document.createElement('div');
+  ov.id = 'pdv-var-ov';
+  ov.className = 'pdv-var-ov';
+  ov.addEventListener('click', e => { if (e.target === ov) fecharSeletorVariantePDV(); });
+  ov.innerHTML = `<div class="pdv-var-pop">
+    <div class="pdv-var-titulo">${escapeHtml(p.nome)}</div>
+    <div class="pdv-var-sub">Escolha a opção</div>
+    ${p.variantes.map(v => {
+      const disp = Number(v.estoque) || 0;
+      const naCesta = _pdvCesta.filter(it => it.produtoId === p.id && it.varianteId == v.id).reduce((s, it) => s + it.qtd, 0);
+      const sem = disp <= 0;
+      return `<button type="button" class="pdv-var-op${sem ? ' sem' : ''}" ${sem ? 'disabled' : ''} onclick="adicionarItemPDV(${p.id}, ${v.id}); fecharSeletorVariantePDV()">
+        <span>${escapeHtml(v.nome)}</span>
+        <span class="pdv-var-est">${naCesta > 0 ? `<b class="pdv-card-badge">${naCesta}</b>` : ''}${disp} un</span>
+      </button>`;
+    }).join('')}
+    <button type="button" class="pdv-var-fechar" onclick="fecharSeletorVariantePDV()">Cancelar</button>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+function fecharSeletorVariantePDV() {
+  const ov = document.getElementById('pdv-var-ov');
+  if (ov) ov.remove();
+}
+
+function adicionarItemPDV(produtoId, varianteId) {
+  const p = (state.produtos || []).find(x => x.id === produtoId);
+  if (!p) return;
+  const vid = varianteId ? Number(varianteId) : null;
+  if (p.variantes && p.variantes.length && !vid) { abrirSeletorVariantePDV(produtoId); return; }
+  const itemExistente = _pdvCesta.find(it => it.produtoId === produtoId && (it.varianteId || null) === vid);
+  const disp = pdvDisponivel(produtoId, vid);
+  if ((itemExistente ? itemExistente.qtd : 0) + 1 > disp) {
+    if (typeof showToast === 'function') showToast(`Estoque insuficiente: ${getNomeCompletoItem(produtoId, vid)} (disp: ${disp})`, 'red');
+    return;
+  }
   if (itemExistente) {
     itemExistente.qtd += 1;
   } else {
     _pdvCesta.push({
       produtoId: p.id,
-      nome: p.nome,
+      varianteId: vid,
+      nome: getNomeCompletoItem(p.id, vid),
       preco: Number(p.preco || 0),
       qtd: 1
     });
   }
-  _pdvHistoricoAcoes.push({ produtoId, delta: 1 });
+  _pdvHistoricoAcoes.push({ produtoId, varianteId: vid });
   renderizarGradeProdutosPDV(document.getElementById('pdv-busca-item')?.value || '');
   renderizarCestaPDV();
 }
 
 function alterarQtdPDV(index, delta) {
   if (!_pdvCesta[index]) return;
+  if (delta > 0) {
+    const it = _pdvCesta[index];
+    const disp = pdvDisponivel(it.produtoId, it.varianteId);
+    if (it.qtd + delta > disp) {
+      if (typeof showToast === 'function') showToast(`Estoque insuficiente: ${it.nome} (disp: ${disp})`, 'red');
+      return;
+    }
+  }
   _pdvCesta[index].qtd += delta;
   if (_pdvCesta[index].qtd <= 0) {
     _pdvCesta.splice(index, 1);
@@ -487,7 +512,7 @@ function renderizarCestaPDV() {
       container.innerHTML = _pdvCesta.map((it, idx) => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);gap:8px">
           <div style="min-width:0;flex:1">
-            <div style="font-size:13px;font-weight:700;color:#FFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.nome}</div>
+            <div style="font-size:13px;font-weight:700;color:#FFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(it.nome)}</div>
             <div style="font-size:11.5px;color:var(--gold,#C9A24B);font-weight:600">R$ ${it.preco.toFixed(2)} un</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
@@ -515,90 +540,41 @@ function finalizarVendaPDV(formaPagamento) {
     if (typeof showToast === 'function') showToast('Adicione ao menos um item na cesta', 'red');
     return;
   }
-
-  if (formaPagamento === 'Fiado' && !_pdvClienteId) {
-    if (typeof showToast === 'function') showToast('Fiado exige cliente: use o Scanner Cartão', 'red');
+  const forma = { 'Pix': 'pix', 'Dinheiro': 'dinheiro', 'Débito': 'cartao', 'Crédito': 'cartao' }[formaPagamento];
+  const cli = pdvClienteAvista();
+  if (!forma || !cli) {
+    if (typeof showToast === 'function') showToast('Vincule o cartão 001 ao cliente de pagamento à vista para usar o PDV Balcão', 'red');
     return;
   }
 
-  const total = calcularTotalPDV();
-  const selCl = document.getElementById('pdv-cliente-select');
-  const clienteId = _pdvClienteId || (selCl && selCl.value ? parseInt(selCl.value) : null);
-  const clienteNome = clienteId && typeof getCliente === 'function' ? (getCliente(clienteId)?.nome || 'Cliente') : 'Consumidor Final';
-
-  // Cria a venda no state
-  if (typeof state !== 'undefined' && Array.isArray(state.vendas)) {
-    const novaVenda = {
-      id: Date.now(),
-      data: new Date().toISOString(),
-      clienteId: clienteId,
-      clienteNome: clienteNome,
-      total: total,
-      tipo: 'venda',
-      formaPagamento: formaPagamento,
-      itens: _pdvCesta.map(it => ({
-        produtoId: it.produtoId,
-        nome: it.nome,
-        preco: it.preco,
-        qtd: it.qtd,
-        total: it.preco * it.qtd
-      })),
-      entregue: true,
-      origem: 'PDV Balcão'
-    };
-
-    state.vendas.unshift(novaVenda);
-
-    // Baixa estoque dos produtos
-    if (Array.isArray(state.produtos)) {
-      _pdvCesta.forEach(it => {
-        const prod = state.produtos.find(p => p.id === it.produtoId);
-        if (prod) {
-          prod.estoque = Math.max(0, Number(prod.estoque || 0) - it.qtd);
-        }
-      });
-    }
-
-    // Lança entrada no caixa se pago na hora (Dinheiro, Pix, Cartão)
-    if (formaPagamento !== 'Fiado' && Array.isArray(state.financeiro)) {
-      state.financeiro.unshift({
-        id: Date.now() + 1,
-        data: new Date().toISOString().slice(0, 10),
-        descricao: `Venda PDV #${novaVenda.id} - ${clienteNome}`,
-        valor: total,
-        tipo: 'entrada',
-        categoria: 'Vendas Balcão'
-      });
-    }
-
-    // Se fiado, lança em contas a receber
-    if (formaPagamento === 'Fiado' && Array.isArray(state.contasReceber)) {
-      const venc = new Date();
-      venc.setDate(venc.getDate() + 30);
-      state.contasReceber.unshift({
-        id: Date.now() + 2,
-        vendaId: novaVenda.id,
-        clienteId: clienteId,
-        clienteNome: clienteNome,
-        valor: total,
-        vencimento: venc.toISOString().slice(0, 10),
-        pago: false
-      });
-    }
-
-    if (typeof marcarAlterado === 'function') marcarAlterado();
-    if (typeof salvarDados === 'function') salvarDados();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof renderVendasLista === 'function') renderVendasLista();
-    if (typeof renderEstoque === 'function') renderEstoque();
+  const itensCesta = _pdvCesta.map(it => ({ produtoId: it.produtoId, varianteId: it.varianteId || null, qtd: it.qtd, preco: it.preco }));
+  const falta = checarEstoqueVenda(itensCesta, null);
+  if (falta) {
+    if (typeof showToast === 'function') showToast(`Estoque insuficiente: ${getNomeCompletoItem(falta.produtoId, falta.varianteId)} (disp: ${falta.disp})`, 'red');
+    return;
   }
 
-  if (typeof showToast === 'function') {
-    showToast(`Venda de R$ ${total.toFixed(2)} finalizada com sucesso! (${formaPagamento})`, 'green');
-  }
+  // Mesmo registro da tela Nova Venda: venda no cliente, baixa de estoque (por variante) e entrada no Financeiro
+  const itensFinal = itensCesta.map(it => itemVendaGravar(it, true));
+  const total = itensFinal.reduce((s, it) => s + it.total, 0);
+  const dataVenda = today();
+  const vendaId = nextId('vendas');
+  const obs = 'PDV Balcão' + ((formaPagamento === 'Débito' || formaPagamento === 'Crédito') ? ' · ' + formaPagamento : '');
+  state.vendas.push({
+    id: vendaId, clienteId: cli.id, itens: itensFinal, total, forma, pagamentos: null, status: 'pago',
+    data: dataVenda, obs, vencimento: null, statusPedido: 'entregue', entregue: true, canalId: null, descontoExtra: 0, tipo: 'venda'
+  });
+  itensFinal.forEach(it => ajustarEstoque(it.produtoId, it.varianteId, -it.qtd, 'venda'));
+  const desc = itensFinal.map(it => nomeItemVenda(it)).join(', ');
+  sincronizarFinanceiroVenda(vendaId, total, dataVenda, `Venda ${desc} - ${cli.nome}`);
+  marcarAlterado();
+  renderVendas(); renderDashboard(); renderEstoque();
+
+  if (typeof showToast === 'function') showToast(`Venda de ${fmt(total)} registrada! (${formaPagamento})`, 'green');
 
   _pdvCesta = [];
-  pdvUsarBalcao();
+  _pdvHistoricoAcoes = [];
+  fecharSeletorVariantePDV();
   renderizarCestaPDV();
   const inputRecebido = document.getElementById('pdv-valor-recebido');
   if (inputRecebido) inputRecebido.value = '';
