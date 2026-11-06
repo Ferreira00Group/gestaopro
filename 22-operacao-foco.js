@@ -239,7 +239,7 @@ function abrirPDVRapido() {
   _pdvCesta = [];
   _pdvClienteId = cli.id;
   _pdvHistoricoAcoes = [];
-  fecharSeletorVariantePDV();
+  fecharSeletorVariante();
   const nomeEl = document.getElementById('pdv-cliente-nome');
   if (nomeEl) nomeEl.textContent = cli.nome + ' · Cartão 001';
   const inputBusca = document.getElementById('pdv-busca-item');
@@ -285,19 +285,6 @@ function pdvDisponivel(produtoId, varianteId) {
   return Number(p.estoque || 0);
 }
 
-// -1 no card do produto: tira 1 do último item desse produto que entrou na cesta
-function diminuirItemDiretoPDV(produtoId) {
-  let idx = -1;
-  for (let i = _pdvCesta.length - 1; i >= 0; i--) {
-    if (_pdvCesta[i].produtoId === produtoId) { idx = i; break; }
-  }
-  if (idx !== -1) {
-    const nome = _pdvCesta[idx].nome;
-    alterarQtdPDV(idx, -1);
-    if (typeof showToast === 'function') showToast(`Removido 1 un de ${nome}`, 'gold');
-  }
-}
-
 function desfazerUltimoItemPDV() {
   while (_pdvHistoricoAcoes.length > 0) {
     const acao = _pdvHistoricoAcoes.pop();
@@ -338,12 +325,7 @@ function renderizarGradeProdutosPDV(termo = '') {
       <div class="pdv-card-prod ${qtdNaCesta > 0 ? 'selecionado' : ''}" onclick="tocarProdutoPDV(${p.id})" style="${semEstoque ? 'opacity:.65;' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
           <div style="font-size:13px;font-weight:700;color:#FFF;line-height:1.3;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escapeHtml(p.nome)}</div>
-          ${qtdNaCesta > 0 ? `
-            <div style="display:flex;align-items:center;gap:3px" onclick="event.stopPropagation()">
-              <button type="button" class="pdv-card-menos-btn" onclick="diminuirItemDiretoPDV(${p.id})" title="Diminuir 1 un">-1</button>
-              <span class="pdv-card-badge">${qtdNaCesta}</span>
-            </div>
-          ` : ''}
+          ${qtdNaCesta > 0 ? `<span class="pdv-card-badge">${qtdNaCesta}</span>` : ''}
         </div>
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
           <strong style="color:var(--gold,#C9A24B);font-size:14px">${preco}</strong>
@@ -358,36 +340,42 @@ function renderizarGradeProdutosPDV(termo = '') {
 function tocarProdutoPDV(produtoId) {
   const p = (state.produtos || []).find(x => x.id === produtoId);
   if (!p) return;
-  if (p.variantes && p.variantes.length) abrirSeletorVariantePDV(produtoId);
+  if (p.variantes && p.variantes.length) abrirSeletorVariante(produtoId, 'pdv');
   else adicionarItemPDV(produtoId, null);
 }
 
-function abrirSeletorVariantePDV(produtoId) {
+// Seletor flutuante de opções (variantes), usado no PDV (modo 'pdv') e na Nova Venda (modo 'venda')
+function abrirSeletorVariante(produtoId, modo) {
   const p = (state.produtos || []).find(x => x.id === produtoId);
   if (!p || !p.variantes || !p.variantes.length) return;
-  fecharSeletorVariantePDV();
+  fecharSeletorVariante();
   const ov = document.createElement('div');
   ov.id = 'pdv-var-ov';
   ov.className = 'pdv-var-ov';
-  ov.addEventListener('click', e => { if (e.target === ov) fecharSeletorVariantePDV(); });
+  ov.addEventListener('click', e => { if (e.target === ov) fecharSeletorVariante(); });
   ov.innerHTML = `<div class="pdv-var-pop">
     <div class="pdv-var-titulo">${escapeHtml(p.nome)}</div>
     <div class="pdv-var-sub">Escolha a opção</div>
+    <div class="pdv-var-grid">
     ${p.variantes.map(v => {
       const disp = Number(v.estoque) || 0;
-      const naCesta = _pdvCesta.filter(it => it.produtoId === p.id && it.varianteId == v.id).reduce((s, it) => s + it.qtd, 0);
+      const naCesta = modo === 'pdv'
+        ? _pdvCesta.filter(it => it.produtoId === p.id && it.varianteId == v.id).reduce((s, it) => s + it.qtd, 0)
+        : ((typeof vcItemCatalogo === 'function' && vcItemCatalogo(p.id, v.id)) || { qtd: 0 }).qtd;
       const sem = disp <= 0;
-      return `<button type="button" class="pdv-var-op${sem ? ' sem' : ''}" ${sem ? 'disabled' : ''} onclick="adicionarItemPDV(${p.id}, ${v.id}); fecharSeletorVariantePDV()">
-        <span>${escapeHtml(v.nome)}</span>
-        <span class="pdv-var-est">${naCesta > 0 ? `<b class="pdv-card-badge">${naCesta}</b>` : ''}${disp} un</span>
+      const acao = modo === 'pdv' ? `adicionarItemPDV(${p.id}, ${v.id})` : `vcAjustar('p:${p.id}:${v.id}', 1)`;
+      return `<button type="button" class="pdv-var-op${naCesta > 0 ? ' sel' : ''}${sem ? ' sem' : ''}" ${(sem && modo === 'pdv') ? 'disabled' : ''} onclick="${acao}; fecharSeletorVariante()">
+        <span class="pdv-var-top"><span class="pdv-var-nome">${escapeHtml(v.nome)}</span>${naCesta > 0 ? `<b class="pdv-card-badge">${naCesta}</b>` : ''}</span>
+        <span class="pdv-var-est">${disp} un</span>
       </button>`;
     }).join('')}
-    <button type="button" class="pdv-var-fechar" onclick="fecharSeletorVariantePDV()">Cancelar</button>
+    </div>
+    <button type="button" class="pdv-var-fechar" onclick="fecharSeletorVariante()">Cancelar</button>
   </div>`;
   document.body.appendChild(ov);
 }
 
-function fecharSeletorVariantePDV() {
+function fecharSeletorVariante() {
   const ov = document.getElementById('pdv-var-ov');
   if (ov) ov.remove();
 }
@@ -396,7 +384,7 @@ function adicionarItemPDV(produtoId, varianteId) {
   const p = (state.produtos || []).find(x => x.id === produtoId);
   if (!p) return;
   const vid = varianteId ? Number(varianteId) : null;
-  if (p.variantes && p.variantes.length && !vid) { abrirSeletorVariantePDV(produtoId); return; }
+  if (p.variantes && p.variantes.length && !vid) { abrirSeletorVariante(produtoId, 'pdv'); return; }
   const itemExistente = _pdvCesta.find(it => it.produtoId === produtoId && (it.varianteId || null) === vid);
   const disp = pdvDisponivel(produtoId, vid);
   if ((itemExistente ? itemExistente.qtd : 0) + 1 > disp) {
@@ -574,7 +562,7 @@ function finalizarVendaPDV(formaPagamento) {
 
   _pdvCesta = [];
   _pdvHistoricoAcoes = [];
-  fecharSeletorVariantePDV();
+  fecharSeletorVariante();
   renderizarCestaPDV();
   const inputRecebido = document.getElementById('pdv-valor-recebido');
   if (inputRecebido) inputRecebido.value = '';

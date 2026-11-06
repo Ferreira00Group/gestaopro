@@ -298,6 +298,7 @@ function salvarCliente(){
   }
   if(locLink) showToast('Link curto salvo: abre no mapa, mas não entra na otimização. Cole o link longo, as coordenadas ou use o GPS','red');
   marcarAlterado();
+  if(typeof creditoRevalidarExcecoes==='function'&&creditoRevalidarExcecoes()) marcarAlterado();
   closeModal('modal-cliente');renderClientes();renderDashboard();
 }
 

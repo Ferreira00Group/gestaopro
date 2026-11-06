@@ -55,6 +55,7 @@ function renderLinhaParcela(v,p,hoje2){
   </div>`;
 }
 function renderVendas(){
+  if(typeof creditoRevalidarExcecoes==='function'&&creditoRevalidarExcecoes()) marcarAlterado();
   let list=state.vendas;
   const mapaFiado=getMapaSituacaoFiado();
   const sitCache=new Map();
@@ -369,12 +370,23 @@ function vcStepper(key,qtd,alerta){
     `<button type="button" class="stp-btn stp-plus" onclick="vcAjustar('${key}',1)" aria-label="Aumentar">${_VC_MAIS}</button>`+
     `</div>`;
 }
+// Toque no card: produto simples entra direto; produto com opções abre o seletor flutuante
+function tocarProdutoVenda(produtoId){
+  const p=getProduto(produtoId); if(!p) return;
+  if(p.variantes&&p.variantes.length) abrirSeletorVariante(produtoId,'venda');
+  else vcAjustar(`p:${produtoId}:`,1);
+}
 function renderVendaItensLista(){
   const el=document.getElementById('venda-itens-lista');
   if(!el) return;
+  const grid=document.getElementById('venda-itens-grid');
+  const tituloSel=document.getElementById('venda-itens-sel-titulo');
   const termo=vendaCatBusca;
   const editando=!!document.getElementById('venda-edit-id')?.value;
   const verEstoque=!editando&&document.getElementById('venda-tipo')?.value!=='orcamento';
+  const entradas=vcEntradasCatalogo();
+
+  // ── lista dos itens escolhidos (quantidade, preço un. e avulsos) ──
   let html='';
   vendaItensTemp.filter(it=>it.avulso).forEach(it=>{
     const key='a:'+it.uid;
@@ -385,11 +397,25 @@ function renderVendaItensLista(){
       <label class="vc-preco">Custo un. <input type="number" step="0.01" min="0" class="form-control" value="${it.custo||''}" placeholder="opcional" oninput="vcCustoAvulso('${key}',this.value)"></label>
     </div>`;
   });
+  entradas.forEach(e=>{
+    const it=vcItemCatalogo(e.produtoId,e.varianteId);
+    if(!it) return;
+    const key=`p:${e.produtoId}:${e.varianteId||''}`;
+    const falta=verEstoque&&it.qtd>e.estoque;
+    html+=`<div class="vc-row sel">
+      <div class="vc-info"><p class="vc-nome">${escapeHtml(e.nome)}</p>
+        <p class="vc-sub">${escapeHtml(e.cod)} · <strong>${fmt(e.preco)}</strong> · ${e.estoque > 5 ? `<span style="color:#4CC38A;font-weight:600">✓ ${e.estoque} em estoque</span>` : (e.estoque > 0 ? `<span style="color:#E3C16F;font-weight:600">⚠️ Apenas ${e.estoque} un</span>` : `<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`)}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
+      ${vcStepper(key,it.qtd,falta)}
+      <label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>
+    </div>`;
+  });
+  const temSel=html!=='';
   const cidRepetir = parseInt(document.getElementById('venda-cliente')?.value) || null;
+  let repetirHtml='';
   if(cidRepetir && !termo && vendaItensTemp.length === 0){
     const ultVenda = (state.vendas||[]).filter(v=>v.clienteId===cidRepetir && v.tipo!=='orcamento' && v.itens && v.itens.length).sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
     if(ultVenda){
-      html += `<div style="margin:4px 0 10px;padding:8px 10px;background:rgba(201,162,75,.08);border:1px dashed var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      repetirHtml = `<div style="grid-column:1/-1;margin:4px 0 10px;padding:8px 10px;background:rgba(201,162,75,.08);border:1px dashed var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div style="font-size:12px;color:var(--text)">
           <strong>Cliente de Rota:</strong> Repetir cesta anterior (${ultVenda.itens.length} itens · ${fmt(ultVenda.total)})?
         </div>
@@ -399,23 +425,38 @@ function renderVendaItensLista(){
       </div>`;
     }
   }
-  const lista=vcEntradasCatalogo().filter(e=>!termo||(e.nome+' '+e.cod).toLowerCase().includes(termo));
-  lista.forEach(e=>{
-    const key=`p:${e.produtoId}:${e.varianteId||''}`;
-    const it=vcItemCatalogo(e.produtoId,e.varianteId);
-    const falta=!!it&&verEstoque&&it.qtd>e.estoque;
-    html+=`<div class="vc-row${it?' sel':''}">
-      <div class="vc-info"><p class="vc-nome">${escapeHtml(e.nome)}</p>
-        <p class="vc-sub">${escapeHtml(e.cod)} · <strong>${fmt(e.preco)}</strong> · ${e.estoque > 5 ? `<span style="color:#4CC38A;font-weight:600">✓ ${e.estoque} em estoque</span>` : (e.estoque > 0 ? `<span style="color:#E3C16F;font-weight:600">⚠️ Apenas ${e.estoque} un</span>` : `<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`)}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
-      ${it?vcStepper(key,it.qtd,falta):`<button type="button" class="stp-btn stp-plus vc-add" onclick="vcAjustar('${key}',1)" aria-label="Adicionar">${_VC_MAIS}</button>`}
-      ${it?`<label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>`:''}
-    </div>`;
-  });
-  if(!html) html='<div class="vc-vazio">'+(termo?'Nenhum item encontrado':'Nenhum produto cadastrado')+'</div>';
   el.innerHTML=html;
+  el.style.display=temSel?'block':'none';
+  if(tituloSel) tituloSel.style.display=temSel?'block':'none';
+
+  // ── grade de cards do catálogo (um toque adiciona 1 un.) ──
+  if(grid){
+    const porProduto=new Map();
+    entradas.filter(e=>!termo||(e.nome+' '+e.cod).toLowerCase().includes(termo)).forEach(e=>{
+      const g=porProduto.get(e.produtoId)||{produtoId:e.produtoId,estoque:0,nome:null};
+      g.estoque+=Number(e.estoque)||0;
+      porProduto.set(e.produtoId,g);
+    });
+    const cards=[...porProduto.values()].map(g=>{
+      const p=getProduto(g.produtoId); if(!p) return '';
+      const qtd=vendaItensTemp.filter(it=>!it.avulso&&it.produtoId==g.produtoId).reduce((s,it)=>s+it.qtd,0);
+      const sem=verEstoque&&g.estoque<=0;
+      return `<div class="pdv-card-prod${qtd>0?' selecionado':''}" onclick="tocarProdutoVenda(${p.id})" style="${sem?'opacity:.65;':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escapeHtml(p.nome)}${(!estaAtivo(p))?' (arquivado)':''}</div>
+          ${qtd>0?`<span class="pdv-card-badge">${qtd}</span>`:''}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
+          <strong style="color:var(--gold,#C9A24B);font-size:14px">${fmt(vcPrecoCatalogo(p.id))}</strong>
+          <span style="font-size:11px;color:${sem?'#E5604F':'var(--muted)'};font-weight:600">${g.estoque} un</span>
+        </div>
+      </div>`;
+    }).join('');
+    grid.innerHTML=repetirHtml+(cards||`<div class="vc-vazio" style="grid-column:1/-1">${termo?'Nenhum item encontrado':'Nenhum produto cadastrado'}</div>`);
+  }
   const n=vendaItensTemp.filter(it=>(it.produtoId||it.avulso)&&it.qtd>0).reduce((s,it)=>s+it.qtd,0);
   const rs=document.getElementById('venda-itens-resumo');
-  if(rs) rs.textContent=n>0?`${n} ${n===1?'unidade selecionada':'unidades selecionadas'}`:'Toque em + para adicionar itens';
+  if(rs) rs.textContent=n>0?`${n} ${n===1?'unidade selecionada':'unidades selecionadas'}`:'Toque nos produtos para adicionar itens';
   calcTotalVendaGeral();
 }
 function vcDefinir(key,qtd){

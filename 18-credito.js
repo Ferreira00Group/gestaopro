@@ -97,6 +97,25 @@ function creditoAvaliar(clienteId,compra,opts){
   };
 }
 
+// Reavalia as marcas "Exceção de crédito": quando o limite do cliente (nível/personalizado) ou das regras sobe e o
+// saldo passa a caber nele, o motivo "limite" sai da venda; sem outros motivos, o selo some. Devolve true se mudou algo.
+function creditoRevalidarExcecoes(){
+  const cfg=creditoCfg();
+  if(!cfg.ativo) return false;
+  let mudou=false;
+  (state.vendas||[]).forEach(v=>{
+    const ex=v.creditoExcecao; if(!ex) return;
+    const c=getCliente(v.clienteId); if(!c) return;
+    if(getSaldoCliente(v.clienteId)>creditoLimiteCliente(c,cfg).limite+0.009) return; // ainda acima do limite
+    const mot=ex.motivos||[];
+    const resto=mot.filter(m=>!/limite|só à vista/i.test(m));
+    if(resto.length===mot.length&&mot.length>0) return; // nenhum motivo era o limite
+    if(resto.length) ex.motivos=resto; else delete v.creditoExcecao;
+    mudou=true;
+  });
+  return mudou;
+}
+
 // Já era venda fiado do mesmo cliente? Editar uma venda assim não é "venda nova": o saldo já a contém.
 function creditoVendaJaFiado(prev,clienteId){
   return !!(prev&&prev.tipo!=='orcamento'&&prev.clienteId==clienteId&&(prev.forma==='fiado'||(prev.pagamentos||[]).some(p=>p.forma==='fiado')));
@@ -259,6 +278,7 @@ function salvarConfigCredito(){
   if(!(parcelaValor>0)){showToast('Informe o valor de cada parcela','red');return;}
   if(!(parcelaDias>=1)){showToast('O prazo entre parcelas deve ser de 1 dia ou mais','red');return;}
   state.credito=Object.assign({},creditoCfg(),{ativo:document.getElementById('cred-ativo').checked,limites:[0,round2(l1),round2(l2),round2(l3)],parcelaValor:round2(parcelaValor),parcelaDias});
+  creditoRevalidarExcecoes();
   marcarAlterado();
   closeModal('modal-config-credito');showToast('Regras de crédito salvas','green');
   const pg=document.querySelector('.page.active');
