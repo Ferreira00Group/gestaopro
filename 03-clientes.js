@@ -5,11 +5,17 @@ function listaClientesTexto(){
   return state.clientes.filter(c=>estaAtivo(c)).map(c=>`${fmtClienteNum(c.id)} — ${c.nome}`).join('\n');
 }
 function copiarListaClientes(){
-  const txt=listaClientesTexto();
-  if(!txt){showToast('Nenhum cliente ativo para copiar','red');return;}
-  copiarTexto('CLIENTES\n'+txt,''+txt.split('\n').length+' clientes copiados');
+  const ativos=state.clientes.filter(c=>estaAtivo(c));
+  if(!ativos.length){showToast('Nenhum cliente ativo para copiar','red');return;}
+  // #código — nome — rota (sem o sufixo quando o cliente não tem rota)
+  const txt=ativos.map(c=>{
+    const rota=c.rotaId?getRota(c.rotaId):null;
+    return `${fmtClienteNum(c.id)} — ${c.nome}`+(rota&&rota.nome?` — ${rota.nome}`:'');
+  }).join('\n');
+  copiarTexto('CLIENTES\n'+txt,ativos.length+' clientes copiados');
 }
 function renderClientes(){
+  if(typeof dashAtualizarContadorClientes==='function') dashAtualizarContadorClientes();
   let list = state.clientes;
   if(!state.cliente_mostrar_arquivados) list = list.filter(c => estaAtivo(c));
   if(state.cliente_filter) list = list.filter(c => clienteCombinaBusca(c, state.cliente_filter));

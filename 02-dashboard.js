@@ -11,6 +11,13 @@ function renderTrend(elId,atual,anterior,legenda){
 
 // ───────── v5.50.0: nova tela inicial ─────────
 function dashSet(id,txt){const el=document.getElementById(id);if(el)el.textContent=txt;}
+// Contador do botão "Novo cliente" (Início e tela Clientes usam o mesmo visual): só o número, 999+
+function dashAtualizarContadorClientes(){
+  const nCli=state.clientes.filter(estaAtivo).length;
+  const txt=nCli>999?'999+':String(nCli);
+  dashSet('qa-clientes-count',txt);
+  dashSet('cli-novo-count',txt);
+}
 function dashNorm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
 // Combustível: categoria com "gasolina", "combustível", diesel, etanol ou álcool
 function dashEhCombustivel(f){return /gasolina|combustiv|diesel|etanol|alcool/.test(dashNorm(f.categoria));}
@@ -79,8 +86,7 @@ function renderDashboard(){
   dashSet('dash-lucro-pct',dashPct(margem));
 
   // ── Acesso rápido: contador de clientes (só o número, 999+) ──
-  const nCli=state.clientes.filter(estaAtivo).length;
-  dashSet('qa-clientes-count',nCli>999?'999+':String(nCli));
+  dashAtualizarContadorClientes();
 
   // ── Parte 2: alertas (sem mudança de layout) ──
   const alertas=getAlertasEstoque();

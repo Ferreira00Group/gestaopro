@@ -344,18 +344,39 @@ function tocarProdutoPDV(produtoId) {
   else adicionarItemPDV(produtoId, null);
 }
 
-// Seletor flutuante de opções (variantes), usado no PDV (modo 'pdv') e na Nova Venda (modo 'venda')
+// Seletor flutuante de opções (variantes), usado no PDV (modo 'pdv') e na Nova Venda (modo 'venda').
+// Cada toque numa opção soma +1 e o popup continua aberto. Confirmar mantém, Cancelar desfaz o que
+// foi somado nesta abertura e Desfazer (topo direito) tira 1 un. da última opção somada.
+let _varSel = null; // { produtoId, modo, hist: [varianteId, ...] }
+const _VAR_SVG_DESFAZER = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+const _VAR_SVG_CONFIRMAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
 function abrirSeletorVariante(produtoId, modo) {
   const p = (state.produtos || []).find(x => x.id === produtoId);
   if (!p || !p.variantes || !p.variantes.length) return;
   fecharSeletorVariante();
+  _varSel = { produtoId: p.id, modo, hist: [] };
   const ov = document.createElement('div');
   ov.id = 'pdv-var-ov';
   ov.className = 'pdv-var-ov';
+  // tocar fora do popup = Confirmar (mantém o que já foi somado)
   ov.addEventListener('click', e => { if (e.target === ov) fecharSeletorVariante(); });
-  ov.innerHTML = `<div class="pdv-var-pop">
-    <div class="pdv-var-titulo">${escapeHtml(p.nome)}</div>
-    <div class="pdv-var-sub">Escolha a opção</div>
+  ov.innerHTML = '<div class="pdv-var-pop" id="pdv-var-pop"></div>';
+  document.body.appendChild(ov);
+  desenharSeletorVariante();
+}
+
+function desenharSeletorVariante() {
+  const pop = document.getElementById('pdv-var-pop');
+  if (!pop || !_varSel) return;
+  const { produtoId, modo, hist } = _varSel;
+  const p = (state.produtos || []).find(x => x.id === produtoId);
+  if (!p) { fecharSeletorVariante(); return; }
+  pop.innerHTML = `<div class="pdv-var-cab">
+      <div><div class="pdv-var-titulo">${escapeHtml(p.nome)}</div>
+      <div class="pdv-var-sub">Toque para adicionar</div></div>
+      <button type="button" class="pdv-var-desfazer" onclick="desfazerSeletorVariante()" ${hist.length ? '' : 'disabled'}>${_VAR_SVG_DESFAZER}Desfazer</button>
+    </div>
     <div class="pdv-var-grid">
     ${p.variantes.map(v => {
       const disp = Number(v.estoque) || 0;
@@ -363,19 +384,60 @@ function abrirSeletorVariante(produtoId, modo) {
         ? _pdvCesta.filter(it => it.produtoId === p.id && it.varianteId == v.id).reduce((s, it) => s + it.qtd, 0)
         : ((typeof vcItemCatalogo === 'function' && vcItemCatalogo(p.id, v.id)) || { qtd: 0 }).qtd;
       const sem = disp <= 0;
-      const acao = modo === 'pdv' ? `adicionarItemPDV(${p.id}, ${v.id})` : `vcAjustar('p:${p.id}:${v.id}', 1)`;
-      return `<button type="button" class="pdv-var-op${naCesta > 0 ? ' sel' : ''}${sem ? ' sem' : ''}" ${(sem && modo === 'pdv') ? 'disabled' : ''} onclick="${acao}; fecharSeletorVariante()">
+      return `<button type="button" class="pdv-var-op${naCesta > 0 ? ' sel' : ''}${sem ? ' sem' : ''}" ${(sem && modo === 'pdv') ? 'disabled' : ''} onclick="somarSeletorVariante(${v.id})">
         <span class="pdv-var-top"><span class="pdv-var-nome">${escapeHtml(v.nome)}</span>${naCesta > 0 ? `<b class="pdv-card-badge">${naCesta}</b>` : ''}</span>
         <span class="pdv-var-est">${disp} un</span>
       </button>`;
     }).join('')}
     </div>
-    <button type="button" class="pdv-var-fechar" onclick="fecharSeletorVariante()">Cancelar</button>
-  </div>`;
-  document.body.appendChild(ov);
+    <div class="pdv-var-acoes">
+      <button type="button" class="pdv-var-fechar" onclick="cancelarSeletorVariante()">Cancelar</button>
+      <button type="button" class="pdv-var-confirmar" onclick="fecharSeletorVariante()">${_VAR_SVG_CONFIRMAR}Confirmar</button>
+    </div>`;
+}
+
+function somarSeletorVariante(varianteId) {
+  if (!_varSel) return;
+  const { produtoId, modo } = _varSel;
+  if (modo === 'pdv') {
+    const antes = _pdvHistoricoAcoes.length;
+    adicionarItemPDV(produtoId, varianteId);
+    // sem estoque: adicionarItemPDV avisa e não adiciona, então não conta no histórico do popup
+    if (_pdvHistoricoAcoes.length === antes) { desenharSeletorVariante(); return; }
+  } else {
+    vcAjustar(`p:${produtoId}:${varianteId}`, 1);
+  }
+  _varSel.hist.push(Number(varianteId));
+  desenharSeletorVariante();
+}
+
+// Tira 1 un. da última opção somada nesta abertura; devolve false se não havia nada
+function _desfazerUmSeletorVariante() {
+  if (!_varSel || !_varSel.hist.length) return false;
+  const { produtoId, modo } = _varSel;
+  const vid = _varSel.hist.pop();
+  if (modo === 'pdv') {
+    const ult = _pdvHistoricoAcoes[_pdvHistoricoAcoes.length - 1];
+    if (ult && ult.produtoId === produtoId && (ult.varianteId || null) === vid) _pdvHistoricoAcoes.pop();
+    const idx = _pdvCesta.findIndex(it => it.produtoId === produtoId && (it.varianteId || null) === vid);
+    if (idx !== -1) alterarQtdPDV(idx, -1);
+  } else {
+    vcAjustar(`p:${produtoId}:${vid}`, -1);
+  }
+  return true;
+}
+
+function desfazerSeletorVariante() {
+  if (_desfazerUmSeletorVariante()) desenharSeletorVariante();
+}
+
+function cancelarSeletorVariante() {
+  while (_desfazerUmSeletorVariante()) { /* desfaz tudo o que foi somado nesta abertura */ }
+  fecharSeletorVariante();
 }
 
 function fecharSeletorVariante() {
+  _varSel = null;
   const ov = document.getElementById('pdv-var-ov');
   if (ov) ov.remove();
 }

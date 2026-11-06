@@ -1179,6 +1179,9 @@ tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
 #page-clientes .cli-actions .btn-outline .ic{color:var(--cg2)}
 #page-clientes .cli-actions .btn-primary{background:linear-gradient(180deg,#F6C84A,#C98C14);color:#17120A;font-weight:800;border:1px solid rgba(255,224,130,.6);box-shadow:0 0 16px rgba(246,181,42,.35)}
 #page-clientes .cli-actions .btn-primary .ic{color:#17120A}
+#page-clientes .cli-actions{align-items:center}
+#page-clientes .cli-actions .btn{padding:12px 8px;font-size:13px}
+#page-clientes .cli-actions .cli-novo{flex:0 0 72px;padding:0}
 #page-clientes .search-bar{gap:10px}
 #page-clientes .search-input,#page-clientes select.filter{background:linear-gradient(180deg,#19191c,#0e0e10);border:1px solid rgba(201,162,75,.3);border-radius:999px;padding:11px 16px;box-shadow:0 0 12px rgba(201,162,75,.07)}
 #page-clientes .search-input:focus,#page-clientes select.filter:focus{border-color:var(--cg);box-shadow:0 0 0 3px rgba(201,162,75,.14),0 0 14px rgba(201,162,75,.2)}
@@ -1991,6 +1994,15 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .pdv-var-nome{font-size:13.5px;font-weight:700;line-height:1.3}
 .pdv-var-est{align-self:flex-end;font-size:11.5px;color:var(--muted);font-weight:600}
 .pdv-var-fechar{width:100%;margin-top:14px;padding:10px;background:transparent;border:1px solid rgba(255,255,255,.18);border-radius:10px;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+.pdv-var-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.pdv-var-cab>div:first-child{min-width:0}
+.pdv-var-desfazer{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;padding:5px 10px;font:inherit;font-size:12px;font-weight:600;color:var(--gold);background:transparent;border:1px solid rgba(201,162,75,.45);border-radius:999px;cursor:pointer}
+.pdv-var-desfazer:active{border-color:var(--gold)}
+.pdv-var-desfazer:disabled{opacity:.35;cursor:default}
+.pdv-var-acoes{display:flex;gap:10px;margin-top:14px}
+.pdv-var-acoes .pdv-var-fechar{width:auto;margin-top:0;flex:1 1 0}
+.pdv-var-confirmar{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:1 1 0;padding:10px;background:var(--gold);border:0;border-radius:10px;color:#17120A;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer}
+.pdv-var-confirmar:active{filter:brightness(.92)}
 
 /* ===== v5.87.8 — Nova Venda: grade de cards ===== */
 .vc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:46vh;overflow-y:auto;padding:2px 2px 6px}

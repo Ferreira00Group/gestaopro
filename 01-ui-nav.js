@@ -526,6 +526,14 @@ function toggleSidebar(){
   const open=sb.classList.toggle('open');
   bd.classList.toggle('open',open);
   hb.classList.toggle('open',open);
+  if(!open) recolherFooterMenu();
+}
+// Recolhe o bloco "Backup e manutenção" do rodapé do menu (chamado ao fechar o menu)
+function recolherFooterMenu(){
+  const el=document.getElementById('footer-actions-collapsible');
+  const icon=document.getElementById('footer-toggle-icon');
+  if(el) el.style.display='none';
+  if(icon) icon.classList.remove('open');
 }
 function toggleFooterMenu(){
   const el=document.getElementById('footer-actions-collapsible');
@@ -555,6 +563,7 @@ function closeSidebar(){
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-backdrop').classList.remove('open');
   document.getElementById('hamburger').classList.remove('open');
+  recolherFooterMenu();
 }
 function toggleNavGroup(id){
   const g=document.getElementById('grp-'+id);
