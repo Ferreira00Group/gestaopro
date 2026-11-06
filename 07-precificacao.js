@@ -323,10 +323,13 @@ function salvarMateria(){
   const custo=parseFloat(document.getElementById('mp-custo').value)||0;
   const minimo=parseFloat(document.getElementById('mp-minimo').value)||0;
   const fornecedorId=document.getElementById('mp-fornecedor').value?parseInt(document.getElementById('mp-fornecedor').value):null;
+  const ativoChk=document.getElementById('mp-ativo');
+  const ativo=ativoChk?ativoChk.checked:true;
   if(!nome){showToast('Informe o nome','red');return;}
   if(eid){
     const m=state.materias.find(m=>m.id==eid);
     m.nome=nome;m.unidade=unidade;m.custo=custo;m.minimo=minimo;m.fornecedorId=fornecedorId;
+    if(ativo) delete m.ativo; else m.ativo=false;
     // usuário está sobrescrevendo o custo manualmente (override explícito, ex: correção) —
     // recalcula valorEstoque pra bater com o novo custo declarado, senão o ledger do CMP
     // ficaria dessincronizado e a próxima compra calcularia a média errada
@@ -342,7 +345,7 @@ function salvarMateria(){
   const criarMateria=()=>{
     const estoqueInicial=parseFloat(document.getElementById('mp-estoque').value)||0;
     const novaMpId=nextId('materias');
-    state.materias.push({id:novaMpId,nome,qtd:estoqueInicial,unidade,custo,minimo,fornecedorId,valorEstoque:parseFloat((estoqueInicial*custo).toFixed(4))});
+    state.materias.push({id:novaMpId,nome,qtd:estoqueInicial,unidade,custo,minimo,fornecedorId,...(ativo?{}:{ativo:false}),valorEstoque:parseFloat((estoqueInicial*custo).toFixed(4))});
     registrarMovEstoque('m',novaMpId,null,nome,estoqueInicial,estoqueInicial,'cadastro',unidade);
     showToast('Matéria-prima cadastrada','green');
     closeModal('modal-materia');marcarAlterado();renderEstoque();renderAlertaEstoquePage();
@@ -366,6 +369,7 @@ function editarMateria(id){
   document.getElementById('mp-unidade').value=m.unidade;
   document.getElementById('mp-custo').value=m.custo;
   document.getElementById('mp-minimo').value=m.minimo;
+  const _ck=document.getElementById('mp-ativo'); if(_ck) _ck.checked=estaAtivo(m);
   document.getElementById('mp-estoque-wrap').style.display='none';
   populaSelectFornecedores();
   document.getElementById('mp-fornecedor').value=m.fornecedorId||'';

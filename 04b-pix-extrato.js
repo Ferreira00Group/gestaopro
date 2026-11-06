@@ -468,6 +468,7 @@ function pixMostrarNaTela(valorInicial, opts){
     _pixTelaModo = 'livre';
   }
 
+  pixTelaAlternarCodigo(false);
   pixAtualizarTelaCelular();
   const m = document.getElementById('modal-pix-tela');
   if(m) m.classList.add('open');
@@ -507,6 +508,17 @@ function pixTelaDigitarValor(valStr){
   pixAtualizarTelaCelular();
 }
 
+function pixTelaAlternarCodigo(forcar){
+  const box = document.getElementById('pix-tela-payload');
+  const btn = document.getElementById('pix-tela-btn-codigo');
+  if(!box) return;
+  const abrir = (typeof forcar === 'boolean') ? forcar : (box.style.display === 'none');
+  box.style.display = abrir ? 'block' : 'none';
+  if(btn){
+    btn.innerHTML = `<i data-lucide="${abrir?'chevron-up':'chevron-down'}" class="ic"></i> ${abrir?'Ocultar código Pix':'Ver código Pix'}`;
+    if(window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons();
+  }
+}
 function pixAtualizarTelaCelular(){
   const p = _pixTelaCustomCfg || getPixCfg();
   const isLivre = (_pixTelaModo === 'livre' || _pixTelaValorAtual <= 0.009);
@@ -543,6 +555,17 @@ function pixAtualizarTelaCelular(){
       </div>`;
     }
   }
+
+  // valor grande acima do QR (só no modo Valor Editável); o selo de baixo fica só no modo livre
+  const grandeEl = document.getElementById('pix-tela-valor-grande');
+  if(grandeEl){
+    if(isLivre){ grandeEl.style.display = 'none'; grandeEl.innerHTML = ''; }
+    else {
+      grandeEl.style.display = 'block';
+      grandeEl.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)">Valor a pagar</div><div style="font-size:34px;font-weight:900;color:var(--green);line-height:1.1">${fmt(_pixTelaValorAtual)}</div>`;
+    }
+  }
+  if(valorBadgeEl && !isLivre) valorBadgeEl.innerHTML = '';
 
   if(valorInputEl && document.activeElement !== valorInputEl){
     valorInputEl.value = isLivre ? '' : _pixTelaValorAtual.toFixed(2);

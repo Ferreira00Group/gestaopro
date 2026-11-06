@@ -181,7 +181,7 @@ function renderDropEstoque(){
     }
   });
   // matérias-primas abaixo do mínimo
-  state.materias.forEach(m=>{if(m.qtd<=m.minimo)baixos.push({nome:`${m.nome}`,estoque:m.qtd,minimo:m.minimo,unidade:m.unidade});});
+  materiasAtivas().forEach(m=>{if(m.qtd<=m.minimo)baixos.push({nome:`${m.nome}`,estoque:m.qtd,minimo:m.minimo,unidade:m.unidade});});
 
   const body=document.getElementById('drop-estoque-body');
   if(baixos.length===0){body.innerHTML='<div class="alert-empty"><i data-lucide="check" class="ic"></i> Todos os itens com estoque OK!</div>';return;}
@@ -298,7 +298,7 @@ function atualizarAlertBells(){
     if(p.variantes&&p.variantes.length>0){if(p.variantes.some(v=>v.estoque<=p.minimo))temEstoqueBaixo=true;}
     else{if(p.estoque<=p.minimo)temEstoqueBaixo=true;}
   });
-  state.materias.forEach(m=>{if(m.qtd<=m.minimo)temEstoqueBaixo=true;});
+  materiasAtivas().forEach(m=>{if(m.qtd<=m.minimo)temEstoqueBaixo=true;});
   const be=document.getElementById('bell-estoque');if(be)be.classList.toggle('has-alert',temEstoqueBaixo);
   const bf=document.getElementById('bell-fabrica');if(bf)bf.classList.toggle('has-alert',temEstoqueBaixo);
   const beTop=document.getElementById('topbar-bell-estoque');if(beTop)beTop.classList.toggle('has-alert',temEstoqueBaixo);

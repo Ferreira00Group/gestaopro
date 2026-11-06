@@ -864,7 +864,6 @@ function npRenderMPLista(){
 function abrirNovoProduto(){
   document.getElementById('np-nome').value='';
   document.getElementById('np-sku').value='';
-  document.getElementById('np-categoria').value='';
   document.getElementById('np-preco').value='';
   document.getElementById('np-unidade').value='L';
   document.getElementById('np-estoque').value=0;
@@ -895,7 +894,7 @@ function salvarNovoProduto(){
       id:nextId('produtos'),
       nome,
       sku:document.getElementById('np-sku').value.trim(),
-      categoria:document.getElementById('np-categoria').value.trim(),
+      categoria:'',
       preco:parseFloat(document.getElementById('np-preco').value)||0,
       estoque:parseInt(document.getElementById('np-estoque').value)||0,
       minimo:parseInt(document.getElementById('np-minimo').value)||0,
@@ -916,7 +915,6 @@ function editarProduto(id){
   document.getElementById('ep-id').value=id;
   document.getElementById('ep-nome').value=p.nome||'';
   document.getElementById('ep-sku').value=p.sku||'';
-  document.getElementById('ep-categoria').value=p.categoria||'';
   document.getElementById('ep-preco').value=p.preco||'';
   document.getElementById('ep-minimo').value=p.minimo||0;
   // Variantes
@@ -938,7 +936,6 @@ function salvarEdicaoProduto(){
   if(!p)return;
   p.nome=document.getElementById('ep-nome').value.trim()||p.nome;
   p.sku=document.getElementById('ep-sku').value.trim();
-  p.categoria=document.getElementById('ep-categoria').value.trim();
   p.preco=parseFloat(document.getElementById('ep-preco').value)||p.preco;
   p.minimo=parseInt(document.getElementById('ep-minimo').value)||0;
   if(p.variantes&&p.variantes.length>0){

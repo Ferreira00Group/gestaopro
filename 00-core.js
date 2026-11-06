@@ -143,7 +143,7 @@ const DEFAULT_STATE = {
   venda_filter:'',
   venda_tipo_filter:'',
   estoque_filter:'',
-  estoque_categoria_filter:'',
+  estoque_mostrar_inativas:false,
   planejamento_apenas_aprovados:false,
   ultimoBackup:null,
   snoozeBackupAte:null,
@@ -769,6 +769,8 @@ function getFornecedor(id){return state.fornecedores.find(f=>f.id==id)||null}
 // Matérias-primas não ficam ordenadas em state.materias (são só empilhadas na ordem em que
 // foram cadastradas). Esta função devolve a lista pronta pra exibir (lista e dropdowns),
 // sem alterar a ordem/índices salvos no state.
+// Matéria-prima inativa (ativo===false) é ignorada em alertas, planejamento, sugestões e IA.
+function materiasAtivas(){return state.materias.filter(m=>estaAtivo(m));}
 function materiasOrdenadas(){
   return [...state.materias].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}));
 }
@@ -1453,7 +1455,7 @@ function buscaGlobal(termo){
   const t=termo.toLowerCase();
   const resClientes=state.clientes.filter(c=>clienteCombinaBusca(c,termo)).slice(0,8);
   const tCod=t.replace(/\s+/g,'');
-  const resProdutos=state.produtos.filter(p=>p.nome.toLowerCase().includes(t)||(p.sku||'').toLowerCase().includes(t)||(p.categoria||'').toLowerCase().includes(t)||
+  const resProdutos=state.produtos.filter(p=>p.nome.toLowerCase().includes(t)||(p.sku||'').toLowerCase().includes(t)||
     (/^p\d/.test(tCod)&&(fmtProdutoCod(p.id).toLowerCase().includes(tCod)||(p.variantes||[]).some(v=>fmtProdutoCod(p.id,v.id).toLowerCase().includes(tCod))))).slice(0,4);
   const resVendas=state.vendas.filter(v=>normBusca(getCliente(v.clienteId).nome).includes(normBusca(termo))).slice(0,4);
   if(resClientes.length===0&&resProdutos.length===0&&resVendas.length===0){
@@ -1516,7 +1518,7 @@ function getAlertasEstoque(){
       baixoProdutos.push({nome:p.nome,estoque:p.estoque,minimo:p.minimo});
     }
   });
-  const baixoMaterias = state.materias.filter(m=>m.qtd<=m.minimo);
+  const baixoMaterias = materiasAtivas().filter(m=>m.qtd<=m.minimo);
   return {baixoProdutos, baixoMaterias, total: baixoProdutos.length + baixoMaterias.length};
 }
 function renderAlertasBanner(){

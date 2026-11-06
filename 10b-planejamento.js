@@ -86,7 +86,10 @@ function calcularNecessidadeMaterias(produtosFaltantes){
     });
   }
 
-  return Object.keys(necMaterias).map(idStr=>{
+  return Object.keys(necMaterias).filter(idStr=>{
+    const mm = state.materias.find(x=>x.id===parseInt(idStr));
+    return !mm || estaAtivo(mm); // matéria-prima inativa é ignorada no planejamento
+  }).map(idStr=>{
     const id = parseInt(idStr);
     const m = getMateria(id);
     const necessario = necMaterias[id];
@@ -141,32 +144,49 @@ function renderPlanejamento(){
     <div class="stat-card yellow"><div class="label">Custo estimado</div><div class="value">${fmt(custoTotalCompra)}</div><div class="sub">compra sugerida</div></div>
   `;
 
+  const dMet = (l,v,cor) => `<div class="dcard-met"><span class="dcard-lbl">${l}</span><span class="dcard-val"${cor?` style="color:${cor}"`:''}>${v}</span></div>`;
   const tbP = document.getElementById('plan-produtos-table');
   if(produtosFaltantes.length===0){
-    tbP.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhum orçamento em aberto no momento</span></div></td></tr>';
+    tbP.innerHTML = '<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhum orçamento em aberto no momento</span></div>';
   } else {
-    tbP.innerHTML = produtosFaltantes.map(p=>`<tr>
-      <td data-label="Produto"><strong>${getNomeCompletoItem(p.produtoId,p.varianteId)}</strong></td>
-      <td data-label="Necessário">${p.qtdNecessaria}</td>
-      <td data-label="Em estoque">${p.disponivel}</td>
-      <td data-label="Falta produzir"><strong style="color:${p.faltanteProduzir>0?'var(--red)':'var(--green)'}">${p.faltanteProduzir>0?p.faltanteProduzir:'✓ OK'}</strong></td>
-    </tr>`).join('');
+    tbP.innerHTML = produtosFaltantes.map(p=>{
+      const falta = p.faltanteProduzir>0;
+      return `<div class="dcard ${falta?'dcard-red':'dcard-green'}">
+      <div class="dcard-head">
+        <div class="dcard-title">${getNomeCompletoItem(p.produtoId,p.varianteId)}</div>
+        <span class="badge ${falta?'badge-red badge-alert':'badge-green'}">${falta?'Falta '+p.faltanteProduzir:'✓ OK'}</span>
+      </div>
+      <div class="dcard-grid">
+        ${dMet('Necessário',p.qtdNecessaria)}
+        ${dMet('Em estoque',p.disponivel)}
+        ${dMet('Falta produzir',falta?p.faltanteProduzir:'✓ OK',falta?'var(--red)':'var(--green)')}
+      </div>
+    </div>`;
+    }).join('');
   }
 
   const tbM = document.getElementById('plan-materias-table');
   if(materiasNecessarias.length===0){
-    tbM.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma matéria-prima necessária no momento</span></div></td></tr>';
+    tbM.innerHTML = '<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma matéria-prima necessária no momento</span></div>';
   } else {
     tbM.innerHTML = materiasNecessarias.map(m=>{
       const forn = m.fornecedorId ? getFornecedor(m.fornecedorId) : null;
-      return `<tr>
-      <td data-label="Matéria-Prima"><strong>${escapeHtml(m.nome)}</strong></td>
-      <td data-label="Necessário">${m.necessario.toFixed(2)} ${m.unidade}</td>
-      <td data-label="Disponível">${m.disponivel.toFixed(2)} ${m.unidade}</td>
-      <td data-label="Falta comprar"><strong style="color:${m.faltante>0?'var(--red)':'var(--green)'}">${m.faltante>0?m.faltante.toFixed(2)+' '+m.unidade:'✓ OK'}</strong></td>
-      <td data-label="Fornecedor">${forn?escapeHtml(forn.nome):'<span style="color:var(--muted)">—</span>'}</td>
-      <td data-label="Custo estimado">${m.custoEstimado>0?fmt(m.custoEstimado):'—'}</td>
-    </tr>`;
+      const falta = m.faltante>0;
+      return `<div class="dcard ${falta?'dcard-red':'dcard-green'}">
+      <div class="dcard-head">
+        <div class="dcard-title">${escapeHtml(m.nome)}</div>
+        <span class="badge ${falta?'badge-red badge-alert':'badge-green'}">${falta?'Falta '+m.faltante.toFixed(2)+' '+m.unidade:'✓ OK'}</span>
+      </div>
+      <div class="dcard-grid">
+        ${dMet('Necessário',m.necessario.toFixed(2)+' '+m.unidade)}
+        ${dMet('Disponível',m.disponivel.toFixed(2)+' '+m.unidade)}
+        ${dMet('Falta comprar',falta?m.faltante.toFixed(2)+' '+m.unidade:'✓ OK',falta?'var(--red)':'var(--green)')}
+      </div>
+      <div class="dcard-foot">
+        <span class="dcard-sub">${forn?escapeHtml(forn.nome):'Sem fornecedor'}</span>
+        <span class="dcard-sub">Custo estimado: <strong>${m.custoEstimado>0?fmt(m.custoEstimado):'—'}</strong></span>
+      </div>
+    </div>`;
     }).join('');
   }
 

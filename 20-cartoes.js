@@ -241,9 +241,13 @@ function cartoesGaranteModais(){
   <div class="modal-overlay" id="modal-cartao-scan"><div class="modal" style="max-width:440px">
     <div class="modal-header"><h3>Ler cartão QR</h3><button class="modal-close" onclick="cartoesFecharScan()"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
-      <video id="cartao-video" playsinline muted style="width:100%;border-radius:10px;background:#000;display:none"></video>
+      <div id="cartao-scan-box" class="scan-box" style="display:none">
+        <video id="cartao-video" playsinline muted></video>
+        <span class="scan-corner tl"></span><span class="scan-corner tr"></span><span class="scan-corner bl"></span><span class="scan-corner br"></span>
+        <button type="button" id="cartao-torch" class="scan-torch" style="display:none" onclick="cartoesLanterna()" title="Lanterna" aria-label="Lanterna"><i data-lucide="flashlight" class="ic"></i></button>
+      </div>
       <p id="cartao-scan-msg" style="font-size:13px;color:var(--muted);margin:8px 0">Iniciando câmera…</p>
-      <div style="display:flex;gap:8px"><input class="form-control" id="cartao-scan-num" type="number" inputmode="numeric" min="1" placeholder="ou digite o nº do cartão" style="flex:1" onkeydown="if(event.key==='Enter')cartoesAbrirDigitado()"><button class="btn btn-primary btn-sm" onclick="cartoesAbrirDigitado()">Abrir</button></div>
+      <div class="scan-entrada" style="display:flex;gap:8px"><input class="form-control" id="cartao-scan-num" type="number" inputmode="numeric" min="1" placeholder="ou digite o nº do cartão" style="flex:1" onkeydown="if(event.key==='Enter')cartoesAbrirDigitado()"><button class="btn btn-primary btn-sm" onclick="cartoesAbrirDigitado()">Abrir</button></div>
     </div></div></div>`;
   while(w.firstChild) document.body.appendChild(w.firstChild);
   ['modal-cartao','modal-cartao-qr','modal-cartao-sem-cliente'].forEach(id=>{ const m=document.getElementById(id); m.addEventListener('click',e=>{ if(e.target===m) cartoesFecharModal(id); }); });
@@ -332,17 +336,18 @@ function cartoesAposLeitura(n){
 async function cartoesAbrirScan(cb){
   _cartaoScanCb=(typeof cb==='function')?cb:null;
   cartoesGaranteModais();
-  const msg=document.getElementById('cartao-scan-msg'), vid=document.getElementById('cartao-video');
+  const msg=document.getElementById('cartao-scan-msg'), vid=document.getElementById('cartao-video'), box=document.getElementById('cartao-scan-box'), tb=document.getElementById('cartao-torch');
   document.getElementById('cartao-scan-num').value='';
   document.getElementById('modal-cartao-scan').classList.add('open');
-  vid.style.display='none';
+  box.style.display='none'; if(tb){tb.style.display='none';tb.classList.remove('on');} _scanTorchOn=false;
   if(!window.BarcodeDetector||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     msg.textContent='Este navegador não lê QR dentro do app. Aponte a câmera normal do celular para o cartão (ele abre o link) ou digite o número abaixo.'; return;
   }
   try{
     _scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-    vid.srcObject=_scanStream; vid.style.display='block'; await vid.play();
-    msg.textContent='Aponte para o QR do cartão…';
+    vid.srcObject=_scanStream; box.style.display='block'; await vid.play();
+    msg.textContent='Procurando QR… aponte para o código do cartão';
+    try{ const tr=_scanStream.getVideoTracks()[0], caps=(tr.getCapabilities&&tr.getCapabilities())||{}; if(caps.torch&&tb){ tb.style.display='flex'; if(window.lucide&&lucide.createIcons) lucide.createIcons(); } }catch(e){}
     const det=new BarcodeDetector({formats:['qr_code']}); let busy=false;
     _scanTimer=setInterval(async()=>{
       if(busy) return; busy=true;
@@ -350,6 +355,15 @@ async function cartoesAbrirScan(cb){
       busy=false;
     },300);
   }catch(e){ msg.textContent='Não consegui usar a câmera (permissão negada?). Digite o número do cartão abaixo.'; }
+}
+let _scanTorchOn=false;
+async function cartoesLanterna(){
+  try{
+    const tr=_scanStream&&_scanStream.getVideoTracks()[0]; if(!tr) return;
+    _scanTorchOn=!_scanTorchOn;
+    await tr.applyConstraints({advanced:[{torch:_scanTorchOn}]});
+    const tb=document.getElementById('cartao-torch'); if(tb) tb.classList.toggle('on',_scanTorchOn);
+  }catch(e){ _scanTorchOn=false; showToast('Este aparelho não permitiu acender a lanterna','red'); }
 }
 function cartoesFecharScan(){
   _cartaoScanCb=null;

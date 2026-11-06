@@ -43,19 +43,29 @@ function renderFinanceiro(){
   if(tipoFiltro) list=list.filter(f=>f.tipo===tipoFiltro);
   list=list.filter(f=>f.data.startsWith(mes));
   const tb=document.getElementById('fin-table');
-  if(list.length===0){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação neste período</span></div></td></tr>';return;}
+  if(list.length===0){tb.innerHTML='<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação neste período</span></div>';return;}
   tb.innerHTML=list.map(f=>{
+    const entrada=f.tipo==='entrada';
     const origemTxt=f.compraId?'gerado por compra':f.vendaId?'gerado por venda':f.pagamentoId?'gerado por pagamento':f.pagamentoFornecedorId?'gerado por pagamento a fornecedor':null;
-    return `<tr>
-    <td data-label="Data">${fmtDate(f.data)}</td>
-    <td data-label="Descrição">${escapeHtml(f.desc)}${(f.tipo==='saida'&&f.categoria)?`<div style="margin-top:2px"><span class="cat-pill" style="cursor:default;font-size:10px">${escapeHtml(f.categoria)}</span></div>`:''}${origemTxt?`<div style="margin-top:2px;font-size:10.5px;color:var(--muted)">${origemTxt}</div>`:''}</td>
-    <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'Entrada':'Saída'}</span></td>
-    <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
-    <td><div class="actions-cell">
-      <button class="icon-btn edit" onclick="editarLancamento(${f.id})" title="${origemTxt?'Editar na origem':'Editar'}" style="${(f.compraId||f.vendaId||f.pagamentoId||f.pagamentoFornecedorId)?'opacity:.4':''}"><i data-lucide="pencil" class="ic"></i></button>
-      <button class="icon-btn del" onclick="excluirLancamento(${f.id})" title="${origemTxt?'Excluir na origem':'Excluir'}" style="${(f.compraId||f.vendaId)?'opacity:.4':''}"><i data-lucide="trash-2" class="ic"></i></button>
-    </div></td>
-  </tr>`;
+    const auto=!!(f.compraId||f.vendaId||f.pagamentoId||f.pagamentoFornecedorId);
+    return `<div class="dcard ${entrada?'dcard-green':'dcard-red'}">
+    <div class="dcard-head">
+      <div class="dcard-title">${escapeHtml(f.desc)}</div>
+      <div class="dcard-valor" style="color:${entrada?'var(--green)':'var(--red)'}">${entrada?'+':'-'} ${fmt(f.valor)}</div>
+    </div>
+    <div class="dcard-foot">
+      <div class="dcard-meta">
+        <span class="dcard-sub">${fmtDate(f.data)}</span>
+        <span class="badge ${entrada?'badge-green':'badge-red'}">${entrada?'Entrada':'Saída'}</span>
+        ${(!entrada&&f.categoria)?`<span class="cat-pill" style="cursor:default;font-size:10px">${escapeHtml(f.categoria)}</span>`:''}
+        ${origemTxt?`<span class="dcard-sub">${origemTxt}</span>`:''}
+      </div>
+      <div class="actions-cell">
+        <button class="icon-btn edit" onclick="editarLancamento(${f.id})" title="${origemTxt?'Editar na origem':'Editar'}" style="${auto?'opacity:.4':''}"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirLancamento(${f.id})" title="${origemTxt?'Excluir na origem':'Excluir'}" style="${(f.compraId||f.vendaId)?'opacity:.4':''}"><i data-lucide="trash-2" class="ic"></i></button>
+      </div>
+    </div>
+  </div>`;
   }).join('');
 }
 function salvarLancamento(){

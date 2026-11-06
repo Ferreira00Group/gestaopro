@@ -22,6 +22,8 @@ function showEstoqueTab(tab,btn){
   if(btnCopiar) btnCopiar.style.display=(tab==='produtos')?'':'none';
   const chkArq=document.getElementById('estoque-mostrar-arquivados');
   if(chkArq) chkArq.style.display=(tab==='produtos')?'inline-flex':'none';
+  const chkIna=document.getElementById('estoque-mostrar-inativas');
+  if(chkIna) chkIna.style.display=(tab==='materias')?'inline-flex':'none';
   renderEstoque();
 }
 // Texto da lista de produtos ATIVOS, uma linha por item vendável (variante tem linha própria;
@@ -51,16 +53,15 @@ function showEstoqueSearch(show){
   const sw=document.querySelector('#page-estoque .search-bar');
   if(sw) sw.style.display=show?'':'none';
 }
-function filterEstoqueCategoria(cat){state.estoque_categoria_filter=cat;renderEstoque();}
-function renderCategoriaPills(){
-  const wrap=document.getElementById('estoque-cat-pills');
-  if(!wrap)return;
-  if(state.estoque_tab!=='produtos'){wrap.style.display='none';return;}
-  const cats=[...new Set(state.produtos.map(p=>p.categoria).filter(Boolean))];
-  if(cats.length===0){wrap.style.display='none';return;}
-  wrap.style.display='flex';
-  wrap.innerHTML=`<span class="cat-pill ${!state.estoque_categoria_filter?'active':''}" data-cat="">Todas</span>`+
-    cats.map(c=>`<span class="cat-pill ${state.estoque_categoria_filter===c?'active':''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</span>`).join('');
+function filterEstoqueInativas(checked){state.estoque_mostrar_inativas=checked;renderEstoque();}
+function toggleMateriaAtiva(id){
+  const m=state.materias.find(x=>x.id===id);
+  if(!m) return;
+  if(estaAtivo(m)) m.ativo=false; else delete m.ativo;
+  marcarAlterado();
+  showToast(estaAtivo(m)?'Matéria-prima ativada':'Matéria-prima inativada — não conta mais como estoque baixo','green');
+  renderEstoque();renderAlertaEstoquePage();atualizarAlertBells();
+  if(typeof state.planejamento_apenas_aprovados!=='undefined'&&document.getElementById('page-planejamento')&&document.getElementById('page-planejamento').classList.contains('active')) renderPlanejamento();
 }
 // ============ STEPPER (− n +) DE ESTOQUE ============
 // tipo: 'p' produto (vid = id da variante ou null) · 'm' matéria-prima · 's' semiacabado.
@@ -143,9 +144,8 @@ function renderEstoque(){
   if(state.estoque_tab==='movimentos'){renderMovEstoque();return;}
   const head={};
   const tb=document.getElementById('estoque-table');
-  renderCategoriaPills();
   if(state.estoque_tab==='produtos'){
-    head.innerHTML='<tr><th>Cód.</th><th>Produto</th><th>SKU</th><th>Categoria</th><th>Preço Venda</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ações</th></tr>';
+    head.innerHTML='<tr><th>Cód.</th><th>Produto</th><th>SKU</th><th>Preço Venda</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ações</th></tr>';
     let list=state.produtos;
     if(!state.estoque_mostrar_arquivados)list=list.filter(p=>estaAtivo(p));
     if(state.estoque_filter){
@@ -166,7 +166,7 @@ function renderEstoque(){
         icone:'package',rotulo:'Produto',selo:fmtProdutoCod(p.id),arquivado,nome:escapeHtml(p.nome),
         sub:variantesTxt,
         badge:`<span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span>`,
-        col1:[['SKU',escapeHtml(p.sku||'-')],['Categoria',p.categoria?`<span class="cat-pill" style="cursor:default">${escapeHtml(p.categoria)}</span>`:'-'],['Preço venda',fmt(p.preco)]],
+        col1:[['SKU',escapeHtml(p.sku||'-')],['Preço venda',fmt(p.preco)]],
         col2:[['Estoque',arquivado?`<strong>${estoqueTotal}</strong>`:estoqueProdutoHtml(p,temVariantes,estoqueTotal,baixo)],['Mínimo',p.minimo]],
         acoes:arquivado?`<button class="btn btn-outline btn-sm" onclick="reativarProduto(${p.id})">↩️ Reativar</button>`:`
         <button class="icon-btn edit" onclick="editarProduto(${p.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
@@ -177,6 +177,9 @@ function renderEstoque(){
   } else {
     head.innerHTML='<tr><th>Matéria-Prima</th><th>Estoque</th><th>Unidade</th><th title="Custo médio ponderado: pondera todas as compras já feitas, não só a última">Custo Médio/un ℹ️</th><th>Mínimo</th><th>Fornecedor</th><th>Status</th><th>Previsão</th><th>Ações</th></tr>';
     let list=materiasOrdenadas();
+    if(!state.estoque_mostrar_inativas)list=list.filter(m=>estaAtivo(m));
+    const chkIna=document.getElementById('estoque-mostrar-inativas');
+    if(chkIna){chkIna.style.display='inline-flex';chkIna.querySelector('input').checked=!!state.estoque_mostrar_inativas;}
     if(state.estoque_filter)list=list.filter(m=>m.nome.toLowerCase().includes(state.estoque_filter));
     tb.innerHTML=list.map(m=>{
       const prev=calcularPrevisaoConsumo(m.id);
@@ -186,13 +189,15 @@ function renderEstoque(){
         prevHtml=`<span style="color:${cor};font-weight:600;font-size:12px">${prev.diasRestantes}d restantes</span><div style="font-size:10px;color:var(--muted)">~${prev.consumoDiario.toFixed(2)}${m.unidade}/dia</div>`;
       }
       const forn=m.fornecedorId?getFornecedor(m.fornecedorId):null;
-      const baixoM=m.qtd<=m.minimo;
+      const ativoM=estaAtivo(m);
+      const baixoM=ativoM&&m.qtd<=m.minimo;
       return estoqueCardHtml({
-        icone:'flask-conical',rotulo:'Matéria-prima',selo:'Matéria-prima',nome:escapeHtml(m.nome),
-        badge:`<span class="badge ${baixoM?'badge-red badge-alert':'badge-green'}">${baixoM?'Baixo':'OK'}</span>`,
+        icone:'flask-conical',rotulo:'Matéria-prima',selo:'Matéria-prima',nome:escapeHtml(m.nome),arquivado:!ativoM,
+        badge:ativoM?`<span class="badge ${baixoM?'badge-red badge-alert':'badge-green'}">${baixoM?'Baixo':'OK'}</span>`:'<span class="badge badge-gray">Inativa</span>',
         col1:[['Estoque',stepperHtml('m',m.id,null,m.qtd,baixoM)],['Unidade',m.unidade],['Mínimo',m.minimo+' '+m.unidade]],
         col2:[['Custo médio/un',fmt(m.custo)],['Fornecedor',forn?`<span style="font-size:12px;cursor:pointer;color:var(--blue)" onclick="gotoFornecedores()">${escapeHtml(forn.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'],['Previsão',prevHtml]],
-        acoes:`<button class="icon-btn edit" onclick="editarMateria(${m.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
+        acoes:`<button class="icon-btn ${ativoM?'':'mp-reativar'}" onclick="toggleMateriaAtiva(${m.id})" title="${ativoM?'Inativar (não conta como estoque baixo)':'Reativar'}"><i data-lucide="${ativoM?'power':'power-off'}" class="ic"></i></button>
+        <button class="icon-btn edit" onclick="editarMateria(${m.id})" title="Editar"><i data-lucide="pencil" class="ic"></i></button>
         <button class="icon-btn del" onclick="excluirMateria(${m.id})" title="Excluir"><i data-lucide="trash-2" class="ic"></i></button>`
       });}).join('')||estoqueVazioHtml('Nenhuma matéria-prima encontrada');
   }
@@ -567,13 +572,3 @@ function calcularPrevisaoConsumo(materiaId,janelaDias=30){
   const diasRestantes=consumoDiario>0?Math.floor(m.qtd/consumoDiario):null;
   return {consumoDiario,diasRestantes};
 }
-
-// Listener delegado das category pills (ver renderCategoriaPills acima). Usa data-cat em vez
-// de onclick com string interpolada: onclick sofre 2 passadas de parsing (HTML depois JS), e o
-// navegador decodifica entities HTML *antes* de compilar o atributo como JS — escapeHtml()
-// sozinho não fecha esse vetor. data-cat é lido via .dataset, nunca reexecutado como código.
-document.addEventListener('click',(e)=>{
-  const pill=e.target.closest('#estoque-cat-pills .cat-pill');
-  if(pill) filterEstoqueCategoria(pill.dataset.cat);
-});
-

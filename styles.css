@@ -1951,3 +1951,40 @@ body.modo-foco .dica-box {
 #page-estoque .cliente-card-body.um-col{grid-template-columns:1fr}
 .cartoes-lista-vazia{grid-column:1/-1;text-align:center;color:var(--muted);padding:28px}
 #page-estoque .cliente-card-nome{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+
+/* ===== v5.87.5 — cards de dados (Planejamento e Movimentações) ===== */
+.dcard-list{display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px}
+.dcard{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px 12px 18px;box-shadow:0 4px 16px rgba(0,0,0,.25);overflow:hidden}
+.dcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.dcard-green::before{background:var(--green)}
+.dcard-red::before{background:var(--red)}
+.dcard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.dcard-title{font-size:14.5px;font-weight:700;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.dcard-valor{font-size:16px;font-weight:800;white-space:nowrap;flex-shrink:0}
+.dcard-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.dcard-met{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dcard-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.dcard-val{font-size:14px;font-weight:700;overflow-wrap:anywhere}
+.dcard-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.dcard-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.dcard-sub{font-size:12px;color:var(--muted)}
+.dcard-foot .actions-cell{display:flex;gap:4px;margin-left:auto}
+.dcard-list .empty-inline{padding:12px 6px}
+/* MP inativa: card esmaecido, mas o botão de reativar fica legível */
+.cliente-card.arquivado .icon-btn.mp-reativar{opacity:1;filter:none;border-color:var(--gold);color:var(--gold)}
+
+/* ===== v5.87.6 ===== */
+/* Copiloto IA flutuante some enquanto houver modal aberto (não cobre botões do modal) */
+body:has(.modal-overlay.open) #btn-flutuante-ia{display:none!important}
+/* Leitura de cartão QR: câmera quadrada e compacta, com mira */
+.scan-box{position:relative;width:100%;max-width:340px;aspect-ratio:1/1;max-height:42vh;margin:0 auto;border-radius:14px;overflow:hidden;background:#000}
+.scan-box video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-corner{position:absolute;width:34px;height:34px;border:0 solid var(--gold);pointer-events:none}
+.scan-corner.tl{top:14%;left:14%;border-top-width:4px;border-left-width:4px;border-top-left-radius:10px}
+.scan-corner.tr{top:14%;right:14%;border-top-width:4px;border-right-width:4px;border-top-right-radius:10px}
+.scan-corner.bl{bottom:14%;left:14%;border-bottom-width:4px;border-left-width:4px;border-bottom-left-radius:10px}
+.scan-corner.br{bottom:14%;right:14%;border-bottom-width:4px;border-right-width:4px;border-bottom-right-radius:10px}
+.scan-torch{position:absolute;right:10px;bottom:10px;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--gold);background:rgba(0,0,0,.6);color:var(--gold);align-items:center;justify-content:center;cursor:pointer}
+.scan-torch.on{background:var(--gold);color:#000}
+#modal-cartao-scan #cartao-scan-msg{text-align:center}
+#modal-cartao-scan .scan-entrada{position:sticky;bottom:0;background:var(--card);padding:8px 0 4px;z-index:2}

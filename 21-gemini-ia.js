@@ -223,7 +223,7 @@ function coletarContextoERP() {
   // Matérias-primas e cálculo exato de reposição
   const matBaixas = [];
   if (Array.isArray(state.materias)) {
-    state.materias.forEach(m => {
+    materiasAtivas().forEach(m => {
       const min = Number(m.minimo || 0);
       const qtd = Number(m.qtd || 0);
       const necessidade = Math.max(0, (min * 1.5) - qtd);
