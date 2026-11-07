@@ -1,4 +1,4 @@
-# GestãoPRO v5.91.4
+# GestãoPRO v5.91.5
 
 ## Correção da Análise de Estoque
 - Corrigido o cálculo de estoque na Análise de Dados para produtos com variantes.
@@ -8,6 +8,6 @@
 - Instruções do pacote enviado à IA reforçam que o produto-pai não pode ser declarado zerado quando há saldo nas variantes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.91.4**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.91.5**.
 
 **Observação:** análises antigas já importadas permanecem como histórico. Depois de publicar a atualização, gere uma nova análise para substituir os alertas antigos pelo diagnóstico com os saldos corrigidos.

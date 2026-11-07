@@ -632,14 +632,49 @@ function finalizarVendaPDV(formaPagamento) {
   if (typeof closeModal === 'function') closeModal('modal-pdv-rapido');
 }
 
-// ─── 4. SUGESTÃO 2: FILA DE SEPARAÇÃO E EXPEDIÇÃO (PICKING) ───
+// ─── 4. FILA DE SEPARAÇÃO E EXPEDIÇÃO (PICKING) ───
+// O modelo real de venda grava produtoId/varianteId (não grava it.nome para itens de catálogo).
+// A fila resolve o nome pelo catálogo e mantém itens avulsos pelo campo nome.
 let _pickingConferidos = {};
+
+function pickingChaveItem(vendaId, indice) {
+  return `${vendaId}-${indice}`;
+}
+
+function pickingNomeItem(item) {
+  try {
+    if (item && item.avulso) return String(item.nome || 'Item avulso').trim() || 'Item avulso';
+    if (item && item.produtoId != null && typeof getNomeCompletoItem === 'function') {
+      const nome = getNomeCompletoItem(item.produtoId, item.varianteId || null);
+      return nome && nome !== '?' ? nome : 'Produto não encontrado';
+    }
+    return String((item && item.nome) || 'Item sem identificação');
+  } catch (e) {
+    return String((item && item.nome) || 'Produto não encontrado');
+  }
+}
+
+function pickingDadosCliente(venda) {
+  const cliente = typeof getCliente === 'function' ? getCliente(venda.clienteId) : null;
+  const valido = cliente && cliente.nome && cliente.nome !== '?';
+  const rota = valido && cliente.rotaId && typeof getRota === 'function' ? getRota(cliente.rotaId) : null;
+  return {
+    nome: valido ? cliente.nome : (venda.clienteNome || 'Venda avulsa'),
+    endereco: valido ? (cliente.end || cliente.endereco || cliente.bairro || '') : '',
+    rota: rota && rota.nome ? rota.nome : '',
+    telefone: valido ? (cliente.tel || '') : ''
+  };
+}
+
+function pickingEscapar(valor) {
+  if (typeof escapeHtml === 'function') return escapeHtml(String(valor == null ? '' : valor));
+  return String(valor == null ? '' : valor).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 function abrirFilaSeparacao() {
   renderizarFilaSeparacao();
-  if (typeof openModal === 'function') {
-    openModal('modal-fila-separacao');
-  } else {
+  if (typeof openModal === 'function') openModal('modal-fila-separacao');
+  else {
     const m = document.getElementById('modal-fila-separacao');
     if (m) m.classList.add('open');
   }
@@ -649,64 +684,71 @@ function renderizarFilaSeparacao() {
   const container = document.getElementById('fila-separacao-lista');
   if (!container || typeof state === 'undefined' || !Array.isArray(state.vendas)) return;
 
-  // Filtra vendas do tipo 'venda' que ainda não foram marcadas como entregues
-  const pendentes = state.vendas.filter(v => v.tipo !== 'orcamento' && !v.entregue && Array.isArray(v.itens) && v.itens.length > 0);
+  // Orçamentos não entram na separação. Pedido separado sai da fila, mas NÃO é marcado
+  // como entregue: separação e entrega são etapas diferentes.
+  const pendentes = state.vendas.filter(v =>
+    v.tipo !== 'orcamento' && !v.entregue && v.statusSeparacao !== 'separado' &&
+    Array.isArray(v.itens) && v.itens.length > 0
+  );
 
   if (pendentes.length === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:40px 20px;color:var(--muted)">
         <div style="font-size:36px;margin-bottom:10px">📦</div>
-        <h4 style="color:#FFF;margin-bottom:6px">Tudo Expedido!</h4>
-        <p style="font-size:13px">Nenhum pedido pendente de separação ou conferência no momento.</p>
-      </div>
-    `;
+        <h4 style="color:#FFF;margin-bottom:6px">Fila de separação vazia</h4>
+        <p style="font-size:13px">Não há pedidos aguardando conferência. Pedidos separados continuam disponíveis em Vendas até serem entregues.</p>
+      </div>`;
     return;
   }
 
   container.innerHTML = pendentes.map(v => {
     const totalFmt = Number(v.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const cl = typeof getCliente === 'function' ? getCliente(v.clienteId) : null;
-    const endereco = cl ? (cl.endereco || cl.bairro || 'Sem endereço cadastrado') : 'Venda Avulsa';
-    const totalItens = v.itens.reduce((s, it) => s + (it.qtd || 1), 0);
-    const conferidosCount = (v.itens || []).filter(it => _pickingConferidos[`${v.id}-${it.produtoId || it.nome}`]).length;
-    const completo = conferidosCount === v.itens.length;
+    const cliente = pickingDadosCliente(v);
+    const totalLinhas = v.itens.length;
+    const conferidosCount = v.itens.filter((it, idx) => !!_pickingConferidos[pickingChaveItem(v.id, idx)]).length;
+    const completo = totalLinhas > 0 && conferidosCount === totalLinhas;
+    const itensHtml = v.itens.map((it, idx) => {
+      const key = pickingChaveItem(v.id, idx);
+      const isChecked = !!_pickingConferidos[key];
+      const qtd = Number(it.qtd || 0);
+      const nome = pickingEscapar(pickingNomeItem(it));
+      const variante = it.varianteNome ? ` <span style="color:var(--muted)">(${pickingEscapar(it.varianteNome)})</span>` : '';
+      return `
+        <label style="display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;font-size:13px;color:${isChecked ? 'var(--muted)' : 'var(--text)'};text-decoration:${isChecked ? 'line-through' : 'none'}">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCheckItemPicking('${key}', ${v.id})" style="width:18px;height:18px;flex:0 0 auto;accent-color:var(--gold,#C9A24B)">
+          <span><strong>${qtd}x</strong> ${nome}${variante}</span>
+        </label>`;
+    }).join('');
+    const linhasLocal = [
+      cliente.rota ? `🛣️ Rota: <strong>${pickingEscapar(cliente.rota)}</strong>` : '🛣️ <span style="color:var(--muted)">Sem rota cadastrada</span>',
+      cliente.endereco ? `📍 ${pickingEscapar(cliente.endereco)}` : '📍 <span style="color:var(--muted)">Sem endereço cadastrado</span>'
+    ].join('<span style="opacity:.35;padding:0 5px">·</span>');
+    const dataPedido = v.data ? new Date(`${v.data}T00:00:00`).toLocaleDateString('pt-BR') : 'Data não informada';
 
     return `
-      <div class="picking-card" style="background:var(--card);border:1px solid ${completo ? 'rgba(76,195,138,.4)' : 'rgba(255,255,255,.08)'};border-radius:12px;padding:14px;margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <div>
-            <h4 style="margin:0 0 4px;font-size:15px;color:#FFF">Pedido #${v.id} · ${v.clienteNome || 'Cliente'}</h4>
-            <div style="font-size:11.5px;color:var(--muted)">📍 ${endereco} · <strong>${totalFmt}</strong></div>
+      <div class="picking-card" style="background:var(--card);border:1px solid ${completo ? 'rgba(76,195,138,.4)' : 'rgba(201,162,75,.24)'};border-radius:14px;padding:14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+          <div style="min-width:0;flex:1">
+            <h4 style="margin:0 0 4px;font-size:15px;color:#FFF">Pedido #${pickingEscapar(v.id)} · ${pickingEscapar(cliente.nome)}</h4>
+            <div style="font-size:11.5px;line-height:1.7;color:var(--muted)">${linhasLocal}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Pedido de ${dataPedido} · <strong style="color:var(--text)">${totalFmt}</strong></div>
           </div>
-          <span class="badge" style="background:${completo ? '#4CC38A' : 'var(--gold,#C9A24B)'};color:#000;font-weight:700">
-            ${conferidosCount} / ${v.itens.length} conferidos
-          </span>
+          <span class="badge" style="white-space:nowrap;background:${completo ? '#4CC38A' : 'var(--gold,#C9A24B)'};color:#000;font-weight:700">${conferidosCount} / ${totalLinhas} itens</span>
         </div>
-
-        <div style="background:rgba(0,0,0,.25);border-radius:8px;padding:10px;margin:10px 0">
-          <div style="font-size:11.5px;font-weight:700;color:var(--gold,#C9A24B);margin-bottom:8px">Checklist de Itens no Fardo/Caixa:</div>
-          ${v.itens.map(it => {
-            const key = `${v.id}-${it.produtoId || it.nome}`;
-            const isChecked = !!_pickingConferidos[key];
-            return `
-              <label style="display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer;font-size:13px;color:${isChecked ? 'var(--muted)' : 'var(--text)'};text-decoration:${isChecked ? 'line-through' : 'none'}">
-                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCheckItemPicking('${key}', ${v.id})" style="width:16px;height:16px;accent-color:var(--gold,#C9A24B)">
-                <span><strong>${it.qtd}x</strong> ${it.nome}</span>
-              </label>
-            `;
-          }).join('')}
+        <div style="height:5px;background:rgba(255,255,255,.08);border-radius:9px;overflow:hidden;margin:0 0 12px">
+          <div style="height:100%;width:${Math.round(conferidosCount / totalLinhas * 100)}%;background:${completo ? '#4CC38A' : 'var(--gold,#C9A24B)'};transition:width .2s"></div>
         </div>
-
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
-          <button type="button" class="btn btn-outline btn-xs" onclick="imprimirRomaneioPedido(${v.id})">
-            <i data-lucide="printer" class="ic"></i> Imprimir Romaneio
-          </button>
-          <button type="button" class="btn ${completo ? 'btn-green' : 'btn-primary'} btn-xs" onclick="marcarPedidoExpedido(${v.id})">
-            <i data-lucide="check" class="ic"></i> ${completo ? 'Liberar Rota / Expedido ✓' : 'Marcar como Separado'}
+        <div style="background:rgba(0,0,0,.25);border-radius:9px;padding:10px;margin:10px 0">
+          <div style="font-size:11.5px;font-weight:700;color:var(--gold,#C9A24B);margin-bottom:6px">Checklist de produtos para separar</div>
+          ${itensHtml}
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-outline btn-xs" onclick="imprimirRomaneioPedido(${Number(v.id)})"><i data-lucide="printer" class="ic"></i> Imprimir romaneio</button>
+          <button type="button" class="btn ${completo ? 'btn-green' : 'btn-primary'} btn-xs" onclick="marcarPedidoExpedido(${Number(v.id)})" ${completo ? '' : 'disabled title="Confira todos os itens antes de concluir"'} style="${completo ? '' : 'opacity:.5;cursor:not-allowed'}">
+            <i data-lucide="check" class="ic"></i> ${completo ? 'Confirmar separação' : 'Marcar como separado'}
           </button>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -719,54 +761,50 @@ function toggleCheckItemPicking(key, vendaId) {
 
 function marcarPedidoExpedido(vendaId) {
   if (typeof state === 'undefined' || !Array.isArray(state.vendas)) return;
-  const v = state.vendas.find(x => x.id === vendaId);
+  const v = state.vendas.find(x => x.id == vendaId);
   if (!v) return;
+  const todosConferidos = (v.itens || []).every((it, idx) => !!_pickingConferidos[pickingChaveItem(v.id, idx)]);
+  if (!todosConferidos) {
+    if (typeof showToast === 'function') showToast('Confira todos os itens antes de concluir a separação.', 'red');
+    return;
+  }
 
-  v.entregue = true;
-  v.dataExpedicao = new Date().toISOString();
-
+  // Registra somente a separação. A venda só recebe entregue=true no fluxo de entrega.
+  v.statusSeparacao = 'separado';
+  v.dataSeparacao = new Date().toISOString();
   if (typeof marcarAlterado === 'function') marcarAlterado();
   if (typeof salvarDados === 'function') salvarDados();
   if (typeof renderDashboard === 'function') renderDashboard();
-
-  if (typeof showToast === 'function') {
-    showToast(`Pedido #${vendaId} despachado com sucesso!`, 'green');
-  }
-
+  if (typeof showToast === 'function') showToast(`Pedido #${vendaId} separado e pronto para expedição.`, 'green');
   renderizarFilaSeparacao();
 }
 
 function imprimirRomaneioPedido(vendaId) {
-  const v = (state.vendas || []).find(x => x.id === vendaId);
+  const v = (state.vendas || []).find(x => x.id == vendaId);
   if (!v) return;
   const janela = window.open('', '_blank');
-  if (!janela) return;
+  if (!janela) {
+    if (typeof showToast === 'function') showToast('Permita pop-ups para imprimir o romaneio.', 'red');
+    return;
+  }
+  const cliente = pickingDadosCliente(v);
+  const itens = (v.itens || []).map(it => `<div class="item"><span>[  ] ${Number(it.qtd || 0)}x ${pickingEscapar(pickingNomeItem(it))}</span></div>`).join('');
   janela.document.write(`
-    <html>
-      <head>
-        <title>Romaneio de Entrega - Pedido #${v.id}</title>
-        <style>
-          body { font-family: monospace; padding: 20px; font-size: 13px; }
-          h2 { margin: 0 0 10px; }
-          hr { border-top: 1px dashed #000; }
-          .item { display: flex; justify-content: space-between; margin: 4px 0; }
-        </style>
-      </head>
-      <body>
-        <h2>GestãoPRO — Romaneio de Carga</h2>
-        <p><strong>Pedido #${v.id}</strong> · Data: ${new Date(v.data).toLocaleString('pt-BR')}</p>
-        <p><strong>Cliente:</strong> ${v.clienteNome || 'Consumidor'}</p>
-        <hr>
-        <h3>ITENS PARA CONFERÊNCIA:</h3>
-        ${(v.itens || []).map(it => `<div class="item"><span>[  ] ${it.qtd}x ${it.nome}</span></div>`).join('')}
-        <hr>
-        <p><strong>Total do Pedido:</strong> R$ ${Number(v.total || 0).toFixed(2)}</p>
-        <p>Assinatura do Recebedor: ____________________________</p>
-      </body>
-    </html>
-  `);
+    <html><head><meta charset="utf-8"><title>Romaneio - Pedido #${pickingEscapar(v.id)}</title>
+      <style>body{font-family:Arial,sans-serif;padding:24px;font-size:13px;color:#111}h2{margin:0 0 10px}hr{border:0;border-top:1px dashed #777;margin:14px 0}.item{display:flex;justify-content:space-between;margin:8px 0}.muted{color:#555}</style>
+    </head><body>
+      <h2>GestãoPRO — Romaneio de Separação</h2>
+      <p><strong>Pedido #${pickingEscapar(v.id)}</strong> · Data: ${v.data ? new Date(`${v.data}T00:00:00`).toLocaleDateString('pt-BR') : '—'}</p>
+      <p><strong>Cliente:</strong> ${pickingEscapar(cliente.nome)}</p>
+      <p><strong>Rota:</strong> ${pickingEscapar(cliente.rota || 'Sem rota cadastrada')}</p>
+      <p><strong>Endereço:</strong> ${pickingEscapar(cliente.endereco || 'Sem endereço cadastrado')}</p>
+      <hr><h3>ITENS PARA CONFERÊNCIA</h3>${itens}<hr>
+      <p><strong>Total do pedido:</strong> ${Number(v.total || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p>
+      <p>Separado por: __________________________ · Conferido em: ____/____/______</p>
+      <p>Assinatura do recebedor: __________________________</p>
+      <script>window.onload=()=>window.print();</script>
+    </body></html>`);
   janela.document.close();
-  janela.print();
 }
 
 // ─── INICIALIZAÇÃO DE LISTENERS GLOBAIS ───
