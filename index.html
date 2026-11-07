@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.91.5">
+<link rel="stylesheet" href="styles.css?v=5.91.8">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -654,6 +654,12 @@
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Informe os custos fixos mensais. O sistema divide pelo total de unidades produzidas no mês para calcular o custo fixo por unidade.</p>
       <div id="prec-custos-resumo"></div>
       <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModal('modal-custos-fixos')">Editar custos fixos</button>
+    </div>
+    <div class="detail-panel" style="margin-bottom:20px">
+      <h3>Condições de Pagamento</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Configure o desconto aplicado automaticamente na Nova Venda para pagamento à vista ou fiado.</p>
+      <div id="prec-condicoes-resumo"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModalCondicoesPagamento()">Editar condições</button>
     </div>
     <div class="detail-panel" style="margin-bottom:0">
       <h3>Canais de Venda</h3>
@@ -1573,11 +1579,12 @@
       </div>
       <div class="form-group"><label>Cliente</label>
         <div id="venda-cliente-combo-wrap" style="position:relative">
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:7px;align-items:center">
             <input type="hidden" id="venda-cliente">
-            <input class="form-control" id="venda-cliente-busca" style="flex:1" autocomplete="off" placeholder="Buscar por nome, telefone ou nº..."
+            <input class="form-control" id="venda-cliente-busca" style="flex:1;min-width:0" autocomplete="off" placeholder="Buscar nome ou nº do cartão..."
               oninput="document.getElementById('venda-cliente').value='';renderClienteComboResultados(this.value)"
               onfocus="this.select();renderClienteComboResultados(this.value)">
+            <button type="button" class="btn btn-outline btn-sm" style="flex:0 0 48px;padding:9px 8px" onclick="abrirLeitorCartaoNaVenda()" title="Ler cartão do cliente" aria-label="Ler cartão do cliente"><i data-lucide="scan-line" class="ic"></i></button>
             <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="toggleNovoClienteInline()">+ Novo</button>
           </div>
           <div id="venda-cliente-resultados" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border-radius:10px;box-shadow:var(--shadow-lg);max-height:240px;overflow-y:auto;z-index:50;margin-top:4px"></div>
@@ -1612,6 +1619,10 @@
         </div>
       </div>
       <div class="form-group"><label>Itens da Venda</label>
+        <div id="venda-condicao-pagamento" style="display:flex;gap:8px;margin:0 0 12px">
+          <button type="button" class="btn btn-sm" id="venda-condicao-avista" onclick="definirCondicaoPagamentoVenda('avista')" style="flex:1"><i data-lucide="banknote" class="ic"></i> À vista</button>
+          <button type="button" class="btn btn-outline btn-sm" id="venda-condicao-fiado" onclick="definirCondicaoPagamentoVenda('fiado')" style="flex:1"><i data-lucide="calendar-clock" class="ic"></i> Fiado</button>
+        </div>
         <div class="vc-top">
           <input class="form-control" id="venda-cat-busca" type="search" placeholder="Buscar item" autocomplete="off" oninput="vcBuscar(this.value)">
           <button type="button" class="btn btn-outline btn-sm" onclick="abrirAvulso()" aria-label="Valor avulso (calculadora)"><i data-lucide="calculator" class="ic"></i> Avulso</button>
@@ -1631,6 +1642,7 @@
         <span style="font-size:13px;font-weight:600;color:var(--muted)">Total (preço cheio)</span>
         <span style="font-size:20px;font-weight:800;color:var(--navy)" id="venda-total-geral">R$ 0,00</span>
       </div>
+      <div id="venda-condicao-desconto-info" style="font-size:12px;margin:-8px 0 12px 2px"></div>
       <div class="form-group">
         <label>Desconto extra <span style="font-weight:400;color:var(--muted)">(R$, opcional)</span></label>
         <input class="form-control" type="number" step="0.01" min="0" id="venda-desconto-extra" placeholder="0,00" oninput="calcTotalVendaGeral()">
@@ -1651,7 +1663,7 @@
             <input type="checkbox" id="venda-pag-misto-check" onclick="toggleVendaPagamentoMisto()" style="width:auto;margin:0"> Dividir em mais de uma forma
           </span>
         </label>
-        <select class="form-control" id="venda-forma" onchange="toggleVendaEntradaShortcut()">
+        <select class="form-control" id="venda-forma" onchange="toggleVendaEntradaShortcut();sincronizarCondicaoFormaVenda()">
           <option value="fiado">Fiado</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option>
         </select>
         <div id="venda-pag-misto-wrap" style="display:none;margin-top:8px">
@@ -2500,6 +2512,22 @@
   </div>
 </div>
 
+<!-- CONDIÇÕES DE PAGAMENTO -->
+<div class="modal-overlay" id="modal-condicoes-pagamento">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><h3>Condições de Pagamento</h3><button class="modal-close" onclick="closeModal('modal-condicoes-pagamento')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Defina o percentual de desconto que será aplicado aos itens na Nova Venda. O desconto dos canais (Varejo, Atacado e Revendedor) continua independente.</p>
+      <div class="form-group"><label>Pagamento à vista (%)</label><input class="form-control" type="number" id="cond-pag-avista" min="0" max="100" step="0.1" inputmode="decimal"></div>
+      <div class="form-group"><label>Pagamento fiado (%)</label><input class="form-control" type="number" id="cond-pag-fiado" min="0" max="100" step="0.1" inputmode="decimal"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-condicoes-pagamento')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarCondicoesPagamento()">Salvar condições</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ESCOLHA DE IMPRESSÃO -->
 <div class="modal-overlay" id="modal-imprimir">
   <div class="modal" style="max-width:420px">
@@ -2572,36 +2600,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.91.5"></script>
-<script src="00-core.js?v=5.91.5"></script>
-<script src="lib-qrcode.js?v=5.91.5"></script>
-<script src="01-ui-nav.js?v=5.91.5"></script>
-<script src="02-dashboard.js?v=5.91.5"></script>
-<script src="03-clientes.js?v=5.91.5"></script>
-<script src="04-vendas.js?v=5.91.5"></script>
-<script src="04b-pix-extrato.js?v=5.91.5"></script>
-<script src="11b-meu-dia.js?v=5.91.5"></script>
-<script src="11c-promessa-reneg.js?v=5.91.5"></script>
-<script src="11d-aprovar-lote.js?v=5.91.5"></script>
-<script src="05-producao.js?v=5.91.5"></script>
-<script src="06-estoque.js?v=5.91.5"></script>
-<script src="07-precificacao.js?v=5.91.5"></script>
-<script src="08-compras-fornecedores.js?v=5.91.5"></script>
-<script src="09-financeiro-relatorios.js?v=5.91.5"></script>
-<script src="10-fab-inline.js?v=5.91.5"></script>
-<script src="10b-planejamento.js?v=5.91.5"></script>
-<script src="13-crm.js?v=5.91.5"></script>
-<script src="14-relacionamento.js?v=5.91.5"></script>
-<script src="15-cliente360.js?v=5.91.5"></script>
-<script src="16-automacoes.js?v=5.91.5"></script>
-<script src="17-banco.js?v=5.91.5"></script>
-<script src="18-credito.js?v=5.91.5"></script>
-<script src="19-conectores.js?v=5.91.5"></script>
-<script src="20-cartoes.js?v=5.91.5"></script>
-<script src="12-drive-backup.js?v=5.91.5"></script>
-<script src="11-app-init.js?v=5.91.5"></script>
-<script src="21-gemini-ia.js?v=5.91.5"></script>
-<script src="22-operacao-foco.js?v=5.91.5"></script>
+<script src="00a-config.js?v=5.91.8"></script>
+<script src="00-core.js?v=5.91.8"></script>
+<script src="lib-qrcode.js?v=5.91.8"></script>
+<script src="01-ui-nav.js?v=5.91.8"></script>
+<script src="02-dashboard.js?v=5.91.8"></script>
+<script src="03-clientes.js?v=5.91.8"></script>
+<script src="04-vendas.js?v=5.91.8"></script>
+<script src="04b-pix-extrato.js?v=5.91.8"></script>
+<script src="11b-meu-dia.js?v=5.91.8"></script>
+<script src="11c-promessa-reneg.js?v=5.91.8"></script>
+<script src="11d-aprovar-lote.js?v=5.91.8"></script>
+<script src="05-producao.js?v=5.91.8"></script>
+<script src="06-estoque.js?v=5.91.8"></script>
+<script src="07-precificacao.js?v=5.91.8"></script>
+<script src="08-compras-fornecedores.js?v=5.91.8"></script>
+<script src="09-financeiro-relatorios.js?v=5.91.8"></script>
+<script src="10-fab-inline.js?v=5.91.8"></script>
+<script src="10b-planejamento.js?v=5.91.8"></script>
+<script src="13-crm.js?v=5.91.8"></script>
+<script src="14-relacionamento.js?v=5.91.8"></script>
+<script src="15-cliente360.js?v=5.91.8"></script>
+<script src="16-automacoes.js?v=5.91.8"></script>
+<script src="17-banco.js?v=5.91.8"></script>
+<script src="18-credito.js?v=5.91.8"></script>
+<script src="19-conectores.js?v=5.91.8"></script>
+<script src="20-cartoes.js?v=5.91.8"></script>
+<script src="12-drive-backup.js?v=5.91.8"></script>
+<script src="11-app-init.js?v=5.91.8"></script>
+<script src="21-gemini-ia.js?v=5.91.8"></script>
+<script src="22-operacao-foco.js?v=5.91.8"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

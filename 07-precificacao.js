@@ -87,6 +87,14 @@ function renderPrecVisaoGeral(){
         :`<span style="color:var(--muted)">Sem produções registradas este mês — o custo fixo não está sendo rateado. Registre produções para ativar o rateio.</span>`}
     </div>`;
 
+  // Condições de pagamento (independentes dos canais comerciais)
+  const cond=state.condicoesPagamento||{avista:20,fiado:0};
+  const cp=document.getElementById('prec-condicoes-resumo');
+  if(cp)cp.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:10px">
+    <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:130px"><div style="font-size:13px;font-weight:700">À vista</div><div style="font-size:20px;font-weight:800;color:var(--green);margin-top:4px">${Number(cond.avista||0).toLocaleString('pt-BR')}%</div><div style="font-size:11px;color:var(--muted)">desconto automático</div></div>
+    <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:130px"><div style="font-size:13px;font-weight:700">Fiado</div><div style="font-size:20px;font-weight:800;color:var(--gold);margin-top:4px">${Number(cond.fiado||0).toLocaleString('pt-BR')}%</div><div style="font-size:11px;color:var(--muted)">desconto automático</div></div>
+  </div>`;
+
   // canais
   const canais=state.canais||[];
   document.getElementById('prec-canais-resumo').innerHTML=canais.length===0
@@ -314,6 +322,24 @@ function salvarCanais(){
   closeModal('modal-canais');
   renderPrecVisaoGeral();
   showToast('Canais salvos','green');
+}
+
+function openModalCondicoesPagamento(){
+  const c=state.condicoesPagamento||{avista:20,fiado:0};
+  document.getElementById('cond-pag-avista').value=Number(c.avista??20);
+  document.getElementById('cond-pag-fiado').value=Number(c.fiado??0);
+  document.getElementById('modal-condicoes-pagamento').classList.add('open');
+}
+function salvarCondicoesPagamento(){
+  const avista=Number(String(document.getElementById('cond-pag-avista').value).replace(',','.'));
+  const fiado=Number(String(document.getElementById('cond-pag-fiado').value).replace(',','.'));
+  if(!Number.isFinite(avista)||!Number.isFinite(fiado)||avista<0||avista>100||fiado<0||fiado>100){showToast('Informe percentuais entre 0 e 100','red');return;}
+  state.condicoesPagamento={avista,fiado};
+  marcarAlterado();
+  closeModal('modal-condicoes-pagamento');
+  renderPrecVisaoGeral();
+  if(document.getElementById('modal-venda')?.classList.contains('open'))definirCondicaoPagamentoVenda(vendaCondicaoPagamento,false);
+  showToast('Condições de pagamento salvas','green');
 }
 
 function salvarMateria(){

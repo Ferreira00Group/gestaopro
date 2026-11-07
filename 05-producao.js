@@ -260,12 +260,18 @@ function carregarFicha(){
 }
 // Monta as opções de ingrediente disponíveis: matérias-primas do estoque + semiacabados já cadastrados
 // (exclui o próprio semiacabado que está sendo editado, para evitar auto-referência)
-function opcoesIngredientesFicha(){
+function opcoesIngredientesFicha(valorSelecionado=''){
   const {tipo,prodId}=fichaKeyAtual();
-  const optsMp=materiasOrdenadas().map(m=>`<option value="mp_${m.id}">${escapeHtml(m.nome)} (${m.unidade})</option>`).join('');
+  const optsMp=materiasOrdenadas().map(m=>{
+    const value=`mp_${m.id}`;
+    return `<option value="${value}"${valorSelecionado===value?' selected':''}>${escapeHtml(m.nome)} (${m.unidade})</option>`;
+  }).join('');
   const semis=(state.semiacabados||[]).filter(s=>!(tipo==='s'&&s.id===prodId));
-  const optsSemi=semis.map(s=>`<option value="semi_${s.id}">${escapeHtml(s.nome)} (${s.unidade})</option>`).join('');
-  let html='';
+  const optsSemi=semis.map(s=>{
+    const value=`semi_${s.id}`;
+    return `<option value="${value}"${valorSelecionado===value?' selected':''}>${escapeHtml(s.nome)} (${s.unidade})</option>`;
+  }).join('');
+  let html=`<option value=""${valorSelecionado?'':' selected'}>Selecione o ingrediente</option>`;
   html+=optsMp?`<optgroup label="Matérias-Primas">${optsMp}</optgroup>`:'';
   html+=optsSemi?`<optgroup label="Semiacabados">${optsSemi}</optgroup>`:'';
   return html;
@@ -273,75 +279,102 @@ function opcoesIngredientesFicha(){
 function renderFichaItens(ficha){
   const el=document.getElementById('ficha-itens');
   if(ficha.length===0){el.innerHTML='<p style="color:var(--muted);font-size:13px;margin-top:8px">Nenhum item na ficha.</p>';return;}
-  const opts=opcoesIngredientesFicha();
   el.innerHTML=`<div style="background:var(--card-2);border-radius:8px;padding:12px;margin-top:8px">
     ${ficha.map((f,i)=>{
-      const valorAtual=`${f.tipo||'mp'}_${f.mpId}`;
+      const valorAtual=f.tipo&&f.mpId!=null?`${f.tipo}_${f.mpId}`:'';
       return `<div class="recipe-item">
-      <select class="form-control" id="ficha-mp-${i}" style="flex:1;padding:6px 10px">${opts.replace(`value="${valorAtual}"`,`value="${valorAtual}" selected`)}</select>
-      <input id="ficha-qtd-${i}" type="number" step="0.001" value="${f.qtd}" placeholder="Qtd/unidade" style="width:100px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">
+      <select class="form-control" id="ficha-mp-${i}" onchange="atualizarCustosFichaPreview()" style="flex:1;min-width:150px;padding:6px 10px">${opcoesIngredientesFicha(valorAtual)}</select>
+      <input id="ficha-qtd-${i}" type="number" step="0.001" value="${f.qtd??0.1}" placeholder="Qtd" oninput="atualizarCustosFichaPreview()" style="width:88px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">
       <button class="icon-btn del" onclick="removeFichaItem(${i})">✕</button>
+      <div id="ficha-custo-linha-${i}" style="width:100%;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);padding:0 2px 5px">
+        <span>Preço: —</span><strong>Custo na mistura: —</strong>
+      </div>
     </div>`;}).join('')}
+  </div>
+  <div id="ficha-custo-resumo" style="margin-top:10px;background:rgba(212,169,75,.08);border:1px solid var(--gold);border-radius:10px;padding:12px">
+    <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--muted);font-size:12px">Custo total da mistura</span><strong id="ficha-custo-total" style="color:var(--gold)">${fmt(0)}</strong></div>
+    <div style="display:flex;justify-content:space-between;gap:10px;margin-top:6px"><span style="color:var(--muted);font-size:12px">Custo por unidade produzida</span><strong id="ficha-custo-unidade">${fmt(0)}</strong></div>
   </div>`;
   el._ficha=ficha;
+  atualizarCustosFichaPreview();
 }
-function primeiroIngredienteDisponivel(){
-  if(state.materias[0])return{tipo:'mp',mpId:state.materias[0].id};
-  const {tipo,prodId}=fichaKeyAtual();
-  const semi=(state.semiacabados||[]).find(s=>!(tipo==='s'&&s.id===prodId));
-  if(semi)return{tipo:'semi',mpId:semi.id};
-  return{tipo:'mp',mpId:1};
+function atualizarCustosFichaPreview(){
+  const el=document.getElementById('ficha-itens');
+  if(!el)return;
+  const rendimento=Math.max(0.000001,parseFloat(document.getElementById('ficha-rendimento')?.value)||1);
+  let custoMistura=0;
+  const linhas=el.querySelectorAll('[id^="ficha-mp-"]');
+  linhas.forEach(sel=>{
+    const i=sel.id.replace('ficha-mp-','');
+    const raw=sel.value||'';
+    const[tipo,idRaw]=raw?raw.split('_'):['',''];
+    const qtd=parseFloat(document.getElementById(`ficha-qtd-${i}`)?.value)||0;
+    const linha=document.getElementById(`ficha-custo-linha-${i}`);
+    if(!linha)return;
+    if(!tipo||!idRaw){
+      linha.innerHTML='<span>Selecione um ingrediente para consultar o preço</span><strong>Custo: —</strong>';
+      return;
+    }
+    const id=parseInt(idRaw,10);
+    const unitario=custoItemFicha(tipo,id);
+    const custoLinha=qtd*unitario;
+    custoMistura+=custoLinha;
+    const info=nomeUnidadeItemFicha(tipo,id);
+    linha.innerHTML=`<span>Preço: ${fmt(unitario)} / ${escapeHtml(info.unidade||'un')}</span><strong style="color:var(--gold)">Custo na mistura: ${fmt(custoLinha)}</strong>`;
+  });
+  const total=document.getElementById('ficha-custo-total');
+  const porUnidade=document.getElementById('ficha-custo-unidade');
+  if(total)total.textContent=fmt(custoMistura);
+  if(porUnidade)porUnidade.textContent=fmt(custoMistura/rendimento);
+}
+function salvarItensFichaNoEstado(tipo,prodId,key,ficha){
+  if(tipo==='s')getSemiacabado(prodId).mps=ficha;
+  else if(key)state.fichasVariante[key]=ficha;
+  else state.fichas[prodId]=ficha;
 }
 function adicionarItemFicha(){
   const {tipo,prodId,key}=fichaKeyAtual();
   if(!tipo){showToast('Selecione o produto primeiro','red');return;}
-  const novoItem={...primeiroIngredienteDisponivel(),qtd:0.1};
-  if(tipo==='s'){
-    const s=getSemiacabado(prodId);
-    s.mps=s.mps||[];
-    s.mps.push(novoItem);
-    renderFichaItens(s.mps);
-    return;
-  }
-  const ficha=key?(state.fichasVariante[key]||[]):(state.fichas[prodId]||[]);
-  ficha.push(novoItem);
-  if(key)state.fichasVariante[key]=ficha;else state.fichas[prodId]=ficha;
+  // Captura primeiro o que está na tela: adicionar uma linha não pode descartar
+  // alterações ainda não salvas nos outros ingredientes.
+  const fichaAtual=tipo==='s'?(getSemiacabado(prodId).mps||[]):(key?(state.fichasVariante[key]||[]):(state.fichas[prodId]||[]));
+  const ficha=lerItensFichaDoForm(fichaAtual.length);
+  ficha.push({tipo:'',mpId:null,qtd:0.1});
+  salvarItensFichaNoEstado(tipo,prodId,key,ficha);
   renderFichaItens(ficha);
 }
 function removeFichaItem(i){
   const {tipo,prodId,key}=fichaKeyAtual();
-  if(tipo==='s'){
-    const s=getSemiacabado(prodId);
-    (s.mps||[]).splice(i,1);
-    renderFichaItens(s.mps||[]);
-    return;
-  }
-  const ficha=key?state.fichasVariante[key]:state.fichas[prodId];
+  const fichaAtual=tipo==='s'?(getSemiacabado(prodId).mps||[]):(key?(state.fichasVariante[key]||[]):(state.fichas[prodId]||[]));
+  const ficha=lerItensFichaDoForm(fichaAtual.length);
   ficha.splice(i,1);
+  salvarItensFichaNoEstado(tipo,prodId,key,ficha);
   renderFichaItens(ficha);
 }
 function lerItensFichaDoForm(qtdItens){
   return Array.from({length:qtdItens},(_,i)=>{
-    const raw=document.getElementById(`ficha-mp-${i}`).value;
-    const[tipo,id]=raw.split('_');
-    return{tipo,mpId:parseInt(id),qtd:parseFloat(document.getElementById(`ficha-qtd-${i}`).value)||0};
+    const raw=document.getElementById(`ficha-mp-${i}`)?.value||'';
+    const[tipo,id]=raw?raw.split('_'):['',null];
+    return{tipo,mpId:id===null?null:parseInt(id,10),qtd:parseFloat(document.getElementById(`ficha-qtd-${i}`)?.value)||0};
   });
 }
 function salvarFicha(){
   const {tipo,prodId,varianteId,key}=fichaKeyAtual();
   if(!tipo){showToast('Selecione o produto','red');return;}
   const rendimento=parseFloat(document.getElementById('ficha-rendimento').value)||1;
+  const fichaAtual=tipo==='s'?(getSemiacabado(prodId).mps||[]):(key?(state.fichasVariante[key]||[]):(state.fichas[prodId]||[]));
+  const nova=lerItensFichaDoForm(fichaAtual.length);
+  if(nova.some(item=>!item.tipo||item.mpId==null||!Number.isFinite(item.mpId))){
+    showToast('Selecione um ingrediente em todas as linhas antes de salvar','red');return;
+  }
   if(tipo==='s'){
     const s=getSemiacabado(prodId);
-    const ficha=s.mps||[];
-    s.mps=lerItensFichaDoForm(ficha.length);
+    s.mps=nova;
     s.rendimento=rendimento;
     marcarAlterado();
     showToast('Ficha técnica salva!','green');closeModal('modal-ficha');
     return;
   }
-  const ficha=key?(state.fichasVariante[key]||[]):(state.fichas[prodId]||[]);
-  const nova=lerItensFichaDoForm(ficha.length);
   if(key)state.fichasVariante[key]=nova;else state.fichas[prodId]=nova;
   setRendimentoFicha(prodId,varianteId,rendimento);
   marcarAlterado();

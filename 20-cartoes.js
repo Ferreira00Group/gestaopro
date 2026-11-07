@@ -325,7 +325,7 @@ function cartoesVincularExistenteDoSemCliente(){
 function cartoesAbrirDigitado(){
   const n=cartoesExtrair(document.getElementById('cartao-scan-num').value);
   if(!n){ showToast('Digite o número do cartão','red'); return; }
-  cartoesFecharScan(); cartoesAposLeitura(n);
+  cartoesFecharScan(true); cartoesAposLeitura(n);
 }
 // Quem pediu a leitura (ex.: PDV) pode registrar um callback; sem callback abre o cartão normalmente
 let _cartaoScanCb=null;
@@ -351,7 +351,7 @@ async function cartoesAbrirScan(cb){
     const det=new BarcodeDetector({formats:['qr_code']}); let busy=false;
     _scanTimer=setInterval(async()=>{
       if(busy) return; busy=true;
-      try{ const r=await det.detect(vid); if(r.length){ const n=cartoesExtrair(r[0].rawValue); if(n){ cartoesFecharScan(); cartoesAposLeitura(n); } } }catch(e){}
+      try{ const r=await det.detect(vid); if(r.length){ const n=cartoesExtrair(r[0].rawValue); if(n){ cartoesFecharScan(true); cartoesAposLeitura(n); } } }catch(e){}
       busy=false;
     },300);
   }catch(e){ msg.textContent='Não consegui usar a câmera (permissão negada?). Digite o número do cartão abaixo.'; }
@@ -365,8 +365,8 @@ async function cartoesLanterna(){
     const tb=document.getElementById('cartao-torch'); if(tb) tb.classList.toggle('on',_scanTorchOn);
   }catch(e){ _scanTorchOn=false; showToast('Este aparelho não permitiu acender a lanterna','red'); }
 }
-function cartoesFecharScan(){
-  _cartaoScanCb=null;
+function cartoesFecharScan(preservarCallback=false){
+  if(!preservarCallback)_cartaoScanCb=null;
   if(_scanTimer){ clearInterval(_scanTimer); _scanTimer=null; }
   if(_scanStream){ _scanStream.getTracks().forEach(t=>t.stop()); _scanStream=null; }
   cartoesFecharModal('modal-cartao-scan');

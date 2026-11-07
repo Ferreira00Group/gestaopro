@@ -135,6 +135,8 @@ const DEFAULT_STATE = {
     {id:2,nome:'Atacado',desconto:15},
     {id:3,nome:'Revendedor',desconto:25},
   ],
+  // Descontos comerciais por condição de pagamento, independentes dos canais de venda.
+  condicoesPagamento:{avista:20,fiado:0},
   estoque_tab:'produtos',
   cliente_filter:'',
   cliente_status_filter:'',
@@ -485,7 +487,9 @@ function carregarDados(){
       state = { ...DEFAULT_STATE, ...parsed };
       limparFiltrosDeTela(state);
       state.nextId      = { ...DEFAULT_STATE.nextId, ...parsed.nextId };
-      if(!state.cartoes||typeof state.cartoes!=='object'||Array.isArray(state.cartoes)) state.cartoes={total:100,vinculos:{}}; // cartões QR dos clientes (v5.56)
+      if(!state.cartoes||typeof state.cartoes!=='object'||Array.isArray(state.cartoes)) state.cartoes={total:100,vinculos:{}};
+      if(!state.condicoesPagamento||typeof state.condicoesPagamento!=='object') state.condicoesPagamento={avista:20,fiado:0};
+      state.condicoesPagamento={avista:Math.max(0,Math.min(100,Number(state.condicoesPagamento.avista??20)||0)),fiado:Math.max(0,Math.min(100,Number(state.condicoesPagamento.fiado??0)||0))};
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
       if(!Array.isArray(state.renegociacoes)) state.renegociacoes=[];

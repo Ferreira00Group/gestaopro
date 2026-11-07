@@ -9,7 +9,7 @@ function nomeItemVenda(it){
   return getNomeCompletoItem(it.produtoId,it.varianteId);
 }
 function itemVendaGravar(it,comCusto){
-  const base={produtoId:it.avulso?null:it.produtoId,varianteId:it.avulso?null:(it.varianteId||null),qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco};
+  const base={produtoId:it.avulso?null:it.produtoId,varianteId:it.avulso?null:(it.varianteId||null),qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco,...(Number.isFinite(Number(it.precoBase))?{precoBase:Number(it.precoBase)}:{})};
   if(it.avulso){base.avulso=true;base.nome=nomeItemVenda(it);}
   // Avulso não tem ficha técnica: o custo é o que o usuário informou (opcional, 0 = não informado).
   // Mesmo no orçamento (comCusto=false) guarda o custo informado, pra não perder ao converter em venda.
@@ -241,7 +241,13 @@ function filterVendaTipo(v){state.venda_tipo_filter=v;const sel=document.getElem
 function clientesParaComboVenda(termo,selectedId){
   const t=(termo||'').toLowerCase().trim();
   let lista=state.clientes.filter(c=>estaAtivo(c)||c.id===selectedId);
-  if(t) lista=lista.filter(c=>c.nome.toLowerCase().includes(t)||(c.tel||'').includes(t)||fmtClienteNum(c.id).toLowerCase().includes(t));
+  if(t) lista=lista.filter(c=>{
+    const cartao=typeof cartoesDoCliente==='function'?cartoesDoCliente(c.id):c.cartaoNum;
+    const numCartao=cartao==null?'':String(cartao).padStart(3,'0');
+    const buscaNum=t.replace(/^#|^0+/g,'');
+    return (c.nome||'').toLowerCase().includes(t)||(c.tel||'').includes(t)||fmtClienteNum(c.id).toLowerCase().includes(t)||
+      (numCartao&&('cartao '+numCartao).includes(t.replace(/^#/,'')))||(cartao!=null&&String(cartao)===buscaNum);
+  });
   return lista;
 }
 function selecionarClienteVenda(id){
@@ -250,6 +256,16 @@ function selecionarClienteVenda(id){
   if(inp) inp.value=id?getCliente(id).nome:'';
   fecharClienteResultados();
   if(typeof atualizarPainelCredito==='function') atualizarPainelCredito();
+}
+function selecionarClienteVendaPorCartao(numero){
+  const c=typeof cartoesClienteDe==='function'?cartoesClienteDe(numero):null;
+  if(!c){showToast('Este cartão não está vinculado a um cliente ativo','red');return;}
+  selecionarClienteVenda(c.id);
+  showToast(`Cliente ${c.nome} selecionado pelo cartão ${String(numero).padStart(3,'0')}`,'green');
+}
+function abrirLeitorCartaoNaVenda(){
+  if(typeof cartoesAbrirScan!=='function'){showToast('Leitor de cartões indisponível','red');return;}
+  cartoesAbrirScan(selecionarClienteVendaPorCartao);
 }
 function renderClienteComboResultados(termo){
   const el=document.getElementById('venda-cliente-resultados');
@@ -262,8 +278,10 @@ function renderClienteComboResultados(termo){
   } else {
     el.innerHTML=lista.map(c=>{
       const rota=getRota(c.rotaId);
+      const cartao=typeof cartoesDoCliente==='function'?cartoesDoCliente(c.id):c.cartaoNum;
+      const cartaoTxt=cartao!=null?` · Cartão #${String(cartao).padStart(3,'0')}`:'';
       const arq=!estaAtivo(c)?' <span style="color:var(--muted);font-weight:400">(arquivado)</span>':'';
-      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${escapeHtml(c.nome)}${arq}</strong><span>${escapeHtml(c.tel||'sem telefone')}${rota?' · <i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></div>`;
+      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${escapeHtml(c.nome)}${arq}</strong><span>${escapeHtml(c.tel||'sem telefone')}${cartaoTxt}${rota?' · <i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></div>`;
     }).join('');
     if(listaCompleta.length>8) el.innerHTML+=`<div style="padding:8px 14px;font-size:11px;color:var(--muted)">+${listaCompleta.length-8} outro(s) — refine a busca</div>`;
   }
@@ -342,11 +360,57 @@ function vcItemPorChave(key){
   if(t==='a') return vendaItensTemp.find(x=>x.uid===a);
   return vcItemCatalogo(parseInt(a),b?parseInt(b):null);
 }
-function vcPrecoCatalogo(produtoId){
+let vendaCondicaoPagamento='fiado';
+function vcPercentualCondicao(){
+  const cfg=state.condicoesPagamento||{avista:20,fiado:0};
+  return Math.max(0,Math.min(100,Number(cfg[vendaCondicaoPagamento]??(vendaCondicaoPagamento==='avista'?20:0))||0));
+}
+function vcAplicarDescontoCondicao(precoBase){
+  return Math.max(0,Number((Number(precoBase||0)*(1-vcPercentualCondicao()/100)).toFixed(2)));
+}
+function vcPrecoBaseCatalogo(produtoId){
   const base=getProduto(produtoId)?.preco||0;
   const canalId=parseInt(document.getElementById('venda-canal')?.value)||null;
   const canal=canalId?(state.canais||[]).find(c=>c.id===canalId):null;
   return canal?getPrecoCanal(base,canal):base;
+}
+function vcPrecoCatalogo(produtoId){return vcAplicarDescontoCondicao(vcPrecoBaseCatalogo(produtoId));}
+function renderCondicaoPagamentoVenda(){
+  const wrap=document.getElementById('venda-condicao-pagamento'); if(!wrap)return;
+  const pct=vcPercentualCondicao();
+  ['avista','fiado'].forEach(tipo=>{
+    const b=document.getElementById('venda-condicao-'+tipo); if(!b)return;
+    const ativo=vendaCondicaoPagamento===tipo;
+    b.className='btn btn-sm '+(ativo?'btn-primary':'btn-outline');
+    b.style.flex='1';b.style.borderColor=ativo?'var(--gold)':'var(--border)';
+    b.innerHTML=tipo==='avista'?`<i data-lucide="banknote" class="ic"></i> À vista <span style="font-size:11px;opacity:.85">−${pct.toLocaleString('pt-BR')}%</span>`:`<i data-lucide="calendar-clock" class="ic"></i> Fiado <span style="font-size:11px;opacity:.85">${pct>0?'−'+pct.toLocaleString('pt-BR')+'%':'sem desconto'}</span>`;
+  });
+  if(window.lucide&&lucide.createIcons)lucide.createIcons();
+}
+function definirCondicaoPagamentoVenda(tipo,ajustarForma=true){
+  if(!['avista','fiado'].includes(tipo))return;
+  vendaCondicaoPagamento=tipo;
+  if(ajustarForma){
+    const misto=document.getElementById('venda-pag-misto-check')?.checked;
+    const forma=document.getElementById('venda-forma');
+    if(!misto&&forma){
+      if(tipo==='fiado') forma.value='fiado';
+      else if(forma.value==='fiado') forma.value='dinheiro';
+      if(typeof toggleVendaEntradaShortcut==='function')toggleVendaEntradaShortcut();
+    }
+  }
+  vendaItensTemp.forEach(it=>{
+    let base;if(it.avulso)base=Number(it.precoBase??it.preco)||0;
+    else base=vcPrecoBaseCatalogo(it.produtoId);
+    it.precoBase=base;it.preco=vcAplicarDescontoCondicao(base);
+  });
+  renderCondicaoPagamentoVenda();
+  renderVendaItensLista();
+}
+function sincronizarCondicaoFormaVenda(){
+  const forma=document.getElementById('venda-forma')?.value;
+  if(forma==='fiado')definirCondicaoPagamentoVenda('fiado',false);
+  else if(['dinheiro','pix','cartao'].includes(forma))definirCondicaoPagamentoVenda('avista',false);
 }
 function vcEntradasCatalogo(){
   const out=[];
@@ -391,7 +455,7 @@ function renderVendaItensLista(){
   vendaItensTemp.filter(it=>it.avulso).forEach(it=>{
     const key='a:'+it.uid;
     html+=`<div class="vc-row sel">
-      <div class="vc-info"><p class="vc-nome">${escapeHtml(nomeItemVenda(it))}<span class="vc-tag">avulso</span></p></div>
+      <div class="vc-info"><p class="vc-nome">${escapeHtml(nomeItemVenda(it))}<span class="vc-tag">avulso</span></p><p class="vc-sub">Base ${fmt(it.precoBase??it.preco)} · ${vendaCondicaoPagamento==='avista'?'desconto à vista':''} ${vcPercentualCondicao()>0?`−${vcPercentualCondicao()}% · `:''}<strong>Final ${fmt(it.preco)}</strong></p></div>
       ${vcStepper(key,it.qtd,false)}
       <label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>
       <label class="vc-preco">Custo un. <input type="number" step="0.01" min="0" class="form-control" value="${it.custo||''}" placeholder="opcional" oninput="vcCustoAvulso('${key}',this.value)"></label>
@@ -404,7 +468,7 @@ function renderVendaItensLista(){
     const falta=verEstoque&&it.qtd>e.estoque;
     html+=`<div class="vc-row sel">
       <div class="vc-info"><p class="vc-nome">${escapeHtml(e.nome)}</p>
-        <p class="vc-sub">${escapeHtml(e.cod)} · <strong>${fmt(e.preco)}</strong> · ${e.estoque > 5 ? `<span style="color:#4CC38A;font-weight:600">✓ ${e.estoque} em estoque</span>` : (e.estoque > 0 ? `<span style="color:#E3C16F;font-weight:600">⚠️ Apenas ${e.estoque} un</span>` : `<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`)}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
+        <p class="vc-sub">${escapeHtml(e.cod)} · Base ${fmt(it.precoBase??vcPrecoBaseCatalogo(e.produtoId))} · ${vcPercentualCondicao()>0?`<span style="color:var(--green)">−${vcPercentualCondicao()}% ${vendaCondicaoPagamento==='avista'?'à vista':''}</span> · `:''}<strong>Final ${fmt(it.preco)}</strong> · ${e.estoque > 5 ? `<span style="color:#4CC38A;font-weight:600">✓ ${e.estoque} em estoque</span>` : (e.estoque > 0 ? `<span style="color:#E3C16F;font-weight:600">⚠️ Apenas ${e.estoque} un</span>` : `<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`)}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
       ${vcStepper(key,it.qtd,falta)}
       <label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>
     </div>`;
@@ -471,7 +535,7 @@ function vcDefinir(key,qtd){
     it.qtd=qtd;
   } else if(t==='p'){
     const produtoId=parseInt(a),varianteId=b?parseInt(b):null;
-    vendaItensTemp.push(criarLinhaItemVenda({produtoId,varianteId,qtd,preco:vcPrecoCatalogo(produtoId)}));
+    vendaItensTemp.push(criarLinhaItemVenda({produtoId,varianteId,qtd,preco:vcPrecoCatalogo(produtoId),precoBase:vcPrecoBaseCatalogo(produtoId)}));
   }
   renderVendaItensLista();
 }
@@ -487,6 +551,7 @@ function vcPreco(key,valor){
   const it=vcItemPorChave(key);
   if(!it) return;
   it.preco=Math.max(0,parseFloat(valor)||0);
+  const pct=vcPercentualCondicao();it.precoBase=pct<100?it.preco/(1-pct/100):it.preco;
   calcTotalVendaGeral();
 }
 function vcCustoAvulso(key,valor){
@@ -518,7 +583,8 @@ function avulsoAdicionar(){
   if(avulsoCents<=0){showToast('Digite um valor','red');return;}
   const nome=String(document.getElementById('avulso-desc').value||'').trim().slice(0,40)||'Item avulso';
   const custo=Math.max(0,parseFloat(String(document.getElementById('avulso-custo')?.value||'').replace(',','.'))||0);
-  vendaItensTemp.push(criarLinhaItemVenda({produtoId:null,varianteId:null,avulso:true,nome,qtd:avulsoQtd,preco:avulsoCents/100,custo}));
+  const precoBase=avulsoCents/100;
+  vendaItensTemp.push(criarLinhaItemVenda({produtoId:null,varianteId:null,avulso:true,nome,qtd:avulsoQtd,preco:vcAplicarDescontoCondicao(precoBase),precoBase,custo}));
   renderVendaItensLista();
   showToast(`${fmt(avulsoCents/100)} ×${avulsoQtd} adicionado à venda`,'green');
   avulsoCents=0;avulsoQtd=1;
@@ -528,14 +594,16 @@ function avulsoAdicionar(){
 }
 function calcTotalVendaGeral(){
   const totalCheio=vendaItensTemp.reduce((s,it)=>{
-    if(it.avulso) return s+((it.qtd||0)*(it.preco||0));
-    if(!it.produtoId)return s;
-    const precoBase=getProduto(it.produtoId)?.preco||0;
-    return s+((it.qtd||0)*precoBase);
+    const base=it.avulso?Number(it.precoBase??it.preco)||0:(getProduto(it.produtoId)?.preco||0);
+    return s+((it.qtd||0)*base);
   },0);
   const el=document.getElementById('venda-total-geral');
   if(el)el.textContent=fmt(totalCheio);
+  const subtotalCondicao=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*(Number(it.precoBase??(it.avulso?it.preco:vcPrecoBaseCatalogo(it.produtoId)))||0)),0);
   const totalComCanal=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*(it.preco||0)),0);
+  const descontoCondicao=Math.max(0,subtotalCondicao-totalComCanal);
+  const info=document.getElementById('venda-condicao-desconto-info');
+  if(info){const pct=vcPercentualCondicao();info.innerHTML=pct>0&&descontoCondicao>0.001?`<span style="color:var(--green);font-weight:700">Desconto ${vendaCondicaoPagamento==='avista'?'à vista':'da condição'} (${pct}%): −${fmt(descontoCondicao)}</span>`:`<span style="color:var(--muted)">${vendaCondicaoPagamento==='fiado'?'Condição fiado: sem desconto':'Sem desconto por condição'}</span>`;}
   const descontoExtra=parseFloat(document.getElementById('venda-desconto-extra')?.value)||0;
   const totalFinal=Math.max(0,totalComCanal-descontoExtra);
   const elFinal=document.getElementById('venda-total-final');
@@ -576,12 +644,9 @@ function popularCanalVenda(){
   sel.value=vAtual;
 }
 function aplicarCanalVenda(){
-  const canalId=parseInt(document.getElementById('venda-canal').value)||null;
-  const canal=canalId?(state.canais||[]).find(c=>c.id===canalId):null;
   vendaItensTemp.forEach(it=>{
-    if(!it.produtoId)return;
-    const precoBase=getProduto(it.produtoId)?.preco||0;
-    it.preco=canal?getPrecoCanal(precoBase,canal):precoBase;
+    const base=it.avulso?Number(it.precoBase??it.preco)||0:vcPrecoBaseCatalogo(it.produtoId);
+    it.precoBase=base;it.preco=vcAplicarDescontoCondicao(base);
   });
   renderVendaItensLista();
 }
@@ -696,17 +761,20 @@ function setVendaTipo(tipo){
   const btnV=document.getElementById('venda-tipo-btn-venda');
   const btnO=document.getElementById('venda-tipo-btn-orcamento');
   const camposVenda=document.getElementById('venda-campos-venda');
+  const condicaoWrap=document.getElementById('venda-condicao-pagamento');
   const btnSalvar=document.getElementById('venda-btn-salvar');
   if(tipo==='orcamento'){
     btnV.className='btn btn-outline btn-sm';
     btnO.className='btn btn-sm';
     camposVenda.style.display='none';
+    if(condicaoWrap)condicaoWrap.style.display='none';
     btnSalvar.textContent='Salvar Orçamento';
     btnSalvar.className='btn btn-primary';
   } else {
     btnV.className='btn btn-sm';
     btnO.className='btn btn-outline btn-sm';
     camposVenda.style.display='block';
+    if(condicaoWrap)condicaoWrap.style.display='flex';
     btnSalvar.textContent='✓ Confirmar Venda';
     btnSalvar.className='btn btn-green';
   }
@@ -719,6 +787,7 @@ function abrirNovaVenda(){
   document.getElementById('venda-data').value=today();
   document.getElementById('venda-vencimento').value='';
   document.getElementById('venda-forma').value='fiado';
+  vendaCondicaoPagamento='fiado';renderCondicaoPagamentoVenda();
   document.getElementById('venda-pag-misto-check').checked=false;
   document.getElementById('venda-pag-misto-wrap').style.display='none';
   document.getElementById('venda-forma').style.display='block';
@@ -749,6 +818,7 @@ function duplicarVenda(id){
   document.getElementById('modal-venda-title').textContent='Nova Venda (duplicada)';
   selecionarClienteVenda(v.clienteId);
   document.getElementById('venda-forma').value=v.forma==='fiado'?'fiado':v.forma;
+  vendaCondicaoPagamento=v.condicaoPagamento||((v.forma||'fiado')==='fiado'?'fiado':'avista');renderCondicaoPagamentoVenda();
   document.getElementById('venda-obs').value=v.obs||'';
   document.getElementById('venda-pag-misto-check').checked=false;
   document.getElementById('venda-pag-misto-wrap').style.display='none';
@@ -757,7 +827,7 @@ function duplicarVenda(id){
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
   vendaPagamentosTemp=[];
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,precoBase:it.precoBase??it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
@@ -885,6 +955,11 @@ function salvarVenda(){
   const tipo=document.getElementById('venda-tipo').value;
   const canalId=parseInt(document.getElementById('venda-canal').value)||null;
   const descontoExtra=parseFloat(document.getElementById('venda-desconto-extra').value)||0;
+  const condicaoPagamento=vendaCondicaoPagamento;
+  const descontoCondicaoPct=vcPercentualCondicao();
+  const subtotalCondicao=itensValidos.reduce((s,it)=>s+(it.qtd*(Number(it.precoBase??it.preco)||0)),0);
+  const subtotalFinalItens=itensValidos.reduce((s,it)=>s+(it.qtd*it.preco),0);
+  const descontoCondicaoValor=Math.max(0,subtotalCondicao-subtotalFinalItens);
 
   if(tipo==='orcamento'){
     const itensFinalOrc=itensValidos.map(it=>itemVendaGravar(it,false));
@@ -1012,7 +1087,7 @@ function salvarVenda(){
     }
     state.vendas.push({
       id:nextId('vendas'),clienteId,itens:itensFinal,total:totalComJuros,...(jurosAto>0?{jurosAto}:{}),forma:'fiado',pagamentos:null,status:'em_aberto',
-      data:dataVenda,obs,vencimento:parcelas[0].vencimento,statusPedido,canalId,descontoExtra,tipo:'venda',
+      data:dataVenda,obs,vencimento:parcelas[0].vencimento,statusPedido,canalId,descontoExtra,condicaoPagamento,descontoCondicaoPct,descontoCondicaoValor,tipo:'venda',
       parcelado:true,parcelas
     });
     vendaSalva=state.vendas[state.vendas.length-1];
@@ -1022,7 +1097,7 @@ function salvarVenda(){
     const novoVendaId=nextId('vendas');
     // com as regras de crédito, venda fiado vai com o cronograma da regra (parcela única ou parcelas de R$ 50)
     const vencNova=cronograma&&cronograma.length?cronograma[0].vencimento:vencimento;
-    state.vendas.push({id:novoVendaId,clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento:vencNova,statusPedido,canalId,descontoExtra,tipo:'venda',...(cronograma&&cronograma.length>1?{parcelado:true,parcelas:cronograma}:{})});
+    state.vendas.push({id:novoVendaId,clienteId,itens:itensFinal,total,forma,pagamentos,status,data:dataVenda,obs,vencimento:vencNova,statusPedido,canalId,descontoExtra,condicaoPagamento,descontoCondicaoPct,descontoCondicaoValor,tipo:'venda',...(cronograma&&cronograma.length>1?{parcelado:true,parcelas:cronograma}:{})});
     vendaSalva=state.vendas[state.vendas.length-1];
     itensFinal.forEach(it=>ajustarEstoque(it.produtoId,it.varianteId,-it.qtd,'venda'));
     const valorNaoFiado=total-valorFiado;
@@ -1047,6 +1122,7 @@ function salvarVenda(){
 function editarVenda(id){
   const v=state.vendas.find(v=>v.id===id);
   document.getElementById('venda-edit-id').value=id;
+  vendaCondicaoPagamento=v.condicaoPagamento||((v.forma||'fiado')==='fiado'?'fiado':'avista');renderCondicaoPagamentoVenda();
   const isOrc=v.tipo==='orcamento';
   document.getElementById('modal-venda-title').textContent=isOrc?'Editar Orçamento':'Editar Venda';
   selecionarClienteVenda(v.clienteId);
@@ -1070,7 +1146,7 @@ function editarVenda(id){
   document.getElementById('venda-entrada-valor').value='';
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,precoBase:it.precoBase??it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
@@ -1766,7 +1842,8 @@ function repetirPedidoAnterior(vendaId){
     produtoId: it.produtoId,
     varianteId: it.varianteId,
     qtd: it.qtd,
-    preco: vcPrecoCatalogo(it.produtoId) || it.preco,
+    preco: it.avulso?vcAplicarDescontoCondicao(it.precoBase??it.preco):vcPrecoCatalogo(it.produtoId),
+    precoBase: it.avulso?(it.precoBase??it.preco):vcPrecoBaseCatalogo(it.produtoId),
     avulso: !!it.avulso,
     nome: it.nome || '',
     custo: it.avulso ? (it.custoFichaUn || 0) : 0
