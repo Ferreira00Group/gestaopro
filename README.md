@@ -1,4 +1,4 @@
-# GestãoPRO v5.91.8
+# GestãoPRO v5.91.9
 
 Ficha técnica agora exibe preço unitário por ingrediente, custo na mistura e custo estimado por unidade produzida, atualizados em tempo real.
 
@@ -14,4 +14,4 @@ Ficha técnica agora exibe preço unitário por ingrediente, custo na mistura e 
 - Alertas de estoque zerado/baixo identificam cada variante individualmente.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.91.8**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.91.9**.
