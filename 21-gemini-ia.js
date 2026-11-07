@@ -892,9 +892,12 @@ function renderSubAbaPainel() {
     <div class="table-card" style="margin-bottom:14px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <h4 style="margin:0;font-size:13.5px;color:var(--gold,#C9A24B);display:flex;align-items:center;gap:6px">
-          <i data-lucide="layers" style="width:16px;height:16px"></i> Curva ABC Completa (Pareto 80/15/5)
+          <i data-lucide="layers" style="width:16px;height:16px"></i> Resumo da Curva ABC (Pareto 80/15/5)
         </h4>
-        <span style="font-size:11px;color:var(--muted)">${ctx.curvaABC.length} produtos classificados</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--muted)">${ctx.curvaABC.length} produtos classificados</span>
+          <button type="button" class="btn btn-outline btn-sm" onclick="abrirCurvaABCDetalhada()">Ver análise detalhada</button>
+        </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         ${ctx.curvaABC.length > 0 ? ctx.curvaABC.map(p => `
@@ -1296,115 +1299,3 @@ document.addEventListener('DOMContentLoaded', () => {
   atualizarSelosAnaliseDados();
   renderAvisoAnaliseDashboard();
 });
-
-
-// ═══════════════════════════════════════════════════════════════════
-// MOTOR DE CÁLCULO LOCAL DA CURVA ABC & COPILOTO DICAS
-// ═══════════════════════════════════════════════════════════════════
-
-/**
- * Calcula localmente a Curva ABC de produtos por faturamento e margem
- * @param {Array} produtosVendidos - Lista de produtos com quantidade, preço e custo
- * @returns {Object} Resultado detalhado com resumo e classificação A, B, C
- */
-function calcularCurvaABCLocal(produtosVendidos) {
-  if (!produtosVendidos || !Array.isArray(produtosVendidos)) {
-    return { faturamento_geral: 0, lucro_geral: 0, total_itens: 0, produtos: [], resumo: { a: 0, b: 0, c: 0 } };
-  }
-
-  let processados = produtosVendidos.map(p => {
-    let qtd = Number(p.qtd_vendida || p.quantidade || p.qtd || 0);
-    let preco = Number(p.preco_venda_unitario || p.preco_venda || p.preco || 0);
-    let custo = Number(p.custo_unitario || p.custo || 0);
-
-    let faturamento = qtd * preco;
-    let custoTotal = qtd * custo;
-    let lucro = faturamento - custoTotal;
-    let margemPercentual = faturamento > 0 ? (lucro / faturamento) * 100 : 0;
-
-    return {
-      id: p.id || p.codigo || `PROD-${Math.random().toString(36).substr(2, 6)}`,
-      nome: p.nome || p.descricao || 'Produto sem nome',
-      qtd_vendida: qtd,
-      preco_venda_unitario: preco,
-      custo_unitario: custo,
-      faturamento,
-      lucro,
-      margemPercentual: Number(margemPercentual.toFixed(2))
-    };
-  });
-
-  // Ordena por faturamento decrescente
-  processados.sort((a, b) => b.faturamento - a.faturamento);
-
-  let faturamentoGeral = processados.reduce((acc, p) => acc + p.faturamento, 0);
-  let lucroGeral = processados.reduce((acc, p) => acc + p.lucro, 0);
-
-  let acumulado = 0;
-  let qtdA = 0, qtdB = 0, qtdC = 0;
-
-  let comCurvaABC = processados.map(p => {
-    let percentualIndividual = faturamentoGeral > 0 ? (p.faturamento / faturamentoGeral) * 100 : 0;
-    acumulado += percentualIndividual;
-
-    let classe = 'C';
-    if (acumulado <= 80.001) {
-      classe = 'A';
-      qtdA++;
-    } else if (acumulado <= 95.001) {
-      classe = 'B';
-      qtdB++;
-    } else {
-      qtdC++;
-    }
-
-    // Alerta automático para Falsos Campeões (Classe A com margem baixa)
-    let alerta = null;
-    if (classe === 'A' && p.margemPercentual < 20) {
-      alerta = `Atenção: Alto volume de vendas, porém margem reduzida (${p.margemPercentual}%).`;
-    }
-
-    return {
-      ...p,
-      percentual_individual: Number(percentualIndividual.toFixed(2)),
-      percentual_faturamento_acumulado: Number(Math.min(100, acumulado).toFixed(2)),
-      classe_abc: classe,
-      alerta
-    };
-  });
-
-  return {
-    faturamento_geral: Number(faturamentoGeral.toFixed(2)),
-    lucro_geral: Number(lucroGeral.toFixed(2)),
-    total_itens: comCurvaABC.length,
-    resumo: {
-      qtd_classe_a: qtdA,
-      qtd_classe_b: qtdB,
-      qtd_classe_c: qtdC
-    },
-    produtos: comCurvaABC
-  };
-}
-
-/**
- * Gera o payload formatado para solicitar dicas de otimização pontuais da IA
- */
-function gerarPayloadCurvaABCparaIA(resultadoCurvaABC, periodoNome = 'Últimos 30 dias') {
-  return {
-    periodo: periodoNome,
-    resumo: {
-      faturamento_total: resultadoCurvaABC.faturamento_geral,
-      lucro_total: resultadoCurvaABC.lucro_geral,
-      total_produtos: resultadoCurvaABC.total_itens,
-      distribuicao_abc: resultadoCurvaABC.resumo
-    },
-    produtos_destaque: resultadoCurvaABC.produtos.map(p => ({
-      id: p.id,
-      nome: p.nome,
-      faturamento: p.faturamento,
-      margem_pct: p.margemPercentual,
-      classe: p.classe_abc,
-      alerta: p.alerta
-    }))
-  };
-}

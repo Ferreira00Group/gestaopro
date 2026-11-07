@@ -1,66 +1,853 @@
-// 09-financeiro-relatorios.js - Módulo de Análise Financeira e Curva ABC
+// ============ FINANCEIRO ============
+// Categoria é livre (texto), só usada pra separar "Outras Saídas" no relatório de Despesas.
+// Sugestões: algumas prontas + o que já foi usado antes (evita "Gasolina" x "gasolina" x "combustível").
+const CATEGORIAS_DESPESA_SUGERIDAS=['Gasolina','Manutenção Veículo','Aluguel','Internet/Telefone','Embalagens','Marketing/Aquisição','Outros'];
+function getCategoriasDespesaExistentes(){
+  const usadas=state.financeiro.filter(f=>f.tipo==='saida'&&!f.retirada&&f.categoria).map(f=>f.categoria.trim());
+  const vistas=new Set();
+  const resultado=[];
+  [...CATEGORIAS_DESPESA_SUGERIDAS,...usadas].forEach(c=>{
+    const k=c.toLowerCase();
+    if(!vistas.has(k)){vistas.add(k);resultado.push(c);}
+  });
+  return resultado;
+}
+function popularCategoriasDespesaLista(){
+  const dl=document.getElementById('lanc-categoria-lista');
+  if(!dl) return;
+  dl.innerHTML=getCategoriasDespesaExistentes().map(c=>`<option value="${escapeHtml(c)}">`).join('');
+}
+function setLancTipo(t){
+  document.getElementById('lanc-tipo').value=t;
+  toggleCategoriaLanc();
+}
+function toggleCategoriaLanc(){
+  const tipo=document.getElementById('lanc-tipo').value;
+  document.getElementById('lanc-categoria-wrap').style.display=tipo==='saida'?'block':'none';
+  ['entrada','saida','retirada'].forEach(t=>{
+    const b=document.getElementById('lanc-tipo-btn-'+t);
+    if(b) b.className=(t===tipo)?'btn btn-sm':'btn btn-outline btn-sm';
+  });
+  const _d=document.getElementById('lanc-desc'); if(_d&&tipo==='retirada'&&!_d.value) _d.value='Retirada do dono';
+}
+// Categoria da saída: Gasolina (1 toque) | Outros (abre o campo com sugestões).
+// O valor salvo continua sendo o texto de #lanc-categoria; "Gasolina" é gravado exatamente assim
+// pro card de combustível do Início reconhecer.
+function lancCategoriaAtualizarUI(){
+  const sel=document.getElementById('lanc-categoria-sel').value;
+  const bg=document.getElementById('lanc-cat-btn-gasolina');
+  const bo=document.getElementById('lanc-cat-btn-outros');
+  if(bg) bg.className=(sel==='gasolina')?'btn btn-sm':'btn btn-outline btn-sm';
+  if(bo) bo.className=(sel==='outros')?'btn btn-sm':'btn btn-outline btn-sm';
+  document.getElementById('lanc-categoria-outros-wrap').style.display=(sel==='outros')?'block':'none';
+}
+function setLancCategoria(qual){
+  const selEl=document.getElementById('lanc-categoria-sel');
+  const inp=document.getElementById('lanc-categoria');
+  if(selEl.value===qual){ // tocar de novo desmarca
+    selEl.value='';inp.value='';
+  } else if(qual==='gasolina'){
+    selEl.value='gasolina';inp.value='Gasolina';
+  } else {
+    selEl.value='outros';
+    if(inp.value.trim().toLowerCase()==='gasolina') inp.value='';
+  }
+  lancCategoriaAtualizarUI();
+  if(selEl.value==='outros') setTimeout(()=>inp.focus(),30);
+}
+// Preenche categoria + botões (novo lançamento: valor vazio; edição: categoria salva)
+function lancCategoriaAplicar(valor){
+  const v=(valor||'').trim();
+  const inp=document.getElementById('lanc-categoria');
+  const selEl=document.getElementById('lanc-categoria-sel');
+  if(!v){selEl.value='';inp.value='';}
+  else if(v.toLowerCase()==='gasolina'){selEl.value='gasolina';inp.value='Gasolina';}
+  else {selEl.value='outros';inp.value=v;}
+  lancCategoriaAtualizarUI();
+}
+function renderFinanceiro(){
+  const mesEl=document.getElementById('fin-filtro-mes');
+  if(!mesEl.value) mesEl.value=today().slice(0,7);
+  const mes=mesEl.value;
+  const tipoFiltro=document.getElementById('fin-filtro-tipo').value;
+  const movMes=state.financeiro.filter(f=>f.data.startsWith(mes));
+  const entradas=movMes.filter(f=>f.tipo==='entrada').reduce((s,f)=>s+f.valor,0);
+  const saidas=movMes.filter(f=>f.tipo==='saida').reduce((s,f)=>s+f.valor,0);
+  const saldo=entradas-saidas;
+  document.getElementById('fin-entradas').textContent=fmt(entradas);
+  document.getElementById('fin-saidas').textContent=fmt(saidas);
+  document.getElementById('fin-saldo').textContent=fmt(Math.abs(saldo));
+  document.getElementById('fin-saldo').style.color=saldo>=0?'var(--green)':'var(--red)';
+  document.getElementById('fin-saldo-sub').textContent=saldo>=0?'Positivo ✓':'Negativo ⚠️';
+  const max=Math.max(entradas,saidas,1);
+  document.getElementById('fin-bar-in').style.width=(entradas/max*100)+'%';
+  document.getElementById('fin-bar-out').style.width=(saidas/max*100)+'%';
+  let list=[...state.financeiro].sort((a,b)=>b.data.localeCompare(a.data));
+  if(tipoFiltro) list=list.filter(f=>f.tipo===tipoFiltro);
+  list=list.filter(f=>f.data.startsWith(mes));
+  const tb=document.getElementById('fin-table');
+  if(list.length===0){tb.innerHTML='<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação neste período</span></div>';return;}
+  tb.innerHTML=list.map(f=>{
+    const entrada=f.tipo==='entrada';
+    const origemTxt=f.compraId?'gerado por compra':f.vendaId?'gerado por venda':f.pagamentoId?'gerado por pagamento':f.pagamentoFornecedorId?'gerado por pagamento a fornecedor':null;
+    const auto=!!(f.compraId||f.vendaId||f.pagamentoId||f.pagamentoFornecedorId);
+    return `<div class="dcard ${entrada?'dcard-green':'dcard-red'}">
+    <div class="dcard-head">
+      <div class="dcard-title">${escapeHtml(f.desc)}</div>
+      <div class="dcard-valor" style="color:${entrada?'var(--green)':'var(--red)'}">${entrada?'+':'-'} ${fmt(f.valor)}</div>
+    </div>
+    <div class="dcard-foot">
+      <div class="dcard-meta">
+        <span class="dcard-sub">${fmtDate(f.data)}</span>
+        <span class="badge ${entrada?'badge-green':'badge-red'}">${entrada?'Entrada':'Saída'}</span>
+        ${(!entrada&&f.categoria)?`<span class="cat-pill" style="cursor:default;font-size:10px">${escapeHtml(f.categoria)}</span>`:''}
+        ${origemTxt?`<span class="dcard-sub">${origemTxt}</span>`:''}
+      </div>
+      <div class="actions-cell">
+        <button class="icon-btn edit" onclick="editarLancamento(${f.id})" title="${origemTxt?'Editar na origem':'Editar'}" style="${auto?'opacity:.4':''}"><i data-lucide="pencil" class="ic"></i></button>
+        <button class="icon-btn del" onclick="excluirLancamento(${f.id})" title="${origemTxt?'Excluir na origem':'Excluir'}" style="${(f.compraId||f.vendaId)?'opacity:.4':''}"><i data-lucide="trash-2" class="ic"></i></button>
+      </div>
+    </div>
+  </div>`;
+  }).join('');
+}
+function salvarLancamento(){
+  const eid=document.getElementById('lanc-edit-id').value;
+  const tipoSel=document.getElementById('lanc-tipo').value;
+  const retirada=tipoSel==='retirada';
+  const tipo=retirada?'saida':tipoSel;
+  const desc=document.getElementById('lanc-desc').value.trim();
+  const valor=parseFloat(document.getElementById('lanc-valor').value);
+  const data=document.getElementById('lanc-data').value||today();
+  const categoria=retirada?'Retirada do dono':tipo==='saida'?(document.getElementById('lanc-categoria').value.trim()||'Outros'):null;
+  if(!desc||!valor){showToast('Preencha todos os campos','red');return;}
+  if(eid){
+    const f=state.financeiro.find(f=>f.id==eid);
+    f.tipo=tipo;f.desc=desc;f.valor=valor;f.data=data;f.categoria=categoria;
+    if(retirada) f.retirada=true; else delete f.retirada;
+    showToast('Lançamento atualizado','green');
+  } else {
+    state.financeiro.push({id:nextId('financeiro'),tipo,desc,valor,data,categoria,...(retirada?{retirada:true}:{})});
+    showToast('Lançamento registrado','green');
+  }
+  closeModal('modal-lancamento');marcarAlterado();renderFinanceiro();setTimeout(renderChartFinanceiro,50);
+}
+function editarLancamento(id){
+  const f=state.financeiro.find(f=>f.id===id);
+  // Lançamentos automáticos (gerados por venda/compra/pagamento) não podem ser editados direto
+  // aqui — o valor/data deles é espelho da origem; editar só neste lugar deixaria os dois lados
+  // divergentes. Edite a origem e o lançamento acompanha sozinho.
+  if(f && f.compraId){showToast('Este lançamento vem de uma compra. Para editar, vá em Estoque → Fornecedores → Histórico de Compras.','red');return;}
+  if(f && f.vendaId){showToast('Este lançamento vem de uma venda. Para editar, vá na tela de Vendas.','red');return;}
+  if(f && f.pagamentoId){showToast('Este lançamento vem de um pagamento recebido. Exclua-o (isso desfaz o pagamento) e registre de novo em Contas a Receber, se precisar corrigir.','red');return;}
+  if(f && f.pagamentoFornecedorId){showToast('Este lançamento vem de um pagamento a fornecedor. Exclua-o (isso desfaz o pagamento) e registre de novo em Contas a Pagar, se precisar corrigir.','red');return;}
+  document.getElementById('lanc-edit-id').value=id;
+  document.getElementById('modal-lanc-title').textContent='Editar Lançamento';
+  document.getElementById('lanc-tipo').value=f.retirada?'retirada':f.tipo;
+  document.getElementById('lanc-desc').value=f.desc;
+  document.getElementById('lanc-valor').value=f.valor;
+  document.getElementById('lanc-data').value=f.data;
+  popularCategoriasDespesaLista();
+  lancCategoriaAplicar(f.retirada?'':f.categoria);
+  toggleCategoriaLanc();
+  document.getElementById('modal-lancamento').classList.add('open');
+}
+function excluirLancamento(id){
+  const f=state.financeiro.find(f=>f.id===id);
+  // Compra e venda têm sua própria exclusão (com reversão de estoque) — excluir só o
+  // lançamento aqui deixaria estoque/compra ou venda "vivos" sem o registro financeiro deles.
+  if(f && f.compraId){showToast('Este lançamento vem de uma compra. Para excluir, vá em Estoque → Fornecedores → Histórico de Compras.','red');return;}
+  if(f && f.vendaId){showToast('Este lançamento vem de uma venda. Para excluir, vá na tela de Vendas.','red');return;}
+  const textoConfirmacao = (f && f.pagamentoId)
+    ? 'Excluir este lançamento também vai desfazer o pagamento recebido (e o juros/multa lançado junto, se houver) — o saldo devedor do cliente volta a subir. Continuar?'
+    : (f && f.pagamentoFornecedorId)
+    ? 'Excluir este lançamento também vai desfazer o pagamento ao fornecedor — o saldo em aberto volta a subir. Continuar?'
+    : 'Excluir este lançamento?';
+  confirmarAcao(textoConfirmacao,()=>{
+    if(f && f.pagamentoId){
+      state.pagamentos=state.pagamentos.filter(p=>p.id!==f.pagamentoId);
+      state.financeiro=state.financeiro.filter(x=>x.pagamentoId!==f.pagamentoId); // inclui o encargo ligado ao pagamento
+    }
+    if(f && f.pagamentoFornecedorId){
+      state.pagamentosFornecedor=state.pagamentosFornecedor.filter(p=>p.id!==f.pagamentoFornecedorId);
+    }
+    state.financeiro=state.financeiro.filter(f=>f.id!==id);
+    marcarAlterado();salvarDados();
+    showToast('Lançamento excluído','green');renderFinanceiro();setTimeout(renderChartFinanceiro,50);renderClientes();renderDashboard();
+    if(typeof renderPagar==='function') renderPagar();
+  });
+}
 
-export function calcularCurvaABC(produtos) {
-    /**
-     * Espera uma lista de objetos:
-     * [{ id, nome, quantidade, precoUnitario, custoUnitario }]
-     */
-    if (!produtos || produtos.length === 0) return [];
+// ============ RELATÓRIO POR PERÍODO ============
+function showRelTab(tab,btn){
+  ['periodo','dre','fluxo','inadimplencia','balanco','caixa','previsao'].forEach(t=>{
+    const el=document.getElementById('rel-tab-'+t);
+    if(el) el.style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('#page-relatorio .tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(tab==='caixa'&&typeof relRenderCaixa==='function') relRenderCaixa();
+  if(tab==='previsao'&&typeof relRenderPrevisao==='function') relRenderPrevisao();
+}
 
-    // 1. Calcular faturamento e margem total por item
-    const itensProcessados = produtos.map(p => {
-        const faturamento = (p.quantidade || 0) * (p.precoUnitario || 0);
-        const custoTotal = (p.quantidade || 0) * (p.custoUnitario || 0);
-        const margem = faturamento - custoTotal;
-        return {
-            ...p,
-            faturamento,
-            custoTotal,
-            margem
-        };
-    });
+function initRelatorio(){
+  const hoje=today();
+  const primeiroDia=hoje.slice(0,8)+'01';
+  if(!document.getElementById('rel-inicio').value) document.getElementById('rel-inicio').value=primeiroDia;
+  if(!document.getElementById('rel-fim').value) document.getElementById('rel-fim').value=hoje;
+  if(!document.getElementById('dre-mes').value) document.getElementById('dre-mes').value=hoje.slice(0,7);
+}
 
-    // 2. Ordenar do maior para o menor faturamento
-    itensProcessados.sort((a, b) => b.faturamento - a.faturamento);
+function gerarRelatorio(){
+  const inicio=document.getElementById('rel-inicio').value;
+  const fim=document.getElementById('rel-fim').value;
+  if(!inicio||!fim){showToast('Selecione o período','red');return;}
+  if(inicio>fim){showToast('Data início deve ser anterior à data fim','red');return;}
+  document.getElementById('relatorio-resultado').style.display='block';
+  const vendasPeriodo=state.vendas.filter(v=>v&&v.tipo!=='orcamento'&&v.data>=inicio&&v.data<=fim);
+  const finPeriodo=state.financeiro.filter(f=>f.data>=inicio&&f.data<=fim);
+  const pagPeriodo=state.pagamentos.filter(p=>p.data>=inicio&&p.data<=fim);
+  const receita=vendasPeriodo.reduce((s,v)=>s+v.total,0);
+  const despesas=finPeriodo.filter(f=>f.tipo==='saida'&&!f.retirada).reduce((s,f)=>s+f.valor,0);
+  const recebimentos=pagPeriodo.reduce((s,p)=>s+p.valor,0);
+  const lucro=receita-despesas;
+  document.getElementById('rel-receita').textContent=fmt(receita);
+  document.getElementById('rel-vendas-count').textContent=vendasPeriodo.length+' vendas';
+  document.getElementById('rel-despesas').textContent=fmt(despesas);
+  document.getElementById('rel-saidas-count').textContent=finPeriodo.filter(f=>f.tipo==='saida').length+' saídas';
+  document.getElementById('rel-recebimentos').textContent=fmt(recebimentos);
+  document.getElementById('rel-pag-count').textContent=pagPeriodo.length+' pagamentos';
+  document.getElementById('rel-lucro').textContent=fmt(Math.abs(lucro));
+  document.getElementById('rel-lucro').style.color=lucro>=0?'var(--green)':'var(--red)';
+  document.getElementById('rel-lucro-sub').textContent=lucro>=0?'Lucro ✓':'Prejuízo ⚠️';
 
-    // 3. Calcular faturamento total geral
-    const faturamentoGeral = itensProcessados.reduce((acc, item) => acc + item.faturamento, 0);
+  // Clientes Novos + CAC — dataCadastro só existe em clientes criados a partir da v5.20.0
+  // (ver salvarCliente/confirmarImportarClientes/salvarNovoClienteInline); clientes legados
+  // sem o campo simplesmente não entram na contagem, mesma honestidade de custoFichaUn.
+  const clientesNovos=state.clientes.filter(c=>c.dataCadastro&&c.dataCadastro>=inicio&&c.dataCadastro<=fim).length;
+  const temHistoricoMarketing=state.financeiro.some(f=>f.tipo==='saida'&&(f.categoria||'').trim().toLowerCase()==='marketing/aquisição');
+  const gastoAquisicao=finPeriodo.filter(f=>f.tipo==='saida'&&(f.categoria||'').trim().toLowerCase()==='marketing/aquisição').reduce((s,f)=>s+f.valor,0);
+  const cac=clientesNovos>0?(gastoAquisicao/clientesNovos):null;
+  const oldExtra=document.getElementById('rel-extra-indicadores');
+  if(oldExtra) oldExtra.remove();
+  const cardsGrid=document.querySelector('#relatorio-resultado .cards-grid-4');
+  if(cardsGrid){
+    cardsGrid.insertAdjacentHTML('afterend',`
+    <div class="cards-grid cards-grid-2" id="rel-extra-indicadores" style="margin-bottom:20px">
+      <div class="stat-card blue"><div class="label">Clientes Novos</div><div class="value">${clientesNovos}</div><div class="sub">cadastrados no período</div></div>
+      <div class="stat-card blue"><div class="label">CAC</div><div class="value">${cac!=null?fmt(cac):'—'}</div><div class="sub">${!temHistoricoMarketing?'sem lançamento em "Marketing/Aquisição" ainda':clientesNovos===0?'sem cliente novo no período':'gasto aquisição ÷ clientes novos'}</div></div>
+    </div>`);
+  }
 
-    // 4. Calcular percentuais individuais, acumulados e classificar A, B, C
-    let acumulado = 0;
-    return itensProcessados.map(item => {
-        const percIndividual = faturamentoGeral > 0 ? (item.faturamento / faturamentoGeral) * 100 : 0;
-        acumulado += percIndividual;
-
-        let classe = 'C';
-        if (acumulado <= 80) {
-            classe = 'A';
-        } else if (acumulado <= 95) {
-            classe = 'B';
+  const tvs=document.getElementById('rel-vendas-table');
+  if(vendasPeriodo.length===0) tvs.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma venda no período</span></div></td></tr>';
+  else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>`<tr>
+    <td data-label="Data">${fmtDate(v.data)}</td>
+    <td data-label="Cliente"><span class="nome-cartao-link" onclick="abrirCartaoCliente(${v.clienteId})">${escapeHtml(getCliente(v.clienteId).nome)}</span></td>
+    <td data-label="Itens" class="td-block">${escapeHtml(v.itens.map(it=>nomeItemVenda(it)+' ×'+it.qtd).join(', '))}</td>
+    <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
+    <td data-label="Forma">${v.forma==='fiado'?'Fiado':v.forma==='dinheiro'?'Dinheiro':v.forma==='pix'?'PIX':'Cartão'}</td>
+  </tr>`).join('');
+  const tff=document.getElementById('rel-fin-table');
+  if(finPeriodo.length===0) tff.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação no período</span></div></td></tr>';
+  else tff.innerHTML=[...finPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(f=>`<tr>
+    <td data-label="Data">${fmtDate(f.data)}</td><td data-label="Descrição">${escapeHtml(f.desc)}</td>
+    <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'Entrada':'Saída'}</span></td>
+    <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
+  </tr>`).join('');
+  destroyChart(chartRel);
+  const graficoRelDisponivel=chartJsDisponivel();
+  const prodMap={};
+  vendasPeriodo.forEach(v=>v.itens.forEach(it=>{const n=nomeItemVenda(it);prodMap[n]=(prodMap[n]||0)+it.total;}));
+  const sortedEntries=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]);
+  const labels=sortedEntries.map(e=>e[0]);const values=sortedEntries.map(e=>e[1]);
+  const colors=['rgba(201,162,75,.9)','rgba(227,193,111,.85)','rgba(160,130,60,.85)','rgba(120,115,100,.85)','rgba(90,88,80,.85)','rgba(70,68,62,.85)'];
+  const ctx=document.getElementById('chart-relatorio-produtos');
+  if(graficoRelDisponivel&&ctx&&labels.length>0){
+    chartRel=new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[{data:values,backgroundColor:colors.slice(0,labels.length).concat(Array(Math.max(0,labels.length-colors.length)).fill('rgba(127,140,141,.7)')),borderRadius:8,borderSkipped:false}]},
+      options:{
+        indexAxis:'y',
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,callbacks:{label:c=>` ${fmt(c.parsed.x)}`}}
+        },
+        scales:{
+          x:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'rgba(255,255,255,.06)'}},
+          y:{grid:{display:false},ticks:{font:{size:11,weight:'600'}}}
         }
-
-        return {
-            ...item,
-            percIndividual: Number(percIndividual.toFixed(2)),
-            percAcumulado: Number(acumulado.toFixed(2)),
-            classe
-        };
+      }
     });
+    // altura dinâmica conforme número de produtos
+    ctx.parentElement.style.height=Math.max(180,labels.length*44)+'px';
+  } else if(ctx&&labels.length===0){ctx.parentElement.innerHTML='<div class="empty-state"><div class="icon"><i data-lucide="trending-up"></i></div><p>Sem vendas no período</p></div>';}
+  const rankMap={};
+  // custo somado item a item usando o snapshot gravado na hora da venda (custoFichaUn) — vendas
+  // antigas sem esse campo caem no fallback de recalcular pela ficha técnica atual, única opção
+  // quando não sabemos o custo real da época (ver comentário em salvarVenda, 04-vendas.js)
+  vendasPeriodo.forEach(v=>v.itens.forEach(it=>{
+    const n=nomeItemVenda(it);
+    if(!rankMap[n])rankMap[n]={qtd:0,valor:0,custoTotal:0,produtoId:it.produtoId,varianteId:it.varianteId};
+    rankMap[n].qtd+=it.qtd;
+    rankMap[n].valor+=it.total;
+    const custoUn=it.custoFichaUn!=null?it.custoFichaUn:calcularCustoFicha(it.produtoId,it.varianteId,1);
+    rankMap[n].custoTotal+=custoUn*it.qtd;
+  }));
+  const ranking=Object.entries(rankMap).sort((a,b)=>b[1].valor-a[1].valor);
+  const elRank=document.getElementById('rel-ranking-produtos');
+  if(elRank){if(ranking.length===0)elRank.innerHTML='<p style="color:var(--muted);font-size:13px;padding:10px 0">Sem dados no período</p>';
+  else elRank.innerHTML=ranking.map(([nome,d],i)=>{const custo=d.custoTotal;const lucro=d.valor-custo;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${i+1}. ${escapeHtml(nome)}</strong><div style="font-size:11.5px;color:var(--muted)">${d.qtd} un. vendidas · custo ficha ${fmt(custo)}</div></div><div style="text-align:right"><div style="font-weight:700;color:var(--navy)">${fmt(d.valor)}</div><div style="font-size:11px;color:${lucro>=0?'var(--green)':'var(--red)'}">lucro ${fmt(lucro)}</div></div></div>`;}).join('');}
+  const volMap={};vendasPeriodo.forEach(v=>{volMap[v.clienteId]=(volMap[v.clienteId]||0)+v.total;});
+  const volRanking=Object.entries(volMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const elVol=document.getElementById('rel-clientes-volume');
+  if(elVol){if(volRanking.length===0)elVol.innerHTML='<p style="color:var(--muted);font-size:13px;padding:10px 0">Sem dados no período</p>';
+  else elVol.innerHTML=volRanking.map(([cid,total],i)=>{const c=getCliente(parseInt(cid));const saldo=getSaldoCliente(parseInt(cid));return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong class="nome-cartao-link" style="font-size:13px" onclick="abrirCartaoCliente(${c.id})">${i+1}. ${escapeHtml(c.nome)}</strong>${saldo>0?`<div style="font-size:11px;color:var(--red)">deve ${fmt(saldo)}</div>`:''}</div><div style="font-weight:700;color:var(--navy)">${fmt(total)}</div></div>`;}).join('');}
+
+  // Curva ABC detalhada — usa as mesmas vendas efetivas e o mesmo período do relatório.
+  // A chave é o ID do produto + variante; itens avulsos são agrupados pelo nome.
+  const abcMap=new Map();
+  vendasPeriodo.forEach(v=>{
+    (Array.isArray(v.itens)?v.itens:[]).forEach(it=>{
+      const qtd=Number(it.qtd)||0;
+      if(qtd<=0)return;
+      const nome=String(nomeItemVenda(it)||'Item sem identificação');
+      const chave=it.avulso||it.produtoId==null
+        ? 'avulso:'+nome.trim().toLocaleLowerCase('pt-BR')
+        : 'produto:'+String(it.produtoId)+'|variante:'+String(it.varianteId??'');
+      if(!abcMap.has(chave))abcMap.set(chave,{chave,nome,qtd:0,faturamento:0,custoTotal:0});
+      const item=abcMap.get(chave);
+      const faturamento=Number(it.total??(qtd*(Number(it.preco)||0)))||0;
+      const custoUn=it.custoFichaUn!=null
+        ? Math.max(0,Number(it.custoFichaUn)||0)
+        : (it.produtoId!=null?Math.max(0,Number(calcularCustoFicha(it.produtoId,it.varianteId,1))||0):0);
+      item.qtd+=qtd;
+      item.faturamento+=faturamento;
+      item.custoTotal+=custoUn*qtd;
+    });
+  });
+  const abcOrdenada=[...abcMap.values()].sort((a,b)=>b.faturamento-a.faturamento);
+  const abcTotal=abcOrdenada.reduce((s,p)=>s+p.faturamento,0);
+  let abcAcumulado=0;
+  const abcItens=abcOrdenada.map(p=>{
+    const participacao=abcTotal>0?(p.faturamento/abcTotal)*100:0;
+    abcAcumulado+=participacao;
+    const classe=abcTotal<=0?'—':(abcAcumulado<=80?'A':(abcAcumulado<=95?'B':'C'));
+    return {...p,participacao,acumulado:abcAcumulado,classe,margem:p.faturamento-p.custoTotal};
+  });
+  const abcBody=document.getElementById('rel-curva-abc-body');
+  const abcResumo=document.getElementById('rel-curva-abc-resumo');
+  if(abcBody){
+    abcBody.innerHTML=abcItens.length?abcItens.map(p=>`<tr>
+      <td data-label="Produto"><strong>${escapeHtml(p.nome)}</strong></td>
+      <td data-label="Qtd.">${p.qtd.toLocaleString('pt-BR',{maximumFractionDigits:2})}</td>
+      <td data-label="Faturamento"><strong>${fmt(p.faturamento)}</strong></td>
+      <td data-label="Participação">${p.participacao.toFixed(2).replace('.',',')}%</td>
+      <td data-label="Acumulado">${p.acumulado.toFixed(2).replace('.',',')}%</td>
+      <td data-label="Custo">${fmt(p.custoTotal)}</td>
+      <td data-label="Margem estimada" style="color:${p.margem>=0?'var(--green)':'var(--red)'}">${fmt(p.margem)}</td>
+      <td data-label="Classe"><span class="abc-classe abc-classe-${p.classe.toLowerCase()}">${p.classe}</span></td>
+    </tr>`).join(''):'<tr><td colspan="8" class="abc-vazio">Nenhuma venda com itens identificáveis no período selecionado.</td></tr>';
+  }
+  if(abcResumo){
+    const contagem={A:0,B:0,C:0};
+    const soma={A:0,B:0,C:0};
+    abcItens.forEach(p=>{if(contagem[p.classe]!=null){contagem[p.classe]++;soma[p.classe]+=p.faturamento;}});
+    abcResumo.innerHTML=['A','B','C'].map(classe=>`<div class="abc-resumo-item abc-resumo-${classe.toLowerCase()}"><span>Classe ${classe}</span><strong>${contagem[classe]} produtos</strong><small>${fmt(soma[classe])}</small></div>`).join('')+
+      `<div class="abc-resumo-total"><span>Faturamento classificado</span><strong>${fmt(abcTotal)}</strong></div>`;
+  }
 }
 
-export function gerarResumoFinanceiro(vendas, custosFixos = 0) {
-    const faturamentoTotal = vendas.reduce((acc, v) => acc + (v.faturamento || 0), 0);
-    const custosVariaveisTotais = vendas.reduce((acc, v) => acc + (v.custoTotal || 0), 0);
-    const margemContribucionTotal = faturamentoTotal - custosVariaveisTotais;
-    const resultadoLiquido = margemContribucionTotal - custosFixos;
-    const lucratividade = faturamentoTotal > 0 ? (resultadoLiquido / faturamentoTotal) * 100 : 0;
-
-    return {
-        faturamentoTotal,
-        custosVariaveisTotais,
-        margemContribucionTotal,
-        custosFixos,
-        resultadoLiquido,
-        lucratividade: Number(lucratividade.toFixed(2))
-    };
+// Abre o relatório por período diretamente na seção detalhada da Curva ABC.
+function abrirCurvaABCDetalhada(){
+  if(typeof goto==='function')goto('relatorio');
+  const btn=document.querySelector('#page-relatorio .tabs .tab');
+  showRelTab('periodo',btn);
+  initRelatorio();
+  gerarRelatorio();
+  const alvo=document.getElementById('rel-curva-abc');
+  if(alvo)alvo.scrollIntoView({behavior:'smooth',block:'start'});
 }
+
+// ============ DRE ============
+function gerarDRE(){
+  const mes=document.getElementById('dre-mes').value;
+  if(!mes){showToast('Selecione o mês','red');return;}
+  const [y,m]=mes.split('-');
+  const nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const label=nomes[parseInt(m)-1]+' / '+y;
+
+  const vendas=state.vendas.filter(v=>v.data.startsWith(mes));
+  const fin=state.financeiro.filter(f=>f.data.startsWith(mes));
+  const comprasMes=state.compras.filter(c=>c.data.startsWith(mes));
+
+  // RECEITA BRUTA = total de vendas do mês
+  const receitaBruta=vendas.reduce((s,v)=>s+v.total,0);
+
+  // CUSTO DE MP = soma das compras de matéria-prima do mês
+  const custoMP=comprasMes.reduce((s,c)=>s+c.total,0);
+
+  // CUSTOS FIXOS cadastrados
+  const retiradasMes=fin.filter(f=>f.retirada).reduce((s,f)=>s+f.valor,0); // retiradas lançadas no Financeiro somam como pró-labore
+  const totalCF=(state.custosFixos||[]).reduce((s,c)=>s+(c.valor||0),0)+retiradasMes;
+
+  // OUTRAS DESPESAS = saídas no financeiro excluindo as que têm tag "MP" (compraId) — essas já
+  // entram em "Custo de Matéria-Prima" acima (via state.compras); somar de novo aqui contaria
+  // a mesma compra 2x no lucro líquido.
+  const outrasDespesas=fin.filter(f=>f.tipo==='saida'&&!f.compraId&&!f.retirada).reduce((s,f)=>s+f.valor,0);
+
+  // ENTRADAS EXTRAS (lançamentos de entrada que não são vendas)
+  const entradasExtras=fin.filter(f=>f.tipo==='entrada').reduce((s,f)=>s+f.valor,0);
+
+  const lucroBruto=receitaBruta-custoMP;
+  const ebitda=lucroBruto-totalCF;
+  const lucroLiquido=ebitda-outrasDespesas+entradasExtras;
+
+  const margemBruta=receitaBruta>0?(lucroBruto/receitaBruta*100):0;
+  const margemLiq=receitaBruta>0?(lucroLiquido/receitaBruta*100):0;
+
+  // PRÓ-LABORE = soma dos itens de Custos Fixos marcados como retirada do dono (isProLabore,
+  // ver renderCustosFixosLista em 07-precificacao.js). É um SUBCONJUNTO de totalCF, não um
+  // valor à parte — por isso EBITDA/Lucro Líquido continuam calculados exatamente como antes;
+  // só a linha "Custos Fixos" da DRE é exibida em 2 partes quando há algo flagado.
+  const totalProLabore=(state.custosFixos||[]).filter(c=>c.isProLabore).reduce((s,c)=>s+(c.valor||0),0)+retiradasMes;
+  const totalCFOperacional=totalCF-totalProLabore;
+
+  // ROI OPERACIONAL = lucro líquido do mês ÷ tudo que saiu pra gerar esse lucro (MP + fixos +
+  // outras despesas). Não é ROI de capital investido/CAPEX — o sistema não rastreia isso — é
+  // "quanto voltou de lucro pra cada R$1 gasto rodando o negócio este mês".
+  const custoTotalMes=custoMP+totalCF+outrasDespesas;
+  const roiOperacional=custoTotalMes>0?(lucroLiquido/custoTotalMes*100):null;
+
+  // mês anterior para comparação
+  const mesAnterior=new Date(parseInt(y),parseInt(m)-2,1);
+  const maStr=`${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth()+1).padStart(2,'0')}`;
+  const vendasMA=state.vendas.filter(v=>v.data.startsWith(maStr)).reduce((s,v)=>s+v.total,0);
+  const varReceita=vendasMA>0?((receitaBruta-vendasMA)/vendasMA*100):null;
+
+  // ALAVANCAGEM OPERACIONAL = %Δ Receita − %Δ Custo Total (mês vs anterior). >0 = crescendo
+  // sem inflar custo na mesma proporção (escalando). Ressalva: totalCF não é historizado por
+  // mês (é sempre o valor cadastrado "hoje"), então entra igual dos dois lados da comparação —
+  // mesma limitação que getCustoFixoPorUnidade já carrega em Precificação.
+  const comprasMA=state.compras.filter(c=>c.data.startsWith(maStr)).reduce((s,c)=>s+c.total,0);
+  const outrasDespesasMA=state.financeiro.filter(f=>f.tipo==='saida'&&!f.compraId&&!f.retirada&&f.data.startsWith(maStr)).reduce((s,f)=>s+f.valor,0);
+  // retiradas do mês anterior entram no custo do mês anterior (custos fixos cadastrados são iguais nos dois lados)
+  const retiradasMA=state.financeiro.filter(f=>f.retirada&&f.data.startsWith(maStr)).reduce((s,f)=>s+f.valor,0);
+  const totalCFMA=(totalCF-retiradasMes)+retiradasMA;
+  const custoTotalMA=comprasMA+totalCFMA+outrasDespesasMA;
+  const varCustoTotal=custoTotalMA>0?((custoTotalMes-custoTotalMA)/custoTotalMA*100):null;
+  const alavancagem=(varReceita!=null&&varCustoTotal!=null)?(varReceita-varCustoTotal):null;
+
+  const linhasDRE=[
+    {label:'(+) Receita Bruta',valor:receitaBruta,bold:true,cor:'var(--green)',indent:0},
+    {label:'(−) Custo de Matéria-Prima',valor:-custoMP,bold:false,cor:custoMP>0?'var(--red)':'var(--muted)',indent:1},
+    {label:'= Lucro Bruto',valor:lucroBruto,bold:true,cor:lucroBruto>=0?'var(--navy)':'var(--red)',indent:0,sep:true},
+    ...(totalProLabore>0.009 ? [
+      {label:'(−) Custos Fixos Operacionais',valor:-totalCFOperacional,bold:false,cor:totalCFOperacional>0?'var(--red)':'var(--muted)',indent:1},
+      {label:'(−) Pró-labore (retirada do dono)',valor:-totalProLabore,bold:false,cor:'var(--red)',indent:1},
+    ] : [
+      {label:'(−) Custos Fixos (cadastrados)',valor:-totalCF,bold:false,cor:totalCF>0?'var(--red)':'var(--muted)',indent:1},
+    ]),
+    {label:'= EBITDA',valor:ebitda,bold:true,cor:ebitda>=0?'var(--navy)':'var(--red)',indent:0,sep:true},
+    {label:'(−) Outras Despesas',valor:-outrasDespesas,bold:false,cor:outrasDespesas>0?'var(--red)':'var(--muted)',indent:1},
+    {label:'(+) Entradas Extras',valor:entradasExtras,bold:false,cor:entradasExtras>0?'var(--green)':'var(--muted)',indent:1},
+    {label:'= Lucro Líquido',valor:lucroLiquido,bold:true,cor:lucroLiquido>=0?'var(--green)':'var(--red)',indent:0,sep:true,grande:true},
+  ];
+
+  const el=document.getElementById('dre-resultado');
+  el.style.display='block';
+  el.innerHTML=`
+    <div class="cards-grid cards-grid-4" style="margin-bottom:20px">
+      <div class="stat-card green"><div class="label">Receita Bruta</div><div class="value">${fmt(receitaBruta)}</div><div class="sub">${vendas.length} venda(s)${varReceita!==null?` · ${varReceita>=0?'+':''}${varReceita.toFixed(1)}% vs mês ant.`:''}</div></div>
+      <div class="stat-card ${lucroBruto>=0?'blue':'red'}"><div class="label">Lucro Bruto</div><div class="value">${fmt(lucroBruto)}</div><div class="sub">Margem ${margemBruta.toFixed(1)}%</div></div>
+      <div class="stat-card ${lucroLiquido>=0?'green':'red'}"><div class="label">Lucro Líquido</div><div class="value">${fmt(lucroLiquido)}</div><div class="sub">Margem líq. ${margemLiq.toFixed(1)}%</div></div>
+      <div class="stat-card ${lucroLiquido>=0?'':'red'}"><div class="label">Resultado</div><div class="value" style="font-size:22px">${lucroLiquido>=0?'✅':'⚠️'}</div><div class="sub">${lucroLiquido>=0?'Negócio saudável':'Atenção: prejuízo'}</div></div>
+    </div>
+    <div class="table-card" style="margin-bottom:20px">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:15px">DRE — ${label}</strong>
+        <span style="font-size:12px;color:var(--muted)">Demonstrativo de Resultado do Exercício</span>
+      </div>
+      <div style="padding:8px 0">
+        ${linhasDRE.map(l=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:${l.grande?'14px':'10px'} 24px;${l.sep?'border-top:2px solid var(--border);margin-top:4px;':''}background:${l.grande?(l.valor>=0?'#EAFAF1':'#FDEDEC'):'transparent'}">
+            <span style="font-size:${l.grande?'14px':'13px'};font-weight:${l.bold?'700':'400'};color:${l.bold?'var(--text)':'var(--muted)'};padding-left:${l.indent*16}px">${l.label}</span>
+            <span style="font-size:${l.grande?'16px':'13px'};font-weight:${l.bold?'800':'500'};color:${l.cor}">${l.valor>=0?'':''} ${fmt(Math.abs(l.valor))}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="cards-grid cards-grid-3" style="margin-bottom:20px">
+      <div class="stat-card ${roiOperacional==null?'':roiOperacional>=0?'green':'red'}"><div class="label">ROI Operacional</div><div class="value">${roiOperacional!=null?roiOperacional.toFixed(1)+'%':'—'}</div><div class="sub">lucro ÷ custo total do mês</div></div>
+      <div class="stat-card ${alavancagem==null?'':alavancagem>=0?'green':'red'}"><div class="label">Alavancagem Operacional</div><div class="value">${alavancagem!=null?(alavancagem>=0?'+':'')+alavancagem.toFixed(1)+'pp':'—'}</div><div class="sub">receita vs custo, mês a mês</div></div>
+      <div class="stat-card"><div class="label">Pró-labore do Mês</div><div class="value">${fmt(totalProLabore)}</div><div class="sub">${totalProLabore>0?'retirada do dono':'nenhuma retirada ou item marcado'}</div></div>
+    </div>
+    <div class="detail-panel" style="font-size:12px;color:var(--muted)">
+      <strong style="color:var(--text)">Como interpretar</strong><br>
+      <strong>Receita Bruta</strong> = total de vendas registradas no mês. <strong>Custo de MP</strong> = compras de matéria-prima registradas. <strong>Custos Fixos</strong> = valores cadastrados em Precificação → Custos Fixos. <strong>Outras Despesas</strong> = lançamentos de saída no Financeiro. <strong>Entradas Extras</strong> = lançamentos de entrada no Financeiro (exceto vendas). <strong>Pró-labore</strong> = itens de Custos Fixos marcados como retirada do dono (já incluso no total de Custos Fixos, só exibido separado). <strong>ROI Operacional</strong> = retorno sobre tudo que saiu pra rodar o negócio no mês — não é ROI de capital investido. <strong>Alavancagem Operacional</strong> = a receita está crescendo mais rápido que o custo total? Custos Fixos não variam por mês nesta conta, então o número é aproximado.
+    </div>`;
+}
+
+// ============ FLUXO DE CAIXA ============
+function gerarFluxo(){
+  const saldoInicial=parseFloat(document.getElementById('fluxo-saldo-inicial').value)||0;
+  const dias=parseInt(document.getElementById('fluxo-dias').value)||30;
+  const hoje=today();
+  const eventos=[];
+
+  // Entradas: parcelas/vendas fiado com vencimento futuro ainda não totalmente pagas
+  // (cada parcela em aberto vira um evento na sua própria data, com o valor que de fato falta)
+  getUnidadesFiadoFlat().filter(u=>u.vencimento&&u.vencimento>=hoje&&u.status!=='pago').forEach(u=>{
+    const c=getCliente(u.clienteId);
+    eventos.push({data:u.vencimento,tipo:'entrada',descricao:`Recebimento fiado — ${c.nome}${u.parcelaNum?` (parcela ${u.parcelaNum}/${u.parcelaTotal})`:''}`,valor:u.valorRestante,fonte:'fiado'});
+  });
+
+  // Saídas: compras a prazo com vencimento futuro ainda não totalmente pagas (mesma lógica,
+  // espelhada — sem isso o Fluxo de Caixa ficava "cego" pro que ainda vai ter que pagar a
+  // fornecedor, só enxergava o que já tinha virado saída no Financeiro)
+  getUnidadesPagarFlat().filter(u=>u.vencimento&&u.vencimento>=hoje&&u.status!=='pago').forEach(u=>{
+    const f=getFornecedor(u.fornecedorId);
+    eventos.push({data:u.vencimento,tipo:'saida',descricao:`Pagamento a fornecedor — ${f?f.nome:'?'}${u.parcelaNum?` (parcela ${u.parcelaNum}/${u.parcelaTotal})`:''}`,valor:u.valorRestante,fonte:'pagar'});
+  });
+
+  // Saídas: lançamentos futuros de saída no financeiro
+  state.financeiro.filter(f=>f.tipo==='saida'&&f.data>=hoje).forEach(f=>{
+    eventos.push({data:f.data,tipo:'saida',descricao:f.desc||'Despesa',valor:f.valor,fonte:'financeiro'});
+  });
+
+  // Também entradas futuras no financeiro
+  state.financeiro.filter(f=>f.tipo==='entrada'&&f.data>=hoje).forEach(f=>{
+    eventos.push({data:f.data,tipo:'entrada',descricao:f.desc||'Entrada',valor:f.valor,fonte:'financeiro'});
+  });
+
+  // Montar dias
+  const diasArr=[];
+  for(let i=0;i<dias;i++){
+    const d=new Date();d.setDate(d.getDate()+i);
+    const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    diasArr.push(ds);
+  }
+
+  // Calcular saldo dia a dia
+  let saldoAcum=saldoInicial;
+  const linhas=diasArr.map(dia=>{
+    const evDia=eventos.filter(e=>e.data===dia);
+    const entradas=evDia.filter(e=>e.tipo==='entrada').reduce((s,e)=>s+e.valor,0);
+    const saidas=evDia.filter(e=>e.tipo==='saida').reduce((s,e)=>s+e.valor,0);
+    saldoAcum+=entradas-saidas;
+    return{dia,entradas,saidas,saldo:saldoAcum,eventos:evDia};
+  });
+
+  const totalEntradas=linhas.reduce((s,l)=>s+l.entradas,0);
+  const totalSaidas=linhas.reduce((s,l)=>s+l.saidas,0);
+  const saldoFinal=linhas[linhas.length-1].saldo;
+  const diasNegativo=linhas.filter(l=>l.saldo<0).length;
+
+  const el=document.getElementById('fluxo-resultado');
+  el.style.display='block';
+
+  // chart data — apenas dias com movimento ou saldo interessante, agrupado por semana se >30
+  const chartLabels=linhas.filter((_,i)=>dias<=30||(i%2===0)).map(l=>fmtDate(l.dia).slice(0,5));
+  const chartSaldos=linhas.filter((_,i)=>dias<=30||(i%2===0)).map(l=>l.saldo);
+
+  el.innerHTML=`
+    <div class="cards-grid cards-grid-4" style="margin-bottom:20px">
+      <div class="stat-card"><div class="label">Saldo Atual</div><div class="value">${fmt(saldoInicial)}</div><div class="sub">informado</div></div>
+      <div class="stat-card green"><div class="label">Entradas Projetadas</div><div class="value">${fmt(totalEntradas)}</div><div class="sub">próx. ${dias} dias</div></div>
+      <div class="stat-card red"><div class="label">Saídas Projetadas</div><div class="value">${fmt(totalSaidas)}</div><div class="sub">próx. ${dias} dias</div></div>
+      <div class="stat-card ${saldoFinal>=0?'green':'red'}"><div class="label">Saldo Final</div><div class="value">${fmt(saldoFinal)}</div><div class="sub">${diasNegativo>0?`${diasNegativo} dia(s) negativo(s)`:'Sem dias negativos'}</div></div>
+    </div>
+    ${diasNegativo>0?`<div class="alert-banner danger" style="margin-bottom:16px">Em ${diasNegativo} dia(s) o saldo fica negativo. Considere adiantar cobranças ou adiar despesas.</div>`:''}
+    <div class="chart-card" style="margin-bottom:20px">
+      <h3>Saldo Projetado — Próximos ${dias} dias</h3>
+      <div class="chart-wrap"><canvas id="chart-fluxo"></canvas></div>
+    </div>
+    <div class="table-card">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong>Eventos Projetados</strong></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Data</th><th>Descrição</th><th>Entradas</th><th>Saídas</th><th>Saldo do Dia</th></tr></thead>
+        <tbody>
+          ${linhas.filter(l=>l.entradas>0||l.saidas>0).map(l=>`
+            <tr>
+              <td>${fmtDate(l.dia)}</td>
+              <td style="font-size:12px">${l.eventos.map(e=>`${e.tipo==='entrada'?'📥':'📤'} ${escapeHtml(e.descricao)}`).join('<br>')}</td>
+              <td style="color:var(--green);font-weight:600">${l.entradas>0?fmt(l.entradas):'—'}</td>
+              <td style="color:var(--red);font-weight:600">${l.saidas>0?fmt(l.saidas):'—'}</td>
+              <td style="font-weight:700;color:${l.saldo>=0?'var(--navy)':'var(--red)'}">${fmt(l.saldo)}</td>
+            </tr>`).join('')}
+          ${linhas.filter(l=>l.entradas>0||l.saidas>0).length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhum evento projetado no período. Cadastre vendas fiado com vencimento ou lançamentos futuros.</span></div></td></tr>':''}
+        </tbody>
+      </table></div>
+    </div>`;
+
+  // Render chart
+  setTimeout(()=>{
+    const ctx=document.getElementById('chart-fluxo');
+    if(!ctx) return;
+    if(!chartJsDisponivel())return;
+    new Chart(ctx,{
+      type:'line',
+      data:{labels:chartLabels,datasets:[
+        {label:'Saldo (R$)',data:chartSaldos,borderColor:'#C9A24B',backgroundColor:chartSaldos.map(v=>v>=0?'rgba(201,162,75,.1)':'rgba(231,76,60,.1)'),tension:.3,fill:true,pointRadius:3},
+        {label:'Zero',data:chartLabels.map(()=>0),borderColor:'rgba(231,76,60,.4)',borderDash:[4,4],pointRadius:0,borderWidth:1}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>`Saldo: ${fmt(v.parsed.y)}`}}},scales:{y:{ticks:{callback:v=>fmt(v)},grid:{color:'rgba(255,255,255,.06)'}},x:{grid:{display:false}}}}
+    });
+  },50);
+}
+
+// ============ INADIMPLÊNCIA ============
+function gerarInadimplencia(){
+  const diasAtraso=parseInt(document.getElementById('inadimp-dias').value)||0;
+  const hoje=today();
+  const hojeDate=new Date(hoje);
+  const encCfg=encargosCfg(), encAtivo=encCfg.ativo;
+
+  // Clientes com fiado vencido (por parcela/unidade de dívida — uma venda parcelada
+  // pode ter só parte das parcelas vencidas)
+  const clientesMap={};
+  getUnidadesFiadoFlat().filter(u=>u.status!=='pago'&&u.vencimento&&u.vencimento<hoje).forEach(u=>{
+    const vencDate=new Date(u.vencimento);
+    const diffDias=Math.floor((hojeDate-vencDate)/(1000*60*60*24));
+    if(diffDias<diasAtraso) return;
+    if(!clientesMap[u.clienteId]) clientesMap[u.clienteId]={vendas:[],totalAberto:0,maiorAtraso:0,encargos:0};
+    clientesMap[u.clienteId].vendas.push({vencimento:u.vencimento,total:u.valorRestante,parcelaNum:u.parcelaNum,parcelaTotal:u.parcelaTotal,diasAtraso:diffDias});
+    clientesMap[u.clienteId].totalAberto+=u.valorRestante;
+    if(encAtivo){const e=encargoDaUnidade(u,hoje,encCfg);if(e)clientesMap[u.clienteId].encargos+=e.total;}
+    clientesMap[u.clienteId].maiorAtraso=Math.max(clientesMap[u.clienteId].maiorAtraso,diffDias);
+  });
+
+  const lista=Object.entries(clientesMap).map(([cid,d])=>({
+    cliente:getCliente(parseInt(cid)),
+    ...d,
+    ultimoPagamento:(state.pagamentos.filter(p=>p.clienteId===parseInt(cid)).sort((a,b)=>b.data.localeCompare(a.data))[0]||null)
+  })).sort((a,b)=>b.totalAberto-a.totalAberto);
+
+  const totalInadimplente=lista.reduce((s,l)=>s+l.totalAberto,0);
+
+  const el=document.getElementById('inadimp-resultado');
+  el.style.display='block';
+
+  if(lista.length===0){
+    el.innerHTML=`<div class="empty-state" style="background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:40px"><div class="icon"><i data-lucide="circle-check"></i></div><p>Nenhuma inadimplência encontrada com os filtros selecionados.</p></div>`;
+    return;
+  }
+
+  el.innerHTML=`
+    <div class="cards-grid cards-grid-3" style="margin-bottom:20px">
+      <div class="stat-card red"><div class="label">Total em Atraso</div><div class="value">${fmt(totalInadimplente)}</div><div class="sub">${lista.length} cliente(s)</div></div>
+      <div class="stat-card yellow"><div class="label">Ticket Médio em Aberto</div><div class="value">${fmt(totalInadimplente/lista.length)}</div><div class="sub">por cliente inadimplente</div></div>
+      <div class="stat-card"><div class="label">Maior Atraso</div><div class="value">${Math.max(...lista.map(l=>l.maiorAtraso))} dias</div><div class="sub">${escapeHtml(lista.sort((a,b)=>b.maiorAtraso-a.maiorAtraso)[0]?.cliente?.nome||'')}</div></div>
+    </div>
+    <div class="table-card">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <strong>Relatório de Inadimplência${diasAtraso>0?` — vencido há +${diasAtraso} dias`:''}</strong>
+        <span style="font-size:12px;color:var(--muted)">Gerado em ${fmtDate(hoje)}</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Cliente</th><th>Telefone</th><th>Vendas em aberto</th><th>Total Devido</th>${encAtivo?'<th>Encargos est.</th>':''}<th>Maior Atraso</th><th>Último Pagto</th><th>Ação</th></tr></thead>
+        <tbody>
+          ${lista.map(l=>`<tr>
+            <td><strong class="nome-cartao-link" onclick="abrirCartaoCliente(${l.cliente.id})">${escapeHtml(l.cliente.nome)}</strong></td>
+            <td style="font-size:12px">${escapeHtml(l.cliente.tel||'—')}</td>
+            <td style="font-size:12px">${l.vendas.map(v=>`${fmtDate(v.vencimento)} · ${fmt(v.total)} (${v.diasAtraso}d)`).join('<br>')}</td>
+            <td><strong style="color:var(--red)">${fmt(l.totalAberto)}</strong></td>
+            ${encAtivo?`<td>${l.encargos>0?fmt(l.encargos):'—'}</td>`:''}
+            <td><span class="badge ${l.maiorAtraso>30?'badge-red':'badge-yellow'}">${l.maiorAtraso} dias</span></td>
+            <td style="font-size:12px">${l.ultimoPagamento?fmtDate(l.ultimoPagamento.data)+' · '+fmt(l.ultimoPagamento.valor):'<span style="color:var(--muted)">Nunca</span>'}</td>
+            <td>${l.cliente.tel?`<a href="https://wa.me/55${l.cliente.tel.replace(/\D/g,'')}" target="_blank" class="btn btn-whatsapp btn-sm" style="font-size:11px;padding:4px 10px">WhatsApp</a>`:'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr style="background:var(--card-2);border-top:2px solid var(--border)">
+          <td colspan="3" style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--muted)">TOTAL INADIMPLENTE</td>
+          <td style="padding:10px 14px;font-size:14px;font-weight:800;color:var(--red)">${fmt(totalInadimplente)}</td>
+          ${encAtivo?`<td style="padding:10px 14px;font-size:13px;font-weight:700">${fmt(lista.reduce((a,l)=>a+l.encargos,0))}</td>`:''}
+          <td colspan="3"></td>
+        </tr></tfoot>
+      </table></div>
+    </div>`;
+}
+
+// ============ HISTÓRICO DE PREÇO ============
+function renderHistoricoPreco(){
+  const selMP=document.getElementById('hist-preco-mp-filter');
+  if(!selMP) return;
+  // populate select with MPs that have at least 1 purchase
+  const mpIds=[...new Set(state.compras.map(c=>c.materiaId))];
+  const atualVal=selMP.value;
+  selMP.innerHTML='<option value="">Selecione a matéria-prima...</option>'+
+    mpIds.map(mid=>{const m=getMateria(mid);return`<option value="${mid}" ${atualVal==mid?'selected':''}>${escapeHtml(m.nome)}</option>`;}).join('');
+  if(!selMP.value&&atualVal) selMP.value=atualVal;
+
+  const mpId=parseInt(selMP.value)||null;
+  const wrap=document.getElementById('hist-preco-wrap');
+  const empty=document.getElementById('hist-preco-empty');
+  if(!mpId){wrap.style.display='none';empty.style.display='none';return;}
+
+  const mp=getMateria(mpId);
+  const compras=state.compras.filter(c=>c.materiaId===mpId).sort((a,b)=>a.data.localeCompare(b.data));
+
+  if(compras.length===0){wrap.style.display='none';empty.style.display='block';return;}
+  wrap.style.display='block';empty.style.display='none';
+
+  // CHART
+  destroyChart(chartHistPreco);
+  if(!chartJsDisponivel())return;
+  const labels=compras.map(c=>fmtDate(c.data));
+  const precos=compras.map(c=>c.custoUn);
+  const precoMedio=precos.reduce((a,b)=>a+b,0)/precos.length;
+  const mediaArr=precos.map(()=>precoMedio);
+  const ctx=document.getElementById('chart-hist-preco');
+  document.getElementById('hist-preco-chart-titulo').textContent=`Evolução do custo/un — ${mp.nome} (${mp.unidade})`;
+  chartHistPreco=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:`Custo/un`,data:precos,borderColor:'#C9A24B',
+        backgroundColor:function(c){const g=c.chart.ctx.createLinearGradient(0,0,0,240);g.addColorStop(0,'rgba(201,162,75,.2)');g.addColorStop(1,'rgba(201,162,75,.02)');return g;},
+        tension:.3,fill:true,pointRadius:6,pointBackgroundColor:precos.map((p,i)=>p===Math.min(...precos)?'#27AE60':p===Math.max(...precos)?'#E74C3C':'#C9A24B'),
+        pointBorderColor:'#141415',pointBorderWidth:2,borderWidth:2.5},
+      {label:'Média',data:mediaArr,borderColor:'rgba(227,193,111,.7)',backgroundColor:'transparent',
+        borderDash:[5,4],pointRadius:0,borderWidth:1.5,tension:0},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#232326',padding:12,cornerRadius:10,
+          callbacks:{
+            title:ctx=>ctx[0].label,
+            label:ctx=>{
+              if(ctx.datasetIndex===1)return` Média: R$ ${precoMedio.toFixed(2).replace('.',',')}/${mp.unidade}`;
+              return` Custo: R$ ${parseFloat(ctx.raw).toFixed(2).replace('.',',')}/${mp.unidade}`;
+            }
+          }
+        }
+      },
+      scales:{y:{ticks:{callback:v=>'R$ '+v.toFixed(2).replace('.',','),font:{size:10}},grid:{color:'rgba(255,255,255,.06)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}
+    }
+  });
+
+  // STATS
+  const precoMin=Math.min(...precos);
+  const precoMax=Math.max(...precos);
+  const precoAtual=precos[precos.length-1];
+  const precoInicial=precos[0];
+  const varTotal=precoInicial>0?((precoAtual-precoInicial)/precoInicial*100):0;
+  const corVar=varTotal>10?'red':varTotal>0?'yellow':'green';
+  const corAtual=precoAtual>precoMin*1.15?'red':'green';
+  document.getElementById('hist-preco-stats').innerHTML=`
+    <div class="stat-card ${corAtual}"><div class="label">Preço Atual</div><div class="value">${fmt(precoAtual)}</div><div class="sub">por ${mp.unidade}</div></div>
+    <div class="stat-card green"><div class="label">Menor Preço</div><div class="value">${fmt(precoMin)}</div><div class="sub">registrado</div></div>
+    <div class="stat-card red"><div class="label">Maior Preço</div><div class="value">${fmt(precoMax)}</div><div class="sub">registrado</div></div>
+    <div class="stat-card ${corVar}"><div class="label">Var. Total</div><div class="value">${varTotal>=0?'+':''}${varTotal.toFixed(1)}%</div><div class="sub">1ª até última compra</div></div>
+  `;
+
+  // TABLE
+  const tb=document.getElementById('hist-preco-table');
+  tb.innerHTML=compras.map((c,i)=>{
+    const forn=getFornecedor(c.fornecedorId);
+    const prev=i>0?compras[i-1].custoUn:null;
+    const varPct=prev!==null&&prev>0?((c.custoUn-prev)/prev*100):null;
+    let varHtml='<span style="color:var(--muted);font-size:12px">—</span>';
+    if(varPct!==null){
+      const cor=varPct>5?'var(--red)':varPct>0?'#d35400':varPct<0?'var(--green)':'var(--muted)';
+      const sinal=varPct>0?'▲ +':'▼ ';
+      varHtml=`<span style="color:${cor};font-weight:700;font-size:13px">${sinal}${varPct.toFixed(1)}%</span>`;
+    }
+    return`<tr>
+      <td data-label="Data">${fmtDate(c.data)}</td>
+      <td data-label="Fornecedor"><strong>${forn?escapeHtml(forn.nome):'—'}</strong></td>
+      <td data-label="Qtd">${c.qtd} ${mp.unidade}</td>
+      <td data-label="Custo/un"><strong style="color:var(--navy)">${fmt(c.custoUn)}/${mp.unidade}</strong></td>
+      <td data-label="Total">${fmt(c.total)}</td>
+      <td data-label="Var. anterior">${varHtml}</td>
+    </tr>`;
+  }).reverse().join('');// mostra mais recentes primeiro
+}
+
+// ============ BALANÇO PATRIMONIAL ============
+// Sempre posição de HOJE — o sistema não guarda snapshot histórico de quantidade de
+// estoque por data (diferente de state.fechamentos, que só congela o resultado financeiro
+// do mês), então não há como apurar um balanço retroativo com os dados disponíveis.
+function calcularBalancoPatrimonial(){
+  const caixa = state.financeiro.reduce((s,f)=>s+(f.tipo==='entrada'?f.valor:-f.valor),0);
+  const contasReceber = state.clientes.reduce((s,c)=>s+getSaldoCliente(c.id),0);
+  const estoqueMP = state.materias.reduce((s,m)=>s+valorEstoqueMateria(m),0);
+  const estoqueSemi = (state.semiacabados||[]).reduce((s,sa)=>s+(sa.estoque||0)*custoItemFicha('semi',sa.id),0);
+
+  // Custo só de MP (calcularCustoFicha), sem rateio de custo fixo — cfPorUn depende do volume
+  // produzido no MÊS ATUAL, o que faria o valor do estoque oscilar por motivo alheio ao
+  // estoque em si (produziu pouco esse mês → estoque "valeria mais"). Produto arquivado ENTRA
+  // no cálculo: estoque físico continua valendo dinheiro mesmo depois de arquivado (diferente
+  // de getLinhasPrecificacao, que exclui arquivados de propósito por não fazer mais sentido
+  // em "margem"/"simulador" de algo que não se vende mais).
+  let estoqueProdutosSemFicha = 0;
+  const estoqueProdutos = state.produtos.reduce((s,p)=>{
+    if(p.variantes && p.variantes.length>0){
+      return s + p.variantes.reduce((s2,v)=>{
+        const custo = calcularCustoFicha(p.id, v.id, 1);
+        if(custo===0 && v.estoque>0) estoqueProdutosSemFicha++;
+        return s2 + v.estoque*custo;
+      },0);
+    }
+    const custo = calcularCustoFicha(p.id, null, 1);
+    if(custo===0 && p.estoque>0) estoqueProdutosSemFicha++;
+    return s + p.estoque*custo;
+  },0);
+
+  const estoqueTotal = estoqueMP + estoqueSemi + estoqueProdutos;
+  const ativoTotal = caixa + contasReceber + estoqueTotal;
+  const contasPagar = state.fornecedores.reduce((s,f)=>s+getSaldoFornecedor(f.id),0);
+  const passivoTotal = contasPagar;
+  const patrimonioLiquido = ativoTotal - passivoTotal; // sempre apurado (Ativo − Passivo);
+  // o sistema não rastreia capital social investido separadamente
+
+  // CAPITAL DE GIRO IMEDIATO = caixa − contas a pagar. Mais conservador que Patrimônio
+  // Líquido/CG Líquido (que já é ativoTotal-passivoTotal): ignora estoque parado e contas a
+  // receber ainda não convertidas em dinheiro — responde "tenho fôlego pra pagar as contas
+  // HOJE?", não "quanto vale a empresa?".
+  const capitalGiroImediato = caixa - contasPagar;
+
+  return {data:today(),caixa,contasReceber,estoqueMP,estoqueSemi,estoqueProdutos,estoqueTotal,
+    ativoTotal,contasPagar,passivoTotal,patrimonioLiquido,estoqueProdutosSemFicha,capitalGiroImediato};
+}
+
+function gerarBalanco(){
+  const b = calcularBalancoPatrimonial();
+  const el = document.getElementById('balanco-resultado');
+  el.style.display = 'block';
+  const linha = (label,valor,opts={}) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:${opts.grande?'12px':'9px'} 20px;${opts.sep?'border-top:2px solid var(--border);':''}background:${opts.grande?'#EBF5FB':'transparent'}">
+      <span style="font-size:${opts.grande?'14px':'13px'};font-weight:${opts.bold?'700':'400'};color:${opts.bold?'var(--text)':'var(--muted)'};padding-left:${(opts.indent||0)*16}px">${label}</span>
+      <span style="font-size:${opts.grande?'16px':'13px'};font-weight:${opts.bold?'800':'500'};color:${opts.cor||'var(--text)'}">${fmt(Math.abs(valor))}</span>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="cards-grid cards-grid-4" style="margin-bottom:16px">
+      <div class="stat-card blue"><div class="label">Ativo Total</div><div class="value">${fmt(b.ativoTotal)}</div><div class="sub">caixa + receber + estoque</div></div>
+      <div class="stat-card red"><div class="label">Passivo Total</div><div class="value">${fmt(b.passivoTotal)}</div><div class="sub">contas a pagar</div></div>
+      <div class="stat-card ${b.patrimonioLiquido>=0?'green':'red'}"><div class="label">Patrimônio Líquido</div><div class="value">${fmt(Math.abs(b.patrimonioLiquido))}</div><div class="sub">${b.patrimonioLiquido>=0?'= Capital de Giro Líquido':'passivo > ativo'}</div></div>
+      <div class="stat-card ${b.capitalGiroImediato>=0?'green':'red'}"><div class="label">Capital de Giro Imediato</div><div class="value">${fmt(Math.abs(b.capitalGiroImediato))}</div><div class="sub">${b.capitalGiroImediato>=0?'caixa − contas a pagar':'caixa não cobre contas a pagar'}</div></div>
+    </div>
+    ${b.estoqueProdutosSemFicha>0?`<div class="alert-banner" style="margin-bottom:16px">${b.estoqueProdutosSemFicha} produto(s)/variante(s) com estoque mas sem ficha técnica — entraram no Ativo com custo R$ 0,00.</div>`:''}
+    <div class="table-card" style="margin-bottom:16px">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><strong style="font-size:15px">Balanço Patrimonial — posição em ${fmtDate(b.data)}</strong></div>
+      <div style="padding:8px 0">
+        <div style="padding:9px 20px"><strong style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy)">ATIVO</strong></div>
+        ${linha('Caixa', b.caixa, {indent:1})}
+        ${linha('Contas a Receber (fiado)', b.contasReceber, {indent:1})}
+        ${linha('Estoque — Matéria-Prima', b.estoqueMP, {indent:1})}
+        ${linha('Estoque — Semiacabados', b.estoqueSemi, {indent:1})}
+        ${linha('Estoque — Produtos Acabados', b.estoqueProdutos, {indent:1})}
+        ${linha('= Ativo Total', b.ativoTotal, {bold:true,sep:true,grande:true,cor:'var(--blue)'})}
+        <div style="padding:9px 20px;padding-top:18px"><strong style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy)">PASSIVO</strong></div>
+        ${linha('Contas a Pagar (fornecedores)', b.contasPagar, {indent:1})}
+        ${linha('= Passivo Total', b.passivoTotal, {bold:true,sep:true,grande:true,cor:'var(--red)'})}
+        ${linha('= Patrimônio Líquido (apurado)', b.patrimonioLiquido, {bold:true,sep:true,grande:true,cor:b.patrimonioLiquido>=0?'var(--green)':'var(--red)'})}
+      </div>
+    </div>
+    <div class="detail-panel" style="font-size:12px;color:var(--muted)">
+      <strong style="color:var(--text)">Metodologia</strong><br>
+      Estoque valorizado pelo <strong>custo de matéria-prima da ficha técnica</strong>, sem rateio de custo fixo. Patrimônio Líquido é sempre <strong>apurado</strong> (Ativo − Passivo), já que o sistema não rastreia capital social investido separadamente — esse mesmo número é o <strong>Capital de Giro Líquido</strong>. Já o <strong>Capital de Giro Imediato</strong> (caixa − contas a pagar) é mais conservador: ignora estoque parado e contas a receber ainda não convertidas em dinheiro. Reflete a posição de <strong>hoje</strong>; não há dados para reconstruir datas passadas.
+    </div>`;
+}
+

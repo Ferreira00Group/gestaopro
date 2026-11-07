@@ -1579,7 +1579,7 @@ function baixarBackupRapido(){
 }
 setTimeout(atualizarIndicadorBackup, 1200);
 
-// ============ DOWNLOAD DO SISTEMA / ZIP (v5.89.1) ============
+// ============ DOWNLOAD DO SISTEMA / ZIP (v5.91) ============
 function abrirModalDownloadSistema(){
   const m = document.getElementById('modal-download-sistema');
   if(m){
@@ -1593,7 +1593,7 @@ function abrirModalDownloadSistema(){
 }
 
 async function executarDownloadBlob(){
-  const ver = (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? APP_VERSION : '5.89.1';
+  const ver = (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? APP_VERSION : '5.91';
   const nomeZip = `gestaopro-v${ver}.zip`;
   if(typeof showToast === 'function') showToast('Preparando download do sistema...', '#C9A24B');
 

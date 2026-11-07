@@ -1,0 +1,20 @@
+GESTAOPRO v5.91 — INTEGRACAO DA CURVA ABC
+
+Arquivos alterados:
+- index.html: adicionada a seção Curva ABC detalhada dentro de Relatórios > Por Período.
+- 09-financeiro-relatorios.js: agrega vendas realizadas por produto/variante, exclui orçamentos, classifica A/B/C e apresenta faturamento, participação, acumulado, custo e margem estimada.
+- 21-gemini-ia.js: mantém o resumo estratégico da Curva ABC em Análise de Dados e adiciona acesso à análise detalhada.
+- styles.css: estilos responsivos da nova seção, seguindo as variáveis visuais existentes.
+
+REGRAS E OBSERVACOES:
+- O filtro de datas existente em Relatórios > Por Período controla a Curva ABC.
+- Orçamentos não entram nos totais de vendas do relatório por período.
+- Produtos cadastrados são agrupados por produtoId + varianteId; itens avulsos são agrupados pelo nome.
+- O custo usa custoFichaUn gravado na venda. Para vendas antigas sem esse snapshot, é usada a ficha técnica atual.
+- Item avulso sem custo informado aparece com custo zero; sua margem é apenas estimativa e não deve ser tratada como margem confirmada.
+- A Análise de Dados continua com seu resumo próprio; não foi removida nem substituída.
+
+VALIDACAO:
+- Sintaxe JavaScript verificada com node --check nos dois módulos alterados.
+- Estrutura HTML lida por parser e IDs duplicados verificados.
+- Não foi executado teste funcional em navegador nem build Vite, pois este pacote não contém server.ts e não foi configurado um ambiente de execução.
