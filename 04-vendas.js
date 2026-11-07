@@ -368,6 +368,21 @@ function vcPercentualCondicao(){
 function vcAplicarDescontoCondicao(precoBase){
   return Math.max(0,Number((Number(precoBase||0)*(1-vcPercentualCondicao()/100)).toFixed(2)));
 }
+function vcCalcularPrecoComPromocoes(it,totalQtd){
+  const base=Number(it.precoBase??it.preco)||0;
+  let preco=vcAplicarDescontoCondicao(base);
+  if(vendaCondicaoPagamento!=='fiado')return Math.max(0,Number(preco.toFixed(2)));
+  const cfg=state.descontosQuantidade||{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10};
+  const qtdMesmoProduto=it.avulso?0:vendaItensTemp.filter(x=>!x.avulso&&x.produtoId==it.produtoId&&(x.varianteId||null)==(it.varianteId||null)).reduce((a,x)=>a+(Number(x.qtd)||0),0);
+  if(!it.avulso&&cfg.individualAtivo!==false&&qtdMesmoProduto>=Number(cfg.individualQtd||5))preco*=1-Math.max(0,Math.min(100,Number(cfg.individualPct)||0))/100;
+  if(cfg.geralAtivo!==false&&totalQtd>=Number(cfg.geralQtd||15))preco*=1-Math.max(0,Math.min(100,Number(cfg.geralPct)||0))/100;
+  return Math.max(0,Number(preco.toFixed(2)));
+}
+function recalcularPrecosPromocionaisVenda(){
+  const totalQtd=vendaItensTemp.reduce((a,it)=>a+(Number(it.qtd)||0),0);
+  vendaItensTemp.forEach(it=>{it.preco=vcCalcularPrecoComPromocoes(it,totalQtd);});
+  return totalQtd;
+}
 function vcPrecoBaseCatalogo(produtoId){
   const base=getProduto(produtoId)?.preco||0;
   const canalId=parseInt(document.getElementById('venda-canal')?.value)||null;
@@ -404,6 +419,7 @@ function definirCondicaoPagamentoVenda(tipo,ajustarForma=true){
     else base=vcPrecoBaseCatalogo(it.produtoId);
     it.precoBase=base;it.preco=vcAplicarDescontoCondicao(base);
   });
+  recalcularPrecosPromocionaisVenda();
   renderCondicaoPagamentoVenda();
   renderVendaItensLista();
 }
@@ -441,6 +457,7 @@ function tocarProdutoVenda(produtoId){
   else vcAjustar(`p:${produtoId}:`,1);
 }
 function renderVendaItensLista(){
+  recalcularPrecosPromocionaisVenda();
   const el=document.getElementById('venda-itens-lista');
   if(!el) return;
   const grid=document.getElementById('venda-itens-grid');
@@ -601,9 +618,10 @@ function calcTotalVendaGeral(){
   if(el)el.textContent=fmt(totalCheio);
   const subtotalCondicao=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*(Number(it.precoBase??(it.avulso?it.preco:vcPrecoBaseCatalogo(it.produtoId)))||0)),0);
   const totalComCanal=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*(it.preco||0)),0);
-  const descontoCondicao=Math.max(0,subtotalCondicao-totalComCanal);
+  const totalAposCondicao=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*vcAplicarDescontoCondicao(Number(it.precoBase??it.preco)||0)),0);
+  const descontoCondicao=Math.max(0,subtotalCondicao-totalAposCondicao);
   const info=document.getElementById('venda-condicao-desconto-info');
-  if(info){const pct=vcPercentualCondicao();info.innerHTML=pct>0&&descontoCondicao>0.001?`<span style="color:var(--green);font-weight:700">Desconto ${vendaCondicaoPagamento==='avista'?'à vista':'da condição'} (${pct}%): −${fmt(descontoCondicao)}</span>`:`<span style="color:var(--muted)">${vendaCondicaoPagamento==='fiado'?'Condição fiado: sem desconto':'Sem desconto por condição'}</span>`;}
+  if(info){const pct=vcPercentualCondicao();const dq=state.descontosQuantidade||{};const totalQtd=vendaItensTemp.reduce((a,it)=>a+(Number(it.qtd)||0),0);const qtdDesconto=vendaCondicaoPagamento==='fiado'&&dq.individualAtivo!==false&&vendaItensTemp.some(it=>!it.avulso&&vendaItensTemp.filter(x=>!x.avulso&&x.produtoId==it.produtoId&&(x.varianteId||null)==(it.varianteId||null)).reduce((a,x)=>a+(Number(x.qtd)||0),0)>=Number(dq.individualQtd||5));const geralDesconto=vendaCondicaoPagamento==='fiado'&&dq.geralAtivo!==false&&totalQtd>=Number(dq.geralQtd||15);const linhas=[];if(pct>0&&descontoCondicao>0.001)linhas.push(`Desconto ${vendaCondicaoPagamento==='avista'?'à vista':'da condição'} (${pct}%): −${fmt(descontoCondicao)}`);if(qtdDesconto)linhas.push(`Desconto por produto: ${dq.individualPct||0}% nos produtos que atingiram ${dq.individualQtd||5}+ unidades`);if(geralDesconto)linhas.push(`Desconto geral: ${dq.geralPct||0}% sobre todos os itens (${totalQtd} unidades)`);info.innerHTML=linhas.length?linhas.map(t=>`<div style="color:var(--green);font-weight:700">${t}</div>`).join(''):`<span style="color:var(--muted)">${vendaCondicaoPagamento==='fiado'?'Promoções por quantidade ainda não atingidas':'Sem desconto por condição'}</span>`;}
   const descontoExtra=parseFloat(document.getElementById('venda-desconto-extra')?.value)||0;
   const totalFinal=Math.max(0,totalComCanal-descontoExtra);
   const elFinal=document.getElementById('venda-total-final');
@@ -648,6 +666,7 @@ function aplicarCanalVenda(){
     const base=it.avulso?Number(it.precoBase??it.preco)||0:vcPrecoBaseCatalogo(it.produtoId);
     it.precoBase=base;it.preco=vcAplicarDescontoCondicao(base);
   });
+  recalcularPrecosPromocionaisVenda();
   renderVendaItensLista();
 }
 
@@ -950,6 +969,7 @@ function salvarVenda(){
   const obs=document.getElementById('venda-obs').value;
   const dataVenda=document.getElementById('venda-data').value||today();
   const itensValidos=vendaItensTemp.filter(it=>(it.produtoId||it.avulso)&&it.qtd>0);
+  recalcularPrecosPromocionaisVenda();
   if(!clienteId||itensValidos.length===0){showToast('Selecione o cliente e ao menos um item','red');return;}
 
   const tipo=document.getElementById('venda-tipo').value;

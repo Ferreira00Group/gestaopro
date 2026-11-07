@@ -661,6 +661,12 @@
       <div id="prec-condicoes-resumo"></div>
       <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModalCondicoesPagamento()">Editar condições</button>
     </div>
+    <div class="detail-panel" style="margin-bottom:20px">
+      <h3>Descontos por Quantidade</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Promoções automáticas para todos os produtos, válidas somente no fiado. Os descontos são calculados em sequência.</p>
+      <div id="prec-descontos-quantidade-resumo"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openModalDescontosQuantidade()">Editar promoções</button>
+    </div>
     <div class="detail-panel" style="margin-bottom:0">
       <h3>Canais de Venda</h3>
       <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Defina os canais (Varejo, Atacado, Revendedor…) com o desconto ou markup de cada um sobre o preço base.</p>
@@ -2524,6 +2530,27 @@
         <button class="btn btn-outline" onclick="closeModal('modal-condicoes-pagamento')">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarCondicoesPagamento()">Salvar condições</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- DESCONTOS POR QUANTIDADE -->
+<div class="modal-overlay" id="modal-descontos-quantidade">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3>Descontos por Quantidade</h3><button class="modal-close" onclick="closeModal('modal-descontos-quantidade')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Válidos somente para vendas fiado e aplicados automaticamente a todos os produtos.</p>
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+        <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="dq-individualAtivo"> Ativar desconto por produto</label>
+        <div class="form-group" style="margin-top:10px"><label>Quantidade mínima do mesmo produto</label><input class="form-control" type="number" min="1" step="1" id="dq-individualQtd"></div>
+        <div class="form-group"><label>Desconto (%)</label><input class="form-control" type="number" min="0" max="100" step="0.1" id="dq-individualPct"></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px">
+        <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="dq-geralAtivo"> Ativar desconto geral da compra</label>
+        <div class="form-group" style="margin-top:10px"><label>Quantidade mínima total da compra</label><input class="form-control" type="number" min="1" step="1" id="dq-geralQtd"></div>
+        <div class="form-group"><label>Desconto geral (%)</label><input class="form-control" type="number" min="0" max="100" step="0.1" id="dq-geralPct"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-descontos-quantidade')">Cancelar</button><button class="btn btn-primary" onclick="salvarDescontosQuantidade()">Salvar promoções</button></div>
     </div>
   </div>
 </div>

@@ -95,6 +95,14 @@ function renderPrecVisaoGeral(){
     <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:130px"><div style="font-size:13px;font-weight:700">Fiado</div><div style="font-size:20px;font-weight:800;color:var(--gold);margin-top:4px">${Number(cond.fiado||0).toLocaleString('pt-BR')}%</div><div style="font-size:11px;color:var(--muted)">desconto automático</div></div>
   </div>`;
 
+  // Promoções por quantidade (exclusivas para vendas fiado)
+  const dq=state.descontosQuantidade||{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10};
+  const dqEl=document.getElementById('prec-descontos-quantidade-resumo');
+  if(dqEl)dqEl.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:10px">
+    <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:190px;flex:1"><div style="font-size:13px;font-weight:700">Por produto</div><div style="font-size:20px;font-weight:800;color:var(--green);margin-top:4px">${dq.individualPct||0}%</div><div style="font-size:11px;color:var(--muted)">${dq.individualQtd||5} unidades do mesmo produto · ${dq.individualAtivo?'Ativo':'Inativo'}</div></div>
+    <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:190px;flex:1"><div style="font-size:13px;font-weight:700">Geral da compra</div><div style="font-size:20px;font-weight:800;color:var(--green);margin-top:4px">${dq.geralPct||0}%</div><div style="font-size:11px;color:var(--muted)">${dq.geralQtd||15} unidades somadas · ${dq.geralAtivo?'Ativo':'Inativo'}</div></div>
+  </div><div style="font-size:11px;color:var(--muted);margin-top:8px">Aplicados somente no fiado. O desconto geral incide sobre o subtotal após os descontos individuais.</div>`;
+
   // canais
   const canais=state.canais||[];
   document.getElementById('prec-canais-resumo').innerHTML=canais.length===0
@@ -423,3 +431,17 @@ function populaSelectFornecedores(){
   sel.value=atual;
 }
 
+
+function openModalDescontosQuantidade(){
+  const d=state.descontosQuantidade||{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10};
+  ['individualAtivo','individualQtd','individualPct','geralAtivo','geralQtd','geralPct'].forEach(k=>{const el=document.getElementById('dq-'+k);if(!el)return;if(el.type==='checkbox')el.checked=d[k]!==false;else el.value=d[k]??0;});
+  document.getElementById('modal-descontos-quantidade').classList.add('open');
+}
+function salvarDescontosQuantidade(){
+  const num=k=>Number(String(document.getElementById('dq-'+k).value).replace(',','.'));
+  const d={individualAtivo:document.getElementById('dq-individualAtivo').checked,individualQtd:num('individualQtd'),individualPct:num('individualPct'),geralAtivo:document.getElementById('dq-geralAtivo').checked,geralQtd:num('geralQtd'),geralPct:num('geralPct')};
+  if(![d.individualQtd,d.geralQtd].every(v=>Number.isFinite(v)&&v>0)||![d.individualPct,d.geralPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)){showToast('Confira as quantidades e percentuais (0 a 100%)','red');return;}
+  state.descontosQuantidade=d;marcarAlterado();closeModal('modal-descontos-quantidade');renderPrecVisaoGeral();
+  if(document.getElementById('modal-venda')?.classList.contains('open')){recalcularPrecosPromocionaisVenda();renderVendaItensLista();}
+  showToast('Promoções por quantidade salvas','green');
+}

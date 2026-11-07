@@ -137,6 +137,7 @@ const DEFAULT_STATE = {
   ],
   // Descontos comerciais por condição de pagamento, independentes dos canais de venda.
   condicoesPagamento:{avista:20,fiado:0},
+  descontosQuantidade:{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10},
   estoque_tab:'produtos',
   cliente_filter:'',
   cliente_status_filter:'',
@@ -490,6 +491,8 @@ function carregarDados(){
       if(!state.cartoes||typeof state.cartoes!=='object'||Array.isArray(state.cartoes)) state.cartoes={total:100,vinculos:{}};
       if(!state.condicoesPagamento||typeof state.condicoesPagamento!=='object') state.condicoesPagamento={avista:20,fiado:0};
       state.condicoesPagamento={avista:Math.max(0,Math.min(100,Number(state.condicoesPagamento.avista??20)||0)),fiado:Math.max(0,Math.min(100,Number(state.condicoesPagamento.fiado??0)||0))};
+      if(!state.descontosQuantidade||typeof state.descontosQuantidade!=='object') state.descontosQuantidade={individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10};
+      state.descontosQuantidade={individualAtivo:state.descontosQuantidade.individualAtivo!==false,individualQtd:Math.max(1,Number(state.descontosQuantidade.individualQtd)||5),individualPct:Math.max(0,Math.min(100,Number(state.descontosQuantidade.individualPct)||0)),geralAtivo:state.descontosQuantidade.geralAtivo!==false,geralQtd:Math.max(1,Number(state.descontosQuantidade.geralQtd)||15),geralPct:Math.max(0,Math.min(100,Number(state.descontosQuantidade.geralPct)||0))};
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
       if(!Array.isArray(state.renegociacoes)) state.renegociacoes=[];
