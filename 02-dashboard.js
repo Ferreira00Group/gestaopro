@@ -276,6 +276,18 @@ function dashBotoesCliente(id,tel,podeReceber){
 function dashCardCliente(c,valor,podeReceber){
   return `<div class="dash-cli dash-cli-row"><strong class="dash-cli-nome nome-cartao-link" onclick="abrirCartaoCliente(${c.id})">${escapeHtml(c.nome)}</strong><span class="debt-amount">${fmt(valor)}</span>${dashBotoesCliente(c.id,c.tel,podeReceber)}</div>`;
 }
+// Cartão específico de vencimentos: identifica o cliente e sua rota sem sobrecarregar a lista.
+function dashCardVencimento(c,valor,podeReceber){
+  const rota=c.rotaId&&typeof getRota==='function'?getRota(c.rotaId):null;
+  const rotaNome=rota&&rota.nome?rota.nome:'Sem rota cadastrada';
+  return `<div class="dash-venc-card">
+    <div class="dash-venc-ident">
+      <div class="dash-venc-cliente"><strong class="dash-venc-nome nome-cartao-link" onclick="abrirCartaoCliente(${c.id})">${escapeHtml(c.nome)}</strong><span class="dash-venc-valor">${fmt(valor)}</span></div>
+      <div class="dash-venc-rota"><i data-lucide="map-pin" class="ic"></i><span>${escapeHtml(rotaNome)}</span></div>
+    </div>
+    ${dashBotoesCliente(c.id,c.tel,podeReceber)}
+  </div>`;
+}
 // dias = diasParaVencimento (negativo = atraso). Faixas: 1–15 dias (amarelo), 16–60 (laranja), mais de 60 (vermelho).
 function faixaVencimento(dias){
   if(dias<-60) return {tag:'Crítico',cls:'badge-red',cor:'var(--red)'};
@@ -306,7 +318,7 @@ function dashVencimentosHtml(itens,hoje){
     html+=`<div class="dash-grupo"><div class="dash-grupo-l"><span style="color:${f.cor}">${fmtDate(g.venc)}</span><span class="badge ${f.cls}">${f.tag}</span></div><div class="dash-grupo-sub">${tituloVencimento(dias)} · ${g.itens.length} cliente${g.itens.length>1?'s':''} · ${fmt(total)}</div></div>`;
     g.itens.slice(0,restante).forEach(u=>{
       const c=getCliente(u.clienteId),saldo=getSaldoCliente(u.clienteId);
-      html+=dashCardCliente(c,saldo>0?saldo:u.valor,saldo>0);
+      html+=dashCardVencimento(c,saldo>0?saldo:u.valor,saldo>0);
       mostrados++;
     });
     restante-=Math.min(restante,g.itens.length);

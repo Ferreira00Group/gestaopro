@@ -807,6 +807,24 @@ nav a .icon{stroke-width:1.75}
 .dash-cli-row .dash-btn{flex:none;min-height:38px;padding:0 9px;font-size:12px}
 .dash-cli-row .dash-btn .ic{width:14px;height:14px}
 
+/* v5.91.3 — vencimentos alinhados à identidade visual do GestãoPRO */
+.dash-venc-card{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid rgba(201,162,75,.24);border-radius:13px;background:linear-gradient(115deg,rgba(201,162,75,.075),var(--card-2) 38%,rgba(255,255,255,.018));box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.dash-venc-ident{flex:1;min-width:0}
+.dash-venc-cliente{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.dash-venc-nome{font-size:14px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.dash-venc-valor{font-size:14px;font-weight:800;color:var(--red);white-space:nowrap}
+.dash-venc-rota{display:flex;align-items:center;gap:5px;margin-top:5px;color:var(--gold-2);font-size:11.5px;min-width:0}
+.dash-venc-rota .ic{width:13px;height:13px;flex:none}
+.dash-venc-rota span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-venc-card .dash-cli-acoes{display:flex;flex-direction:column;gap:5px;margin:0;flex:none}
+.dash-venc-card .dash-btn{min-height:34px;padding:0 10px;font-size:11.5px;white-space:nowrap;border-radius:9px}
+.dash-venc-card .dash-btn .ic{width:14px;height:14px}
+.dash-grupo{padding:8px 4px 2px}
+.dash-grupo-l{font-size:12.5px;letter-spacing:.15px}
+.dash-grupo-sub{font-size:11px;margin:3px 0 5px}
+@media(max-width:390px){.dash-venc-card{gap:7px;padding:10px}.dash-venc-nome{font-size:13px}.dash-venc-valor{font-size:12.5px}.dash-venc-card .dash-btn{padding:0 8px;font-size:10.5px;min-height:32px}}
+@media(min-width:640px){.dash-venc-card{padding:12px 14px}.dash-venc-card .dash-cli-acoes{flex-direction:row}.dash-venc-card .dash-btn{min-height:36px;padding:0 13px;font-size:12px}}
+
 .dash-date-line{margin:0 0 8px;font-size:12px;color:var(--muted);text-transform:capitalize}
 
 /* v5.50.2 — campo de busca (type=search) sem ícones nativos do Chrome */
