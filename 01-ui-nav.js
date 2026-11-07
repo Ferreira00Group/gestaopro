@@ -569,7 +569,8 @@ function toggleNavGroup(id){
   const g=document.getElementById('grp-'+id);
   if(g) g.classList.toggle('open');
 }
-function gotoClientesDevendo(){
+function gotoClientesDevendo(semHistorico=false){
+  if(!semHistorico) registrarHistoricoGestaoPro('clientes');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
   const pgCl = document.getElementById('page-clientes');
@@ -590,14 +591,17 @@ function gotoClientesDevendo(){
   requestAnimationFrame(ajustarStickyTabela);
 }
 
-function goto(page){
+function goto(page, semHistorico=false){
   if(page === 'receber'){
-    gotoClientesDevendo();
+    gotoClientesDevendo(semHistorico);
     return;
   }
+  if(!semHistorico) registrarHistoricoGestaoPro(page);
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
+  const destino=document.getElementById('page-'+page);
+  if(!destino) return;
+  destino.classList.add('active');
   const navLink=document.querySelector(`nav a[data-page="${page}"]`);
   if(navLink){
     navLink.classList.add('active');
@@ -844,4 +848,157 @@ function render(page){
     new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType===1){if(n.matches&&n.matches('input,textarea,select')&&!n.hasAttribute('autocomplete'))n.setAttribute('autocomplete','off');marcar(n);}}))).observe(document.body,{childList:true,subtree:true});
   };
   if(document.body) ini(); else document.addEventListener('DOMContentLoaded',ini);
+})();
+
+
+// ============ BOTÃO VOLTAR ANDROID / NAVEGAÇÃO INTERNA (v5.91.2) ============
+let _gpPaginaAtual = 'dashboard';
+let _gpAguardandoSegundoVoltar = false;
+let _gpTimerVoltar = null;
+let _gpProcessandoPopstate = false;
+
+function registrarHistoricoGestaoPro(page){
+  if(!page || _gpProcessandoPopstate) return;
+  _gpPaginaAtual = page;
+  try { history.pushState({gpApp:true, gpPage:page}, '', location.href); } catch(e) {}
+}
+
+function paginaAtivaGestaoPro(){
+  const ativa=document.querySelector('.page.active');
+  return ativa ? ativa.id.replace(/^page-/, '') : 'dashboard';
+}
+
+function modalAbertoGestaoPro(){
+  const abertos=[...document.querySelectorAll('.modal-overlay.open')];
+  return abertos.length ? abertos[abertos.length-1] : null;
+}
+
+function voltarTelaGestaoPro(page){
+  _gpProcessandoPopstate=true;
+  try { goto(page || 'dashboard', true); }
+  finally { _gpProcessandoPopstate=false; }
+  _gpPaginaAtual=page || 'dashboard';
+}
+
+function solicitarSaidaGestaoPro(){
+  if(_gpAguardandoSegundoVoltar){
+    clearTimeout(_gpTimerVoltar);
+    _gpAguardandoSegundoVoltar=false;
+    abrirConfirmacaoSaidaGestaoPro();
+    return;
+  }
+  _gpAguardandoSegundoVoltar=true;
+  if(typeof showToast==='function') showToast('Toque voltar novamente para sair do GestãoPRO','');
+  _gpTimerVoltar=setTimeout(()=>{_gpAguardandoSegundoVoltar=false;},1800);
+}
+
+function tratarVoltarGestaoPro(event){
+  const modal=modalAbertoGestaoPro();
+  if(modal){
+    modal.classList.remove('open');
+    // Mantém uma entrada de proteção para o próximo toque voltar continuar dentro do app.
+    try { history.pushState({gpApp:true,gpPage:paginaAtivaGestaoPro()},'',location.href); } catch(e) {}
+    return;
+  }
+  const sidebar=document.getElementById('sidebar');
+  if(sidebar && sidebar.classList.contains('open')){
+    closeSidebar();
+    try { history.pushState({gpApp:true,gpPage:paginaAtivaGestaoPro()},'',location.href); } catch(e) {}
+    return;
+  }
+  const page=(event && event.state && event.state.gpApp && event.state.gpPage) || null;
+  if(page && page !== paginaAtivaGestaoPro()){
+    voltarTelaGestaoPro(page);
+    return;
+  }
+  const atual=paginaAtivaGestaoPro();
+  if(atual !== 'dashboard'){
+    voltarTelaGestaoPro('dashboard');
+    try { history.pushState({gpApp:true,gpPage:'dashboard'},'',location.href); } catch(e) {}
+    return;
+  }
+  // Ao chegar ao início, impede que o primeiro toque abandone o app.
+  try { history.pushState({gpApp:true,gpPage:'dashboard'},'',location.href); } catch(e) {}
+  solicitarSaidaGestaoPro();
+}
+
+function abrirConfirmacaoSaidaGestaoPro(){
+  const modal=document.getElementById('modal-sair-gestaopro');
+  if(modal) modal.classList.add('open');
+}
+
+function cancelarSaidaGestaoPro(){
+  const modal=document.getElementById('modal-sair-gestaopro');
+  if(modal) modal.classList.remove('open');
+}
+
+async function confirmarSaidaGestaoPro(){
+  const btn=document.getElementById('gp-sair-confirmar');
+  const cancelar=document.getElementById('gp-sair-cancelar');
+  const status=document.getElementById('gp-sair-status');
+  if(btn) btn.disabled=true;
+  if(cancelar) cancelar.disabled=true;
+  if(status) status.textContent='Salvando seus dados e preparando o backup...';
+
+  try{
+    if(!state) throw new Error('Os dados do aplicativo não estão disponíveis.');
+    const agora=new Date().toISOString();
+    state.ultimoBackupLocal=agora;
+    state.ultimoBackup=Date.now();
+    state.snoozeBackupAte=null;
+    if(typeof gravarLocalAgora!=='function' || !gravarLocalAgora()){
+      throw new Error('Não foi possível gravar os dados neste aparelho. Libere espaço e tente novamente.');
+    }
+
+    // Cópia JSON independente, baixada no aparelho antes de tentar fechar a PWA.
+    const conteudo=JSON.stringify(state,null,2);
+    const blob=new Blob([conteudo],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const data=new Date();
+    const nome=`gestaopro-backup-${data.getFullYear()}-${String(data.getMonth()+1).padStart(2,'0')}-${String(data.getDate()).padStart(2,'0')}.json`;
+    a.href=url; a.download=nome; a.style.display='none';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+
+    let driveOk=false;
+    if(state.driveBackupAtivo && typeof driveDisponivel==='function' && driveDisponivel() && typeof enviarBackupParaDrive==='function'){
+      try{
+        if(typeof driveAccessToken!=='undefined' && !driveAccessToken && typeof obterTokenDriveArmazenado==='function') driveAccessToken=obterTokenDriveArmazenado();
+        if(typeof driveAccessToken!=='undefined' && driveAccessToken){
+          driveOk=!!(await enviarBackupParaDrive({forcar:true,silencioso:true}));
+        }
+      }catch(e){ console.warn('[GestãoPRO] Backup Drive ao sair:',e); }
+    }
+
+    if(typeof atualizarIndicadorBackup==='function') atualizarIndicadorBackup();
+    if(status) status.innerHTML=`<strong style="color:var(--green)">Backup concluído!</strong><br>Uma cópia JSON foi baixada para este aparelho.${driveOk?' O Google Drive também foi atualizado.':(state.driveBackupAtivo?' O backup no Google Drive não foi confirmado; a cópia local foi salva.':'') }<br><span style="color:var(--muted)">Fechando o GestãoPRO...</span>`;
+    if(btn){ btn.textContent='Fechar aplicativo'; btn.disabled=false; btn.onclick=fecharJanelaGestaoPro; }
+    if(cancelar){ cancelar.textContent='Continuar no app'; cancelar.disabled=false; cancelar.onclick=cancelarSaidaGestaoPro; }
+    setTimeout(fecharJanelaGestaoPro,900);
+  }catch(e){
+    console.error('[GestãoPRO] Não foi possível concluir o backup de saída:',e);
+    if(status) status.innerHTML=`<span style="color:var(--red)">Não foi possível concluir o backup.</span><br>${String(e.message||e)}<br>O aplicativo continuará aberto.`;
+    if(btn){btn.textContent='Tentar novamente';btn.disabled=false;btn.onclick=confirmarSaidaGestaoPro;}
+    if(cancelar){cancelar.textContent='Cancelar';cancelar.disabled=false;cancelar.onclick=cancelarSaidaGestaoPro;}
+  }
+}
+
+function fecharJanelaGestaoPro(){
+  try { window.close(); } catch(e) {}
+  // Navegadores podem bloquear window.close() em PWAs abertas pelo usuário.
+  setTimeout(()=>{
+    const status=document.getElementById('gp-sair-status');
+    if(status && document.getElementById('modal-sair-gestaopro')?.classList.contains('open')){
+      status.innerHTML+=' <br>Se o aplicativo continuar aberto, feche-o pelo botão de aplicativos recentes do Android.';
+    }
+  },500);
+}
+
+(function instalarVoltarAndroidGestaoPro(){
+  _gpPaginaAtual=paginaAtivaGestaoPro();
+  try { history.replaceState({gpApp:true,gpPage:_gpPaginaAtual},'',location.href); } catch(e) {}
+  // Entrada sentinela: permite capturar o botão voltar mesmo na tela inicial.
+  try { history.pushState({gpApp:true,gpPage:_gpPaginaAtual},'',location.href); } catch(e) {}
+  window.addEventListener('popstate',tratarVoltarGestaoPro);
 })();

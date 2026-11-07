@@ -221,13 +221,13 @@ function driveAvisarBloqueio(motivos, silencioso){
 
 async function enviarBackupParaDrive(opts){
   opts = opts || {};
-  if(!driveAccessToken) return;
+  if(!driveAccessToken) return false;
   if(_bloquearGravacao || _estadoNaoConfiavel){
     // o state atual são dados de exemplo por falha de leitura: nunca mandar isso pro Drive
     showToast('Backup no Drive pausado: os dados deste aparelho não foram lidos corretamente','red');
-    return;
+    return false;
   }
-  if(_driveEnviando) return;
+  if(_driveEnviando) return false;
   _driveEnviando = true;
   try{
     const remoto = await driveBuscarArquivo(DRIVE_ARQUIVO_NOME);
@@ -236,7 +236,7 @@ async function enviarBackupParaDrive(opts){
 
     if(remoto && !opts.forcar){
       const motivos = driveMotivosBloqueio(textoRemoto, remoto);
-      if(motivos.length){ driveAvisarBloqueio(motivos, !!opts.silencioso); return; }
+      if(motivos.length){ driveAvisarBloqueio(motivos, !!opts.silencioso); return false; }
     }
 
     if(remoto){
@@ -259,12 +259,14 @@ async function enviarBackupParaDrive(opts){
     state.snoozeBackupAte = null;
     salvarDados();
     showToast('Backup salvo no Google Drive ✓','green');
+    return true;
   }catch(e){
     if(e && e.status === 401) driveAccessToken = null; // token expirou: renova na próxima
     if(!opts.silencioso){
       showToast(`Backup no Drive falhou${e && e.status?' ('+e.status+(e.detalhe?': '+e.detalhe:'')+')':''}`,'red');
     }
     console.warn('[GestãoPRO] Falha no backup do Drive:', e);
+    return false;
   }finally{
     _driveEnviando = false;
   }

@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.91.1">
+<link rel="stylesheet" href="styles.css?v=5.91.2">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -1266,6 +1266,21 @@
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modal-confirmar')">Cancelar</button>
         <button class="btn" style="background:var(--red);color:#fff" id="modal-confirmar-btn-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SAÍDA DO GESTÃOPRO: backup antes de fechar -->
+<div class="modal-overlay" id="modal-sair-gestaopro">
+  <div class="modal" style="max-width:390px;text-align:center">
+    <div class="modal-header"><h3 style="display:flex;align-items:center;gap:8px"><i data-lucide="shield-check" class="ic" style="color:var(--gold)"></i> Sair do GestãoPRO?</h3><button class="modal-close" onclick="cancelarSaidaGestaoPro()"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body" style="padding:22px 18px">
+      <p style="font-size:14px;color:var(--text);margin-bottom:12px">Antes de sair, o GestãoPRO vai salvar seus dados e baixar uma cópia de segurança. Se o Google Drive estiver conectado, também tentará sincronizar.</p>
+      <div id="gp-sair-status" style="font-size:12px;color:var(--muted);min-height:18px;margin-bottom:16px"></div>
+      <div class="modal-footer" style="justify-content:center;gap:10px">
+        <button class="btn btn-outline" id="gp-sair-cancelar" onclick="cancelarSaidaGestaoPro()">Cancelar</button>
+        <button class="btn" id="gp-sair-confirmar" style="background:var(--red);color:#fff" onclick="confirmarSaidaGestaoPro()">Sair e fazer backup</button>
       </div>
     </div>
   </div>
@@ -2557,36 +2572,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.91.1"></script>
-<script src="00-core.js?v=5.91.1"></script>
-<script src="lib-qrcode.js?v=5.91.1"></script>
-<script src="01-ui-nav.js?v=5.91.1"></script>
-<script src="02-dashboard.js?v=5.91.1"></script>
-<script src="03-clientes.js?v=5.91.1"></script>
-<script src="04-vendas.js?v=5.91.1"></script>
-<script src="04b-pix-extrato.js?v=5.91.1"></script>
-<script src="11b-meu-dia.js?v=5.91.1"></script>
-<script src="11c-promessa-reneg.js?v=5.91.1"></script>
-<script src="11d-aprovar-lote.js?v=5.91.1"></script>
-<script src="05-producao.js?v=5.91.1"></script>
-<script src="06-estoque.js?v=5.91.1"></script>
-<script src="07-precificacao.js?v=5.91.1"></script>
-<script src="08-compras-fornecedores.js?v=5.91.1"></script>
-<script src="09-financeiro-relatorios.js?v=5.91.1"></script>
-<script src="10-fab-inline.js?v=5.91.1"></script>
-<script src="10b-planejamento.js?v=5.91.1"></script>
-<script src="13-crm.js?v=5.91.1"></script>
-<script src="14-relacionamento.js?v=5.91.1"></script>
-<script src="15-cliente360.js?v=5.91.1"></script>
-<script src="16-automacoes.js?v=5.91.1"></script>
-<script src="17-banco.js?v=5.91.1"></script>
-<script src="18-credito.js?v=5.91.1"></script>
-<script src="19-conectores.js?v=5.91.1"></script>
-<script src="20-cartoes.js?v=5.91.1"></script>
-<script src="12-drive-backup.js?v=5.91.1"></script>
-<script src="11-app-init.js?v=5.91.1"></script>
-<script src="21-gemini-ia.js?v=5.91.1"></script>
-<script src="22-operacao-foco.js?v=5.91.1"></script>
+<script src="00a-config.js?v=5.91.2"></script>
+<script src="00-core.js?v=5.91.2"></script>
+<script src="lib-qrcode.js?v=5.91.2"></script>
+<script src="01-ui-nav.js?v=5.91.2"></script>
+<script src="02-dashboard.js?v=5.91.2"></script>
+<script src="03-clientes.js?v=5.91.2"></script>
+<script src="04-vendas.js?v=5.91.2"></script>
+<script src="04b-pix-extrato.js?v=5.91.2"></script>
+<script src="11b-meu-dia.js?v=5.91.2"></script>
+<script src="11c-promessa-reneg.js?v=5.91.2"></script>
+<script src="11d-aprovar-lote.js?v=5.91.2"></script>
+<script src="05-producao.js?v=5.91.2"></script>
+<script src="06-estoque.js?v=5.91.2"></script>
+<script src="07-precificacao.js?v=5.91.2"></script>
+<script src="08-compras-fornecedores.js?v=5.91.2"></script>
+<script src="09-financeiro-relatorios.js?v=5.91.2"></script>
+<script src="10-fab-inline.js?v=5.91.2"></script>
+<script src="10b-planejamento.js?v=5.91.2"></script>
+<script src="13-crm.js?v=5.91.2"></script>
+<script src="14-relacionamento.js?v=5.91.2"></script>
+<script src="15-cliente360.js?v=5.91.2"></script>
+<script src="16-automacoes.js?v=5.91.2"></script>
+<script src="17-banco.js?v=5.91.2"></script>
+<script src="18-credito.js?v=5.91.2"></script>
+<script src="19-conectores.js?v=5.91.2"></script>
+<script src="20-cartoes.js?v=5.91.2"></script>
+<script src="12-drive-backup.js?v=5.91.2"></script>
+<script src="11-app-init.js?v=5.91.2"></script>
+<script src="21-gemini-ia.js?v=5.91.2"></script>
+<script src="22-operacao-foco.js?v=5.91.2"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
