@@ -307,39 +307,58 @@ function coletarContextoERP(periodo = 'mes_atual') {
   if (Array.isArray(state.produtos)) {
     state.produtos.forEach(p => {
       const min = Number(p.minimo || 0);
-      const est = Number(p.estoque || 0);
-      const qtdVendida = qtdVendidaPorProduto[p.nome] || 0;
+      const temVariantes = Array.isArray(p.variantes) && p.variantes.length > 0;
+      // Produtos com variantes não usam p.estoque: o saldo real está em cada variante.
+      // Somar as variantes evita classificar o produto-pai como zerado por um campo vazio.
+      const estoqueTotal = temVariantes
+        ? p.variantes.reduce((s, v) => s + Math.max(0, Number(v.estoque || 0)), 0)
+        : Math.max(0, Number(p.estoque || 0));
+      const qtdVendida = Number(qtdVendidaPorProduto[p.nome] || 0);
       const divisorDias = mesesRetroativos * 30;
       const giroDiario = qtdVendida > 0 ? (qtdVendida / divisorDias) : 0;
-      const diasRestantes = giroDiario > 0 ? Math.floor(est / giroDiario) : (est > 0 ? 999 : 0);
-
-      const statusItem = est <= 0 ? 'zerado' : (est <= min ? 'baixo' : 'ok');
+      const diasRestantes = giroDiario > 0 ? Math.floor(estoqueTotal / giroDiario) : (estoqueTotal > 0 ? 999 : 0);
 
       runwayEstoque.push({
         id: p.id,
         nome: p.nome,
-        estoque: est,
+        estoque: estoqueTotal,
         minimo: min,
         preco: Number(p.preco || 0),
         giroDiario: Number(giroDiario.toFixed(2)),
-        diasRestantes: est <= 0 ? 0 : diasRestantes,
-        status: statusItem
+        diasRestantes: estoqueTotal <= 0 ? 0 : diasRestantes,
+        status: estoqueTotal <= 0 ? 'zerado' : (estoqueTotal <= min ? 'baixo' : 'ok'),
+        variantes: temVariantes ? p.variantes.map(v => ({
+          id: v.id,
+          nome: v.nome,
+          estoque: Math.max(0, Number(v.estoque || 0)),
+          minimo: min,
+          status: Number(v.estoque || 0) <= 0 ? 'zerado' : (Number(v.estoque || 0) <= min ? 'baixo' : 'ok')
+        })) : []
       });
 
-      if (est <= 0) {
-        prodZero.push({ id: p.id, nome: p.nome, estoque: est, minimo: min });
-      } else if (est <= min) {
-        prodBaixo.push({ id: p.id, nome: p.nome, estoque: est, minimo: min });
+      // Para alertas, avaliar cada variante separadamente, igual à tela de Estoque.
+      // O produto-pai só é usado quando não possui variantes.
+      if (temVariantes) {
+        p.variantes.forEach(v => {
+          const estVariante = Math.max(0, Number(v.estoque || 0));
+          const item = { id: p.id, varianteId: v.id, nome: `${p.nome} — ${v.nome}`, estoque: estVariante, minimo: min };
+          if (estVariante <= 0) prodZero.push(item);
+          else if (estVariante <= min) prodBaixo.push(item);
+        });
+      } else if (estoqueTotal <= 0) {
+        prodZero.push({ id: p.id, nome: p.nome, estoque: estoqueTotal, minimo: min });
+      } else if (estoqueTotal <= min) {
+        prodBaixo.push({ id: p.id, nome: p.nome, estoque: estoqueTotal, minimo: min });
       }
 
-      // Produto parado: tem estoque, mas zero vendas no período
-      if (est > 0 && qtdVendida === 0) {
+      // Produto parado: considerar o saldo real agregado das variantes.
+      if (estoqueTotal > 0 && qtdVendida === 0) {
         produtosParados.push({
           id: p.id,
           nome: p.nome,
-          estoque: est,
+          estoque: estoqueTotal,
           preco: Number(p.preco || 0),
-          valorParado: Number((est * (p.preco || 0)).toFixed(2))
+          valorParado: Number((estoqueTotal * (p.preco || 0)).toFixed(2))
         });
       }
     });
@@ -551,7 +570,7 @@ function construirPacoteAnalise() {
     periodo: _filtroPeriodo,
     foco: _filtroFoco,
     anonimizado: _anonimizarClientes,
-    instrucoes: "Você é um consultor analítico sênior para ERP. Interprete os indicadores e dados fornecidos SEM recalcular os números já computados. Identifique anomalias críticas, riscos de liquidez/ruptura e alavancas de rentabilidade. Sua resposta DEVE ser estritamente no formato JSON a seguir, sem texto antes ou depois: {\"versao_formato\": 1, \"interpretado_por\": \"Claude\", \"data_analise\": \"AAAA-MM-DD\", \"resumo\": \"texto executivo sucinto\", \"alertas\": [{\"id\": \"alt-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}], \"oportunidades\": [{\"id\": \"op-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}], \"acoes\": [{\"id\": \"ac-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}]}",
+    instrucoes: "Você é um consultor analítico sênior para ERP. Interprete os indicadores e dados fornecidos SEM recalcular os números já computados. Para produtos com variantes, use o estoque total agregado e confira também o saldo de cada variante; NUNCA declare o produto-pai zerado se a soma das variantes for maior que zero. Só aponte ruptura quando o saldo total ou a variante relevante estiver realmente zerado, e identifique a variante no alerta. Não confunda ausência do campo estoque no produto-pai com estoque zero. Identifique anomalias críticas, riscos de liquidez/ruptura e alavancas de rentabilidade. Sua resposta DEVE ser estritamente no formato JSON a seguir, sem texto antes ou depois: {\"versao_formato\": 1, \"interpretado_por\": \"Claude\", \"data_analise\": \"AAAA-MM-DD\", \"resumo\": \"texto executivo sucinto\", \"alertas\": [{\"id\": \"alt-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}], \"oportunidades\": [{\"id\": \"op-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}], \"acoes\": [{\"id\": \"ac-1\", \"titulo\": \"...\", \"motivo\": \"...\", \"urgencia\": \"alta|media|baixa\", \"impacto\": \"...\", \"acao\": {\"tipo\": \"repor_estoque|cobrar_cliente|abrir_produto|nenhuma\", \"ref\": \"id opcional\"}}]}",
     indicadores: {
       faturamento: ctx.faturamentoMes,
       faturamento_periodo: ctx.faturamentoPeriodo,
