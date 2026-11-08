@@ -269,7 +269,7 @@
         <button type="button" class="tab-mini active" onclick="dashTabSwitch('vm','venc',this)">Vencimentos</button>
         <button type="button" class="tab-mini" onclick="dashTabSwitch('vm','mov',this)">Movimentações</button>
       </div>
-      <a onclick="goto('receber')" style="font-size:11.5px;color:var(--blue);cursor:pointer;white-space:nowrap">Ver todas →</a>
+      <a onclick="dashVerTodas()" style="font-size:11.5px;color:var(--blue);cursor:pointer;white-space:nowrap">Ver todas →</a>
     </div>
     <div class="dash-tab-content" data-group="vm" data-tab="venc">
       <div class="dash-list" id="dash-devedores"></div>
@@ -435,7 +435,7 @@
 <div id="page-cobranca" class="page">
   <div class="print-header"><h1>GestãoPRO — Cobrança do dia</h1><p id="print-date-cobranca"></p></div>
   <div class="page-header">
-    <div><h2>Cobrança do dia</h2><p>Fiado vencido e vencendo hoje</p></div>
+    <div><h2>Vencimentos</h2><p>Parcelas pendentes, do vencimento mais recente ao mais antigo</p></div>
     <div class="page-header-actions">
     </div>
   </div>
@@ -744,7 +744,7 @@
           <select class="filter" id="fin-filtro-tipo" onchange="renderFinanceiro()">
             <option value="">Todos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option>
           </select>
-          <input type="month" class="filter" id="fin-filtro-mes" onchange="renderFinanceiro()" style="max-width:160px">
+          <input type="month" class="filter" id="fin-filtro-mes" onchange="finFiltroMesAlterado()" style="max-width:160px">
         </div>
       </div>
       <div class="dcard-list" id="fin-table"></div>

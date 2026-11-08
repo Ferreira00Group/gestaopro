@@ -65,12 +65,14 @@ function lancCategoriaAplicar(valor){
   else {selEl.value='outros';inp.value=v;}
   lancCategoriaAtualizarUI();
 }
+let finMostrarTodas=false;
+function finFiltroMesAlterado(){finMostrarTodas=false;renderFinanceiro();}
 function renderFinanceiro(){
   const mesEl=document.getElementById('fin-filtro-mes');
-  if(!mesEl.value) mesEl.value=today().slice(0,7);
+  if(!mesEl.value&&!finMostrarTodas) mesEl.value=today().slice(0,7);
   const mes=mesEl.value;
   const tipoFiltro=document.getElementById('fin-filtro-tipo').value;
-  const movMes=state.financeiro.filter(f=>f.data.startsWith(mes));
+  const movMes=state.financeiro.filter(f=>!mes||String(f.data||'').startsWith(mes));
   const entradas=movMes.filter(f=>f.tipo==='entrada').reduce((s,f)=>s+f.valor,0);
   const saidas=movMes.filter(f=>f.tipo==='saida').reduce((s,f)=>s+f.valor,0);
   const saldo=entradas-saidas;
@@ -82,9 +84,9 @@ function renderFinanceiro(){
   const max=Math.max(entradas,saidas,1);
   document.getElementById('fin-bar-in').style.width=(entradas/max*100)+'%';
   document.getElementById('fin-bar-out').style.width=(saidas/max*100)+'%';
-  let list=[...state.financeiro].sort((a,b)=>b.data.localeCompare(a.data));
+  let list=[...state.financeiro].sort((a,b)=>String(b.data||'').localeCompare(String(a.data||''))||Number(b.id||0)-Number(a.id||0));
   if(tipoFiltro) list=list.filter(f=>f.tipo===tipoFiltro);
-  list=list.filter(f=>f.data.startsWith(mes));
+  if(mes) list=list.filter(f=>String(f.data||'').startsWith(mes));
   const tb=document.getElementById('fin-table');
   if(list.length===0){tb.innerHTML='<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação neste período</span></div>';return;}
   tb.innerHTML=list.map(f=>{

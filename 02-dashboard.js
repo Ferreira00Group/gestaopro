@@ -127,7 +127,7 @@ function renderDashboard(){
   const alertasVenc=flatFiado
     .filter(u=>u.vencimento && u.status!=='pago')
     .filter(u=>{const d=diasParaVencimento(u.vencimento,hoje);return d<=3;})
-    .sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
+    .sort((a,b)=>String(b.vencimento||'').localeCompare(String(a.vencimento||''))||Number(b.id||0)-Number(a.id||0));
   const vistosD=new Set();
   const alertasUnicos=alertasVenc.filter(u=>{if(vistosD.has(u.clienteId))return false;vistosD.add(u.clienteId);return true;});
   const tb=document.getElementById('dash-devedores');
@@ -361,3 +361,21 @@ function renderDashPixBanner(){
   }
 }
 
+
+
+// Abre a listagem correspondente à aba ativa no Dashboard.
+function dashVerTodas(){
+  const btnAtivo=document.querySelector('#page-dashboard .dash-tabs-header .tab-mini.active');
+  const abaMov=!!(btnAtivo && /movimenta/i.test(btnAtivo.textContent||''));
+  if(abaMov){
+    finMostrarTodas=true;
+    const filtroMes=document.getElementById('fin-filtro-mes');
+    if(filtroMes) filtroMes.value='';
+    goto('financeiro');
+    const btn=document.querySelector('#page-financeiro .tabs .tab');
+    if(typeof showFinTab==='function') showFinTab('movimentacoes',btn);
+    return;
+  }
+  // Vencimentos abre a tela de cobrança, não a lista geral de clientes.
+  goto('cobranca');
+}

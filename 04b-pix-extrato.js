@@ -849,9 +849,9 @@ function renderCobrancaDia(){
   if(!el) return;
   const hoje=today();
   const porCliente={};
-  getUnidadesFiadoFlat().filter(u=>u.status!=='pago'&&u.vencimento&&u.vencimento<=hoje).forEach(u=>{
+  getUnidadesFiadoFlat().filter(u=>u.status!=='pago'&&u.vencimento).forEach(u=>{
     const o=porCliente[u.clienteId]||(porCliente[u.clienteId]={vencimento:u.vencimento,vencido:0,us:[]});
-    if(u.vencimento<o.vencimento) o.vencimento=u.vencimento;
+    if(u.vencimento>o.vencimento) o.vencimento=u.vencimento;
     o.vencido+=u.valorRestante;
     o.us.push(u);
   });
@@ -860,31 +860,31 @@ function renderCobrancaDia(){
     const prom=(typeof promessaEstado==='function')?promessaEstado(id,hoje,o.us):null;
     return {id,c,vencimento:o.vencimento,vencido:round2(o.vencido),dias:diasEntre(o.vencimento,hoje),enc:calcEncargosCliente(id,hoje).total,uc:textoUltimaCobranca(c,hoje),prom};
   });
-  // promessa em dia cobrindo tudo que está vencido: sai da lista até a data (v5.42)
+  // promessa ativa cobrindo todo o saldo: sai da lista até a data (v5.42)
   const prometidos=todos.filter(l=>l.prom&&l.prom.estado==='ativa'&&l.prom.cobreTudo).sort((a,b)=>a.prom.data.localeCompare(b.prom.data));
   const lista=todos.filter(l=>prometidos.indexOf(l)<0);
   const jaHoje=lista.filter(l=>l.uc.hoje).length;
   const totalVencido=round2(lista.reduce((s,l)=>s+l.vencido,0));
   const quebrada=(l)=>(l.prom&&l.prom.estado==='quebrada')?1:0;
-  const vis=(cobrancaOcultarHoje?lista.filter(l=>!l.uc.hoje):lista).sort((a,b)=>quebrada(b)-quebrada(a)||b.dias-a.dias||b.vencido-a.vencido);
+  const vis=(cobrancaOcultarHoje?lista.filter(l=>!l.uc.hoje):lista).sort((a,b)=>String(b.vencimento||'').localeCompare(String(a.vencimento||''))||quebrada(b)-quebrada(a)||b.vencido-a.vencido);
   if(todos.length===0){
     el.innerHTML='<div style="text-align:center;padding:60px 20px"><h3 style="color:var(--green)">Nada para cobrar hoje</h3><p style="color:var(--muted);margin-top:8px">Nenhum fiado vencido ou vencendo hoje.</p></div>';
     return;
   }
   el.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:13px">
-      <span><strong>${lista.length}</strong> cliente(s) · vencido <strong style="color:var(--red)">${fmt(totalVencido)}</strong> · <strong>${jaHoje}</strong> já cobrado(s) hoje${prometidos.length?' · <strong>'+prometidos.length+'</strong> com promessa':''}</span>
+      <span><strong>${lista.length}</strong> cliente(s) · em aberto <strong style="color:var(--red)">${fmt(totalVencido)}</strong> · <strong>${jaHoje}</strong> já cobrado(s) hoje${prometidos.length?' · <strong>'+prometidos.length+'</strong> com promessa':''}</span>
       <label style="display:flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer"><input type="checkbox" style="width:auto;margin:0" ${cobrancaOcultarHoje?'checked':''} onchange="toggleCobrancaOcultarHoje(this.checked)"> Ocultar já cobrados hoje</label>
     </div>
     <div class="table-card table-cards"><div class="table-scroll"><table>
-      <thead><tr><th>Cliente</th><th>Vencimento</th><th>Vencido</th><th>Última cobrança</th><th></th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Vencimento</th><th>Em aberto</th><th>Última cobrança</th><th></th></tr></thead>
       <tbody>${vis.length===0?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">'+(lista.length===0?'Todos os clientes vencidos têm promessa em dia ✓':'Todos já foram cobrados hoje ✓')+'</td></tr>':vis.map(l=>{
-        const cor=l.dias>0?'var(--red)':'#d35400';
-        const status=l.dias>0?`${l.dias}d atraso`:'Hoje';
+        const cor=l.dias>0?'var(--red)':l.dias===0?'#d35400':'var(--blue)';
+        const status=l.dias>0?`${l.dias}d atraso`:l.dias===0?'Hoje':`Vence em ${Math.abs(l.dias)}d`;
         return `<tr style="${l.uc.hoje?'opacity:.6':''}${l.prom&&l.prom.estado==='quebrada'?';background:rgba(192,57,43,.12)':''}">
           <td data-label="Cliente"><strong class="nome-cartao-link" onclick="abrirCartaoCliente(${l.c.id})">${escapeHtml(l.c.nome)}</strong>${l.uc.hoje?' <span class="badge badge-green">Cobrado hoje</span>':''}${cobrancaPromBadge(l.prom)}<br><span style="font-size:11px;color:var(--muted)">${escapeHtml(l.c.tel||'sem telefone')}</span></td>
           <td data-label="Vencimento"><span style="color:${cor};font-weight:600;font-size:12px">${fmtDate(l.vencimento)}</span><br><span style="font-size:11px;color:${cor}">${status}</span></td>
-          <td data-label="Vencido" class="debt-amount">${fmt(l.vencido)}${l.enc>0?`<div style="font-size:11px;color:var(--muted);font-weight:400">+ ${fmt(l.enc)} encargos</div>`:''}</td>
+          <td data-label="Em aberto" class="debt-amount">${fmt(l.vencido)}${l.enc>0?`<div style="font-size:11px;color:var(--muted);font-weight:400">+ ${fmt(l.enc)} encargos</div>`:''}</td>
           <td data-label="Última cobrança" style="font-size:12px">${l.uc.txt}</td>
           <td><div class="actions-cell"><button class="btn btn-green btn-sm" onclick="abrirPagamento(${l.id})" title="Receber"><i data-lucide="banknote" class="ic"></i></button><button class="btn btn-outline btn-sm" onclick="abrirPromessa(${l.id})" title="Promessa de pagamento"><i data-lucide="handshake" class="ic"></i></button><button class="btn btn-outline btn-sm" onclick="abrirRenegociar(${l.id})" title="Renegociar dívida"><i data-lucide="refresh-cw" class="ic"></i></button>${l.c.tel?`<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${l.id})" title="Cobrar por WhatsApp"><i data-lucide="message-circle" class="ic"></i></button>`:''}</div></td>
         </tr>`;}).join('')}</tbody>

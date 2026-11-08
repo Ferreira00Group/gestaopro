@@ -161,7 +161,6 @@ function c360Render(){
       <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>crmNovoNegocio({clienteId:${c.id}}))">+ Negócio</button>
       <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>crmNovaAtividade({clienteId:${c.id}}))">+ Atividade</button>
       <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>abrirExtrato(${c.id}))">Extrato</button>
-      ${saldo>0.009?`<button class="btn btn-outline btn-sm" onclick="c360Acao(()=>abrirRenegociar(${c.id}))"><i data-lucide="refresh-cw" class="ic"></i> Renegociar</button>`:''}
       <button class="btn btn-outline btn-sm" onclick="c360Acao(()=>editarCliente(${c.id}))">Editar</button>
     </div>
     ${scoreObj ? `<div class="c360-secao">Score de Crédito (${scoreObj.score}/100)</div>
