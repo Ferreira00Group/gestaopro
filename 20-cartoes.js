@@ -413,6 +413,7 @@ function renderCartoes(mantemBusca){
         <td data-label="Cliente">${c?`<a style="cursor:pointer;font-weight:600" onclick="abrirCartaoCliente(${c.id})">${escapeHtml(c.nome)}</a>${estaAtivo(c)?'':' <span class="badge badge-gray">Arquivado</span>'}`:'<span class="badge badge-green">Livre</span>'}</td>
         <td data-label="Ações"><div style="display:flex;flex-wrap:wrap;gap:6px">
           <button class="btn btn-outline btn-sm" onclick="cartoesAbrirVincular(${n})">${c?'Trocar':'Vincular'}</button>
+          ${c&&getSaldoCliente(c.id)>0.009?`<button class="btn btn-outline btn-sm" onclick="abrirRenegociar(${c.id})"><i data-lucide="refresh-cw" class="ic"></i> Renegociar</button>`:''}
           ${c?`<button class="btn btn-outline btn-sm" onclick="cartoesLiberar(${n})">Liberar</button>`:''}
           <button class="btn btn-outline btn-sm" onclick="cartoesVerQR(${n})">Ver QR</button></div></td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">Nenhum cartão encontrado</td></tr>'}
       </tbody></table></div></div>`;
