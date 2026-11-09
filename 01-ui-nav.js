@@ -569,7 +569,18 @@ function toggleNavGroup(id){
   const g=document.getElementById('grp-'+id);
   if(g) g.classList.toggle('open');
 }
-function gotoClientesDevendo(semHistorico=false){
+// Filtros de atalho vindos dos cards do painel (não persistem: ficam só em memória e são
+// limpos sempre que a pessoa entra na tela pelo menu — ver goto()).
+let vendaDiaFiltro='';          // 'AAAA-MM-DD' ou ''
+let finDiaFiltro=null;          // {data, modo:'recebido'|'gastos'} ou null
+let estoqueBaixoFiltro=false;   // true = só itens abaixo do mínimo
+
+// Selo "filtro ativo" com botão ✕ (usado em Vendas, Financeiro e Estoque)
+function filtroAtivoHtml(rotulo,onLimpar,extra){
+  return `<div class="filtro-ativo"><span class="filtro-ativo-chip">${rotulo}<button type="button" onclick="${onLimpar}" title="Limpar filtro" aria-label="Limpar filtro">✕</button></span>${extra||''}</div>`;
+}
+
+function gotoClientesDevendo(semHistorico=false, filtro='devendo'){
   if(!semHistorico) registrarHistoricoGestaoPro('clientes');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
@@ -580,11 +591,11 @@ function gotoClientesDevendo(semHistorico=false){
   closeSidebar();
   if(typeof clienteFocoLimpar==='function') clienteFocoLimpar();
   if(typeof state !== 'undefined' && state){
-    state.cliente_status_filter = 'devendo';
+    state.cliente_status_filter = filtro;
     state.cliente_filter = '';
   }
   const sel = document.getElementById('cliente-status-filter');
-  if(sel) sel.value = 'devendo';
+  if(sel) sel.value = filtro;
   const inpBusca = document.getElementById('cliente-busca-input');
   if(inpBusca) inpBusca.value = '';
   if(typeof renderClientes === 'function') renderClientes();
@@ -611,8 +622,41 @@ function goto(page, semHistorico=false){
   closeSidebar();
   if(page!=='clientes'&&typeof clienteFocoLimpar==='function') clienteFocoLimpar();
   if(page==='clientes'&&typeof limparFiltrosClientes==='function') limparFiltrosClientes();
+  // entrar pelo menu sempre abre sem os filtros de atalho do painel
+  if(page==='vendas') vendaDiaFiltro='';
+  if(page==='financeiro') finDiaFiltro=null;
+  if(page==='estoque') estoqueBaixoFiltro=false;
   render(page);
   requestAnimationFrame(ajustarStickyTabela);
+}
+// ───────── Atalhos dos cards do painel (Alertas e Desempenho do dia) ─────────
+function gotoVendasHoje(){
+  goto('vendas');
+  state.venda_filter='';
+  const bv=document.querySelector('#page-vendas .search-input'); if(bv) bv.value='';
+  vendaDiaFiltro=today();
+  filterVendaTipo('');
+}
+function gotoFinanceiroDia(modo){
+  goto('financeiro');
+  const aba=document.querySelector('#page-financeiro .tabs .tab:nth-child(1)');
+  showFinTab('movimentacoes',aba);
+  finMostrarTodas=false;
+  finDiaFiltro={data:today(),modo:modo};
+  const mesEl=document.getElementById('fin-filtro-mes'); if(mesEl) mesEl.value=today().slice(0,7);
+  const selTipo=document.getElementById('fin-filtro-tipo'); if(selTipo) selTipo.value=(modo==='recebido'?'entrada':'saida');
+  renderFinanceiro();
+}
+function gotoEstoqueBaixo(){
+  const a=getAlertasEstoque();
+  goto('estoque');
+  // abre a aba que tem itens baixos (Produtos primeiro; só vai p/ Matérias-Primas se for a única)
+  const soMaterias=a.baixoProdutos.length===0&&a.baixoMaterias.length>0;
+  state.estoque_filter='';
+  const bs=document.querySelector('#estoque-produtos-wrap .search-input'); if(bs) bs.value='';
+  estoqueBaixoFiltro=true;
+  const aba=document.querySelector('#page-estoque .tabs .tab:nth-child('+(soMaterias?3:1)+')');
+  if(aba) showEstoqueTab(soMaterias?'materias':'produtos',aba); else renderEstoque();
 }
 function ajustarStickyTabela(){
   const ph=document.querySelector('.page.active .page-header');

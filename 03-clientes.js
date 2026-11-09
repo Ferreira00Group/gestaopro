@@ -51,6 +51,14 @@ function renderClientes(){
   if(state.cliente_filter) list = list.filter(c => clienteCombinaBusca(c, state.cliente_filter));
   if(state.cliente_status_filter === 'devendo') list = list.filter(c => getSaldoCliente(c.id) > 0);
   if(state.cliente_status_filter === 'em-dia') list = list.filter(c => getSaldoCliente(c.id) === 0);
+  if(state.cliente_status_filter === 'vencidos' || state.cliente_status_filter === 'vence-hoje'){
+    // mesma regra dos cards do painel: parcela em aberto vencida (antes de hoje) ou vencendo hoje
+    const hojeF = today(), soHoje = state.cliente_status_filter === 'vence-hoje';
+    const idsF = new Set(getUnidadesFiadoFlat()
+      .filter(u => u.status !== 'pago' && u.vencimento && (soHoje ? u.vencimento === hojeF : u.vencimento < hojeF))
+      .map(u => String(u.clienteId)));
+    list = list.filter(c => idsF.has(String(c.id)));
+  }
   if(state.cliente_rota_filter === 'none') list = list.filter(c => !c.rotaId);
   else if(state.cliente_rota_filter) list = list.filter(c => String(c.rotaId || '') === String(state.cliente_rota_filter));
   }
@@ -164,6 +172,7 @@ function renderClientes(){
         ${saldo > 0 
           ? `<button class="btn btn-green btn-sm" onclick="abrirPagamento(${c.id})" title="Receber pagamento"><i data-lucide="banknote" class="ic"></i> Receber</button>` 
           : `<button class="btn btn-outline btn-sm" onclick="abrirExtrato(${c.id})" title="Extrato financeiro"><i data-lucide="file-text" class="ic"></i> Extrato</button>`}
+        ${(saldo > 0.009 && !arquivado) ? `<button class="btn btn-outline btn-sm" onclick="abrirRenegociar(${c.id})" title="Renegociar dívida"><i data-lucide="refresh-cw" class="ic"></i> Renegociar</button>` : ''}
         ${c.tel ? `<button class="btn btn-whatsapp btn-sm" onclick="cobrarWhatsapp(${c.id})" title="Enviar WhatsApp"><i data-lucide="message-circle" class="ic"></i></button>` : ''}
         ${arquivado
           ? `<button class="btn btn-outline btn-sm" onclick="reativarCliente(${c.id})" style="margin-left:auto">↩️ Reativar</button>`

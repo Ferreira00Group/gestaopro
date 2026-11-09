@@ -47,6 +47,24 @@ function copiarListaEstoque(){
   copiarTexto('PRODUTOS\n'+txt,''+txt.split('\n').length+' itens de estoque copiados');
 }
 function filterEstoque(v){state.estoque_filter=v.toLowerCase();renderEstoque();}
+function estoqueBaixoLimpar(){estoqueBaixoFiltro=false;renderEstoque();}
+function estoqueBaixoTrocarAba(){
+  const paraMaterias=state.estoque_tab==='produtos';
+  const aba=document.querySelector('#page-estoque .tabs .tab:nth-child('+(paraMaterias?3:1)+')');
+  if(aba) showEstoqueTab(paraMaterias?'materias':'produtos',aba);
+}
+// Selo "Abaixo do mínimo" (Produtos e Matérias-Primas); avisa se a outra aba também tem itens baixos
+function renderEstoqueFiltroBaixo(){
+  const el=document.getElementById('estoque-filtro-baixo');
+  if(!el) return;
+  const tab=state.estoque_tab;
+  if(!estoqueBaixoFiltro||(tab!=='produtos'&&tab!=='materias')){el.innerHTML='';return;}
+  const a=getAlertasEstoque();
+  const outros=tab==='produtos'?a.baixoMaterias.length:a.baixoProdutos.length;
+  const nomeOutra=tab==='produtos'?'Matérias-Primas':'Produtos Acabados';
+  const extra=outros>0?`<a class="filtro-ativo-link" onclick="estoqueBaixoTrocarAba()">Também há ${outros} em ${nomeOutra} →</a>`:'';
+  el.innerHTML=filtroAtivoHtml('Abaixo do mínimo','estoqueBaixoLimpar()',extra);
+}
 const filterEstoqueDebounced=debounce(filterEstoque);
 function filterEstoqueArquivados(checked){state.estoque_mostrar_arquivados=checked;renderEstoque();}
 function showEstoqueSearch(show){
@@ -142,6 +160,7 @@ function estoqueCardHtml(o){
 const estoqueVazioHtml=txt=>`<div class="cartoes-lista-vazia">${txt}</div>`;
 function renderEstoque(){
   if(state.estoque_tab==='movimentos'){renderMovEstoque();return;}
+  renderEstoqueFiltroBaixo();
   const head={};
   const tb=document.getElementById('estoque-table');
   if(state.estoque_tab==='produtos'){
@@ -154,6 +173,7 @@ function renderEstoque(){
       list=list.filter(p=>p.nome.toLowerCase().includes(f)||(p.sku||'').toLowerCase().includes(f)||
         (buscaCod&&(fmtProdutoCod(p.id).toLowerCase().includes(fCod)||(p.variantes||[]).some(v=>fmtProdutoCod(p.id,v.id).toLowerCase().includes(fCod)))));
     }
+    if(estoqueBaixoFiltro)list=list.filter(p=>(p.variantes&&p.variantes.length>0)?p.variantes.some(v=>v.estoque<=p.minimo):p.estoque<=p.minimo);
     const chkArq=document.getElementById('estoque-mostrar-arquivados');
     if(chkArq){chkArq.style.display='inline-flex';chkArq.querySelector('input').checked=!!state.estoque_mostrar_arquivados;}
     tb.innerHTML=list.map(p=>{
@@ -181,6 +201,7 @@ function renderEstoque(){
     const chkIna=document.getElementById('estoque-mostrar-inativas');
     if(chkIna){chkIna.style.display='inline-flex';chkIna.querySelector('input').checked=!!state.estoque_mostrar_inativas;}
     if(state.estoque_filter)list=list.filter(m=>m.nome.toLowerCase().includes(state.estoque_filter));
+    if(estoqueBaixoFiltro)list=list.filter(m=>estaAtivo(m)&&m.qtd<=m.minimo);
     tb.innerHTML=list.map(m=>{
       const prev=calcularPrevisaoConsumo(m.id);
       let prevHtml='<span style="color:var(--muted);font-size:11px">sem histórico</span>';

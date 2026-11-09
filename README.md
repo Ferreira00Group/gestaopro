@@ -1,17 +1,20 @@
-# GestãoPRO v5.91.9
+# GestãoPRO v5.92.0
 
-Ficha técnica agora exibe preço unitário por ingrediente, custo na mistura e custo estimado por unidade produzida, atualizados em tempo real.
+Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o botão **Renegociar**.
 
-## Correção da ficha técnica de produção
-- O botão **Adicionar ingrediente** agora cria uma linha vazia com a opção “Selecione o ingrediente”, em vez de preencher automaticamente a primeira matéria-prima cadastrada.
-- Ao adicionar ou remover uma linha, o formulário captura os valores já escolhidos e as quantidades digitadas, preservando as demais linhas.
-- Cada seletor mantém sua própria seleção, sem alterar os ingredientes das outras linhas.
-- A ficha não pode ser salva enquanto houver linha sem ingrediente selecionado, evitando gravar referências inválidas.
+## Botão Renegociar no cartão do cliente
+- Aparece na lista de Clientes, ao lado de Receber, quando o cliente tem **saldo devedor** e não está arquivado.
+- Abre o modal "Renegociar dívida" já existente (nenhuma regra de renegociação foi alterada).
 
-## Correção da Análise de Estoque
-- Mantida a correção do cálculo de estoque para produtos com variantes.
-- O saldo do produto-pai é calculado pela soma dos estoques das variantes.
-- Alertas de estoque zerado/baixo identificam cada variante individualmente.
+## Cards do painel abrem o filtro correspondente
+- **Contas vencidas** → Clientes com o novo filtro **Vencidos** (parcela em aberto vencida).
+- **Vencem hoje** → Clientes com o novo filtro **Vencem hoje**.
+- **Estoque baixo** → Estoque com filtro **Abaixo do mínimo** (abre Produtos; vai para Matérias-Primas se só ela tiver itens baixos; avisa se a outra aba também tem).
+- **Vendas do dia** → Vendas filtradas por hoje.
+- **Recebido hoje** → Financeiro, Entradas de hoje (mesma regra do card: vendas à vista + pagamentos recebidos).
+- **Gastos do dia** → Financeiro, Saídas de hoje (mesma regra do card: sem retirada do dono).
+- Os filtros por dia e por estoque aparecem como selo com **✕** para limpar, e são zerados ao entrar na tela pelo menu.
+- Orçamentos continua como antes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.91.9**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.92.0**.

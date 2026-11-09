@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.91.9">
+<link rel="stylesheet" href="styles.css?v=5.92.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -248,18 +248,18 @@
   <!-- PARTE 2: alertas (sem mudança) -->
   <div class="dash-section-title"><i data-lucide="triangle-alert" class="ic"></i>Alertas</div>
   <div class="dash-grid2" id="dash-cards-grid-2" style="margin-bottom:10px">
-    <div class="card-compacto alerta" style="cursor:pointer" onclick="gotoClientesDevendo()" title="Ver clientes devendo"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
-    <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoClientesDevendo()" title="Ver clientes devendo"><div class="icon"><i data-lucide="calendar-clock"></i></div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
-    <div class="card-compacto aviso" style="cursor:pointer" onclick="goto('estoque')" title="Ver estoque"><div class="icon"><i data-lucide="package"></i></div><div class="info"><span class="label">Estoque Baixo</span><span class="value" id="dash-estoque-baixo">0</span><span class="sub">abaixo do mínimo</span></div></div>
+    <div class="card-compacto alerta" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vencidos')" title="Ver clientes com parcelas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
+    <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vence-hoje')" title="Ver clientes com parcelas que vencem hoje"><div class="icon"><i data-lucide="calendar-clock"></i></div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
+    <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoEstoqueBaixo()" title="Ver itens abaixo do mínimo"><div class="icon"><i data-lucide="package"></i></div><div class="info"><span class="label">Estoque Baixo</span><span class="value" id="dash-estoque-baixo">0</span><span class="sub">abaixo do mínimo</span></div></div>
     <div class="card-compacto" style="cursor:pointer" onclick="filterVendaTipo('orcamento');goto('vendas')" title="Ver orçamentos"><div class="icon"><i data-lucide="clipboard-list"></i></div><div class="info"><span class="label">Orçamentos</span><span class="value" id="dash-orc-pendentes">0</span><span class="sub" id="dash-orc-sub">aguardando aprovação</span></div></div>
   </div>
 
   <!-- PARTE 3: desempenho do dia -->
   <div class="dash-section-title"><i data-lucide="activity" class="ic"></i>Desempenho do dia</div>
   <div class="scroll-pilulas" id="dash-cards-grid-3" style="margin-bottom:10px">
-    <div class="pilula" onclick="goto('vendas')" title="Ver vendas"><span class="label">Vendas do dia</span><span class="value" id="dash-vendas-hoje">R$ 0</span><span class="sub" id="dash-vendas-hoje-count">0 vendas</span></div>
-    <div class="pilula" onclick="goto('financeiro')" title="Recebido hoje (pequeno: parte das vendas à vista)"><span class="label">Recebido hoje</span><span class="value" id="dash-recebido" style="color:var(--green)">R$ 0</span><span class="sub" id="dash-recebido-avista" title="Parte recebida em vendas à vista">R$ 0,00</span></div>
-    <div class="pilula" onclick="goto('financeiro')" title="Gastos de hoje (pequeno: gasolina)"><span class="label">Gastos do dia</span><span class="value" id="dash-gastos-dia" style="color:var(--red)">R$ 0</span><span class="sub" id="dash-gastos-dia-comb" title="Parte do gasto que foi de combustível">R$ 0,00</span></div>
+    <div class="pilula" onclick="gotoVendasHoje()" title="Ver vendas de hoje"><span class="label">Vendas do dia</span><span class="value" id="dash-vendas-hoje">R$ 0</span><span class="sub" id="dash-vendas-hoje-count">0 vendas</span></div>
+    <div class="pilula" onclick="gotoFinanceiroDia('recebido')" title="Recebido hoje (pequeno: parte das vendas à vista)"><span class="label">Recebido hoje</span><span class="value" id="dash-recebido" style="color:var(--green)">R$ 0</span><span class="sub" id="dash-recebido-avista" title="Parte recebida em vendas à vista">R$ 0,00</span></div>
+    <div class="pilula" onclick="gotoFinanceiroDia('gastos')" title="Gastos de hoje (pequeno: gasolina)"><span class="label">Gastos do dia</span><span class="value" id="dash-gastos-dia" style="color:var(--red)">R$ 0</span><span class="sub" id="dash-gastos-dia-comb" title="Parte do gasto que foi de combustível">R$ 0,00</span></div>
   </div>
 
   <!-- ABAS: Cobranças/Vencimentos ⇄ Últimas Movimentações -->
@@ -336,7 +336,7 @@
   <div class="search-bar">
     <input class="search-input" id="cliente-busca-input" placeholder="Buscar por nome, telefone ou nº..." oninput="filterClientesDebounced(this.value)">
     <select class="filter" id="cliente-status-filter" onchange="filterClienteStatus(this.value)">
-      <option value="">Todos</option><option value="devendo">Com dívida</option><option value="em-dia">Em dia</option>
+      <option value="">Todos</option><option value="devendo">Com dívida</option><option value="vencidos">Vencidos</option><option value="vence-hoje">Vencem hoje</option><option value="em-dia">Em dia</option>
     </select>
     <select class="filter" id="clientes-rota-filter" onchange="filterClienteRota(this.value)">
       <option value="">Todas as rotas</option>
@@ -394,6 +394,7 @@
       <option value="">Todos</option><option value="orcamento">Orçamentos</option><option value="fiado">Fiado</option><option value="pago">Pago</option>
     </select>
   </div>
+  <div id="vendas-filtro-dia"></div>
   <!-- Barra de ação em lote -->
   <div id="vendas-lote-bar" style="display:none;background:var(--card-2);color:#fff;padding:10px 16px;border-radius:10px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
     <span id="vendas-lote-label" style="font-size:13px;font-weight:600">0 venda(s) selecionada(s)</span>
@@ -503,6 +504,7 @@
   </div>
 
   <div id="estoque-produtos-wrap">
+    <div id="estoque-filtro-baixo"></div>
     <div class="search-bar">
       <input class="search-input" placeholder="Buscar produto..." oninput="filterEstoqueDebounced(this.value)">
       <label id="estoque-mostrar-arquivados" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap">
@@ -741,12 +743,13 @@
       <div style="padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <strong style="font-size:14px">Movimentações</strong>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select class="filter" id="fin-filtro-tipo" onchange="renderFinanceiro()">
+          <select class="filter" id="fin-filtro-tipo" onchange="finTipoAlterado()">
             <option value="">Todos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option>
           </select>
           <input type="month" class="filter" id="fin-filtro-mes" onchange="finFiltroMesAlterado()" style="max-width:160px">
         </div>
       </div>
+      <div id="fin-filtro-dia"></div>
       <div class="dcard-list" id="fin-table"></div>
     </div>
   </div>
@@ -2627,36 +2630,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.91.9"></script>
-<script src="00-core.js?v=5.91.9"></script>
-<script src="lib-qrcode.js?v=5.91.9"></script>
-<script src="01-ui-nav.js?v=5.91.9"></script>
-<script src="02-dashboard.js?v=5.91.9"></script>
-<script src="03-clientes.js?v=5.91.9"></script>
-<script src="04-vendas.js?v=5.91.9"></script>
-<script src="04b-pix-extrato.js?v=5.91.9"></script>
-<script src="11b-meu-dia.js?v=5.91.9"></script>
-<script src="11c-promessa-reneg.js?v=5.91.9"></script>
-<script src="11d-aprovar-lote.js?v=5.91.9"></script>
-<script src="05-producao.js?v=5.91.9"></script>
-<script src="06-estoque.js?v=5.91.9"></script>
-<script src="07-precificacao.js?v=5.91.9"></script>
-<script src="08-compras-fornecedores.js?v=5.91.9"></script>
-<script src="09-financeiro-relatorios.js?v=5.91.9"></script>
-<script src="10-fab-inline.js?v=5.91.9"></script>
-<script src="10b-planejamento.js?v=5.91.9"></script>
-<script src="13-crm.js?v=5.91.9"></script>
-<script src="14-relacionamento.js?v=5.91.9"></script>
-<script src="15-cliente360.js?v=5.91.9"></script>
-<script src="16-automacoes.js?v=5.91.9"></script>
-<script src="17-banco.js?v=5.91.9"></script>
-<script src="18-credito.js?v=5.91.9"></script>
-<script src="19-conectores.js?v=5.91.9"></script>
-<script src="20-cartoes.js?v=5.91.9"></script>
-<script src="12-drive-backup.js?v=5.91.9"></script>
-<script src="11-app-init.js?v=5.91.9"></script>
-<script src="21-gemini-ia.js?v=5.91.9"></script>
-<script src="22-operacao-foco.js?v=5.91.9"></script>
+<script src="00a-config.js?v=5.92.0"></script>
+<script src="00-core.js?v=5.92.0"></script>
+<script src="lib-qrcode.js?v=5.92.0"></script>
+<script src="01-ui-nav.js?v=5.92.0"></script>
+<script src="02-dashboard.js?v=5.92.0"></script>
+<script src="03-clientes.js?v=5.92.0"></script>
+<script src="04-vendas.js?v=5.92.0"></script>
+<script src="04b-pix-extrato.js?v=5.92.0"></script>
+<script src="11b-meu-dia.js?v=5.92.0"></script>
+<script src="11c-promessa-reneg.js?v=5.92.0"></script>
+<script src="11d-aprovar-lote.js?v=5.92.0"></script>
+<script src="05-producao.js?v=5.92.0"></script>
+<script src="06-estoque.js?v=5.92.0"></script>
+<script src="07-precificacao.js?v=5.92.0"></script>
+<script src="08-compras-fornecedores.js?v=5.92.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.92.0"></script>
+<script src="10-fab-inline.js?v=5.92.0"></script>
+<script src="10b-planejamento.js?v=5.92.0"></script>
+<script src="13-crm.js?v=5.92.0"></script>
+<script src="14-relacionamento.js?v=5.92.0"></script>
+<script src="15-cliente360.js?v=5.92.0"></script>
+<script src="16-automacoes.js?v=5.92.0"></script>
+<script src="17-banco.js?v=5.92.0"></script>
+<script src="18-credito.js?v=5.92.0"></script>
+<script src="19-conectores.js?v=5.92.0"></script>
+<script src="20-cartoes.js?v=5.92.0"></script>
+<script src="12-drive-backup.js?v=5.92.0"></script>
+<script src="11-app-init.js?v=5.92.0"></script>
+<script src="21-gemini-ia.js?v=5.92.0"></script>
+<script src="22-operacao-foco.js?v=5.92.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

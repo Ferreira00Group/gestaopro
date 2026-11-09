@@ -61,6 +61,9 @@ function renderVendas(){
   const sitCache=new Map();
   const sitDe=(v)=>{ if(!sitCache.has(v.id)) sitCache.set(v.id,situacaoVenda(v,mapaFiado)); return sitCache.get(v.id); };
   if(state.venda_filter)list=list.filter(v=>getCliente(v.clienteId).nome.toLowerCase().includes(state.venda_filter)||v.itens.some(it=>nomeItemVenda(it).toLowerCase().includes(state.venda_filter)));
+  if(vendaDiaFiltro)list=list.filter(v=>v.data===vendaDiaFiltro);
+  const chipVD=document.getElementById('vendas-filtro-dia');
+  if(chipVD)chipVD.innerHTML=vendaDiaFiltro?filtroAtivoHtml('Hoje · '+fmtDate(vendaDiaFiltro),'vendaDiaLimpar()'):'';
   if(state.venda_tipo_filter==='orcamento')list=list.filter(v=>v.tipo==='orcamento');
   else if(state.venda_tipo_filter==='fiado')list=list.filter(v=>v.tipo!=='orcamento'&&sitDe(v).status!=='pago');
   else if(state.venda_tipo_filter==='pago')list=list.filter(v=>v.tipo!=='orcamento'&&sitDe(v).status==='pago');
@@ -226,6 +229,7 @@ function marcarLotePago(){
 }
 function filterVendas(v){state.venda_filter=v.toLowerCase();renderVendas();}
 const filterVendasDebounced=debounce(filterVendas);
+function vendaDiaLimpar(){vendaDiaFiltro='';renderVendas();}
 function filterVendaTipo(v){state.venda_tipo_filter=v;const sel=document.getElementById('venda-tipo-filter-select');if(sel)sel.value=v;renderVendas();}
 
 // ============ COMBOBOX BUSCÁVEL DE CLIENTE (venda/orçamento) ============

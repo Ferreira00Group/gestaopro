@@ -66,7 +66,9 @@ function lancCategoriaAplicar(valor){
   lancCategoriaAtualizarUI();
 }
 let finMostrarTodas=false;
-function finFiltroMesAlterado(){finMostrarTodas=false;renderFinanceiro();}
+function finFiltroMesAlterado(){finMostrarTodas=false;finDiaFiltro=null;renderFinanceiro();}
+function finTipoAlterado(){finDiaFiltro=null;renderFinanceiro();}
+function finDiaLimpar(){finDiaFiltro=null;renderFinanceiro();}
 function renderFinanceiro(){
   const mesEl=document.getElementById('fin-filtro-mes');
   if(!mesEl.value&&!finMostrarTodas) mesEl.value=today().slice(0,7);
@@ -87,6 +89,14 @@ function renderFinanceiro(){
   let list=[...state.financeiro].sort((a,b)=>String(b.data||'').localeCompare(String(a.data||''))||Number(b.id||0)-Number(a.id||0));
   if(tipoFiltro) list=list.filter(f=>f.tipo===tipoFiltro);
   if(mes) list=list.filter(f=>String(f.data||'').startsWith(mes));
+  // Atalho dos cards "Recebido hoje" / "Gastos do dia": mesma regra do painel, para o total bater
+  if(finDiaFiltro) list=list.filter(f=>f.data===finDiaFiltro.data&&(finDiaFiltro.modo==='recebido'
+    ?(f.tipo==='entrada'&&(f.vendaId||f.pagamentoId))
+    :(f.tipo==='saida'&&!f.retirada)));
+  const chipFD=document.getElementById('fin-filtro-dia');
+  if(chipFD) chipFD.innerHTML=finDiaFiltro
+    ?filtroAtivoHtml((finDiaFiltro.modo==='recebido'?'Recebido hoje':'Gastos do dia')+' · '+fmtDate(finDiaFiltro.data)+' · '+fmt(list.reduce((s,f)=>s+f.valor,0)),'finDiaLimpar()')
+    :'';
   const tb=document.getElementById('fin-table');
   if(list.length===0){tb.innerHTML='<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação neste período</span></div>';return;}
   tb.innerHTML=list.map(f=>{
