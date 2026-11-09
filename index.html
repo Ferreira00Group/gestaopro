@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.94.1">
+<link rel="stylesheet" href="styles.css?v=5.94.2">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -176,37 +176,8 @@
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
   <div class="print-header"><h1>GestãoPRO — Dashboard</h1><p id="print-date-dashboard"></p></div>
-  <p id="dash-date" class="dash-date-line">Resumo geral do negócio</p>
-
   <!-- AVISO DISCRETO: ALERTAS PENDENTES DA ANÁLISE -->
   <div id="dash-aviso-analise" style="display:none;background:rgba(201,162,75,0.08);border:1px solid rgba(201,162,75,0.3);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:12.5px;align-items:center;justify-content:space-between;cursor:pointer" onclick="abrirAtalhoCopilotoIA()"></div>
-
-  <!-- BANNER INTELIGÊNCIA ARTIFICIAL & ANÁLISE -->
-  <div style="background:linear-gradient(135deg,rgba(201,162,75,.16),rgba(201,162,75,.04));border:1px solid rgba(201,162,75,.35);border-radius:14px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="width:36px;height:36px;border-radius:50%;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0">
-        <i data-lucide="sparkles" style="width:20px;height:20px"></i>
-      </div>
-      <div>
-        <div style="font-size:13.5px;font-weight:700;color:#FFF">Central de Análise de Dados &amp; Copiloto</div>
-        <div style="font-size:11.5px;color:var(--muted)">Diagnóstico executivo de fluxo de caixa, alerta de estoque e otimização de faturamento.</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-outline btn-sm" onclick="abrirFilaSeparacao()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="boxes" class="ic"></i> Expedição
-      </button>
-      <button class="btn btn-outline btn-sm" onclick="goto('analisedados');mudarSubAbaAnalise('resultados')" style="border-color:#00bdae;color:#00bdae;display:inline-flex;align-items:center;gap:6px;font-weight:700">
-        <i data-lucide="target" class="ic"></i> Resultados IA
-      </button>
-      <button class="btn btn-outline btn-sm" onclick="goto('analisedados');mudarSubAbaAnalise('painel')" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="bar-chart-3" class="ic"></i> Painel Local
-      </button>
-      <button class="btn btn-primary btn-sm" onclick="abrirAtalhoCopilotoIA()" style="display:inline-flex;align-items:center;gap:6px">
-        <i data-lucide="sparkles" class="ic"></i> Copiloto IA
-      </button>
-    </div>
-  </div>
 
   <!-- META DO MÊS (barra no topo) -->
   <div class="table-card" style="margin-bottom:10px;padding:10px 14px">
@@ -2648,36 +2619,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.94.1"></script>
-<script src="00-core.js?v=5.94.1"></script>
-<script src="lib-qrcode.js?v=5.94.1"></script>
-<script src="01-ui-nav.js?v=5.94.1"></script>
-<script src="02-dashboard.js?v=5.94.1"></script>
-<script src="03-clientes.js?v=5.94.1"></script>
-<script src="04-vendas.js?v=5.94.1"></script>
-<script src="04b-pix-extrato.js?v=5.94.1"></script>
-<script src="11b-meu-dia.js?v=5.94.1"></script>
-<script src="11c-promessa-reneg.js?v=5.94.1"></script>
-<script src="11d-aprovar-lote.js?v=5.94.1"></script>
-<script src="05-producao.js?v=5.94.1"></script>
-<script src="06-estoque.js?v=5.94.1"></script>
-<script src="07-precificacao.js?v=5.94.1"></script>
-<script src="08-compras-fornecedores.js?v=5.94.1"></script>
-<script src="09-financeiro-relatorios.js?v=5.94.1"></script>
-<script src="10-fab-inline.js?v=5.94.1"></script>
-<script src="10b-planejamento.js?v=5.94.1"></script>
-<script src="13-crm.js?v=5.94.1"></script>
-<script src="14-relacionamento.js?v=5.94.1"></script>
-<script src="15-cliente360.js?v=5.94.1"></script>
-<script src="16-automacoes.js?v=5.94.1"></script>
-<script src="17-banco.js?v=5.94.1"></script>
-<script src="18-credito.js?v=5.94.1"></script>
-<script src="19-conectores.js?v=5.94.1"></script>
-<script src="20-cartoes.js?v=5.94.1"></script>
-<script src="12-drive-backup.js?v=5.94.1"></script>
-<script src="11-app-init.js?v=5.94.1"></script>
-<script src="21-gemini-ia.js?v=5.94.1"></script>
-<script src="22-operacao-foco.js?v=5.94.1"></script>
+<script src="00a-config.js?v=5.94.2"></script>
+<script src="00-core.js?v=5.94.2"></script>
+<script src="lib-qrcode.js?v=5.94.2"></script>
+<script src="01-ui-nav.js?v=5.94.2"></script>
+<script src="02-dashboard.js?v=5.94.2"></script>
+<script src="03-clientes.js?v=5.94.2"></script>
+<script src="04-vendas.js?v=5.94.2"></script>
+<script src="04b-pix-extrato.js?v=5.94.2"></script>
+<script src="11b-meu-dia.js?v=5.94.2"></script>
+<script src="11c-promessa-reneg.js?v=5.94.2"></script>
+<script src="11d-aprovar-lote.js?v=5.94.2"></script>
+<script src="05-producao.js?v=5.94.2"></script>
+<script src="06-estoque.js?v=5.94.2"></script>
+<script src="07-precificacao.js?v=5.94.2"></script>
+<script src="08-compras-fornecedores.js?v=5.94.2"></script>
+<script src="09-financeiro-relatorios.js?v=5.94.2"></script>
+<script src="10-fab-inline.js?v=5.94.2"></script>
+<script src="10b-planejamento.js?v=5.94.2"></script>
+<script src="13-crm.js?v=5.94.2"></script>
+<script src="14-relacionamento.js?v=5.94.2"></script>
+<script src="15-cliente360.js?v=5.94.2"></script>
+<script src="16-automacoes.js?v=5.94.2"></script>
+<script src="17-banco.js?v=5.94.2"></script>
+<script src="18-credito.js?v=5.94.2"></script>
+<script src="19-conectores.js?v=5.94.2"></script>
+<script src="20-cartoes.js?v=5.94.2"></script>
+<script src="12-drive-backup.js?v=5.94.2"></script>
+<script src="11-app-init.js?v=5.94.2"></script>
+<script src="21-gemini-ia.js?v=5.94.2"></script>
+<script src="22-operacao-foco.js?v=5.94.2"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -3216,8 +3187,36 @@
   </div>
 </div>
 
+<!-- CENTRAL DE ANÁLISE DE DADOS & COPILOTO (abre pelo botão flutuante) -->
+<div id="central-ia-overlay" onclick="if(event.target===this)fecharCentralIA()">
+  <div class="central-ia-sheet" role="dialog" aria-label="Central de Análise de Dados e Copiloto">
+    <div class="central-ia-grip"></div>
+    <div class="central-ia-head">
+      <div class="central-ia-ico"><i data-lucide="sparkles" style="width:20px;height:20px"></i></div>
+      <div>
+        <div class="central-ia-title">Central de Análise de Dados &amp; Copiloto</div>
+        <div class="central-ia-sub">Diagnóstico executivo de fluxo de caixa, alerta de estoque e otimização de faturamento.</div>
+      </div>
+    </div>
+    <div class="central-ia-btns">
+      <button class="btn btn-outline btn-sm" onclick="fecharCentralIA();abrirFilaSeparacao()" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="boxes" class="ic"></i> Expedição
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="fecharCentralIA();goto('analisedados');mudarSubAbaAnalise('resultados')" style="border-color:#00bdae;color:#00bdae;display:inline-flex;align-items:center;gap:6px;font-weight:700">
+        <i data-lucide="target" class="ic"></i> Resultados IA
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="fecharCentralIA();goto('analisedados');mudarSubAbaAnalise('painel')" style="border-color:var(--gold,#C9A24B);color:var(--gold,#C9A24B);display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="bar-chart-3" class="ic"></i> Painel Local
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="fecharCentralIA();abrirAtalhoCopilotoIA()" style="display:inline-flex;align-items:center;gap:6px">
+        <i data-lucide="sparkles" class="ic"></i> Copiloto IA
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- BOTÃO FLUTUANTE IA -->
-<button id="btn-flutuante-ia" onclick="abrirAtalhoCopilotoIA()" title="Abrir Análise de Dados &amp; Copiloto">
+<button id="btn-flutuante-ia" onclick="abrirCentralIA()" title="Abrir Central de Análise de Dados &amp; Copiloto">
   <i data-lucide="sparkles" style="width:16px;height:16px"></i>
   <span>Copiloto IA</span>
 </button>

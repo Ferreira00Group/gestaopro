@@ -1,6 +1,10 @@
-# GestãoPRO v5.94.1
+# GestãoPRO v5.94.2
 
-## Versão 5.94.1 — alerta de atraso no card Contas vencidas e Acesso rápido mais abaixo
+## Versão 5.94.2 — Central de Análise abre pelo botão flutuante
+- O card "Central de Análise de Dados & Copiloto" saiu da tela inicial; o botão flutuante Copiloto IA agora abre esse conteúdo numa janela deslizante (Expedição, Resultados IA, Painel Local e Copiloto IA).
+- Removida a linha da data no topo do Início.
+
+## Versão 5.94.1 (anterior) — alerta de atraso no card Contas vencidas e Acesso rápido mais abaixo
 - Removida a linha "N clientes em atraso" do card Total a receber.
 - A regra "Alerta de atraso" (% do Total a receber, padrão 20, em Regras de crédito) agora acende o card **Contas vencidas** em laranja (número, ícone e borda).
 - Acesso rápido movido para depois do Desempenho do dia.
@@ -53,4 +57,4 @@ Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o
 - Orçamentos continua como antes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.94.1**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.94.2**.

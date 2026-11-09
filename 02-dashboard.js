@@ -60,8 +60,6 @@ function abrirNovoGasto(){
 function renderDashboard(){
   const hoje=today();
   const mesAtual=hoje.slice(0,7);
-  const el=document.getElementById('dash-date');
-  if(el) el.textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
   // ── Parte 1: cards grandes ──
   const devedores=state.clientes.map(c=>({...c,saldo:getSaldoCliente(c.id)})).filter(c=>c.saldo>0).sort((a,b)=>b.saldo-a.saldo);
@@ -394,3 +392,16 @@ function dashVerTodas(){
   // Vencimentos abre a tela de cobrança, não a lista geral de clientes.
   goto('cobranca');
 }
+
+// ── Central de Análise de Dados & Copiloto (janela do botão flutuante) ──
+function abrirCentralIA(){
+  const ov=document.getElementById('central-ia-overlay');
+  if(!ov) return;
+  ov.classList.add('open');
+  if(window.lucide && typeof lucide.createIcons==='function') lucide.createIcons();
+}
+function fecharCentralIA(){
+  const ov=document.getElementById('central-ia-overlay');
+  if(ov) ov.classList.remove('open');
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') fecharCentralIA(); });

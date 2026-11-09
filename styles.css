@@ -2230,3 +2230,15 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .card-hero.coral .value{color:var(--coral)}
 .card-compacto.alerta.atraso.on .info .value,.card-compacto.alerta.atraso.on .icon{color:var(--laranja)}
 .card-compacto.alerta.atraso.on{border-color:var(--laranja)!important}
+
+/* Central de Análise de Dados & Copiloto (janela deslizante do botão flutuante) */
+#central-ia-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0);pointer-events:none;transition:background .25s}
+#central-ia-overlay.open{background:rgba(0,0,0,.55);pointer-events:auto}
+.central-ia-sheet{width:100%;max-width:560px;box-sizing:border-box;background:linear-gradient(135deg,#2A2417,#16130E);border:1px solid rgba(201,162,75,.35);border-bottom:0;border-radius:18px 18px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .28s ease}
+#central-ia-overlay.open .central-ia-sheet{transform:translateY(0)}
+.central-ia-grip{width:40px;height:4px;border-radius:4px;background:rgba(255,255,255,.2);margin:0 auto 12px}
+.central-ia-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.central-ia-ico{width:36px;height:36px;border-radius:50%;background:rgba(201,162,75,.2);display:flex;align-items:center;justify-content:center;color:var(--gold,#C9A24B);flex-shrink:0}
+.central-ia-title{font-size:13.5px;font-weight:700;color:#FFF}
+.central-ia-sub{font-size:11.5px;color:var(--muted)}
+.central-ia-btns{display:flex;gap:8px;flex-wrap:wrap}
