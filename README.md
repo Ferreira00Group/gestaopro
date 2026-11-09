@@ -1,6 +1,11 @@
-# GestãoPRO v5.94.0
+# GestãoPRO v5.94.1
 
-## Versão 5.94.0 — cores do Início e alerta de atraso
+## Versão 5.94.1 — alerta de atraso no card Contas vencidas e Acesso rápido mais abaixo
+- Removida a linha "N clientes em atraso" do card Total a receber.
+- A regra "Alerta de atraso" (% do Total a receber, padrão 20, em Regras de crédito) agora acende o card **Contas vencidas** em laranja (número, ícone e borda).
+- Acesso rápido movido para depois do Desempenho do dia.
+
+## Versão 5.94.0 (anterior) — cores do Início e alerta de atraso
 - Total a receber em azul; Lucro verde (vermelho se negativo); Gastos do mês em coral; Caixa atual dourado (vermelho se negativo).
 - Card Total a receber: nova linha "N clientes em atraso", sempre visível em cinza; vira laranja com ícone quando o valor vencido chega a X% do Total a receber.
 - X% (padrão 20) é configurável em Configurações → Regras de crédito (Fiado) → "Alerta de atraso".
@@ -48,4 +53,4 @@ Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o
 - Orçamentos continua como antes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.94.0**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.94.1**.

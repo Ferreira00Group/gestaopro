@@ -2228,6 +2228,5 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 :root{--azul:#6FB1F2;--coral:#FF8A80;--laranja:#FF9F1C}
 .card-hero.azul .value{color:var(--azul)}
 .card-hero.coral .value{color:var(--coral)}
-.card-hero .sub.dash-atraso{color:#9A9484;margin-top:2px}
-.card-hero .sub.dash-atraso.on{color:var(--laranja);font-weight:700}
-.card-compacto.alerta.atraso .info .value,.card-compacto.alerta.atraso .icon{color:var(--laranja)}
+.card-compacto.alerta.atraso.on .info .value,.card-compacto.alerta.atraso.on .icon{color:var(--laranja)}
+.card-compacto.alerta.atraso.on{border-color:var(--laranja)!important}

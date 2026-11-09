@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.94.0">
+<link rel="stylesheet" href="styles.css?v=5.94.1">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -228,27 +228,16 @@
 
   <!-- PARTE 1: cards grandes -->
   <div class="dash-grid2" id="dash-cards-grid" style="margin-bottom:10px">
-    <div class="card-hero azul" style="cursor:pointer" onclick="gotoClientesDevendo()" title="Ver clientes devendo"><div class="label">Total a Receber</div><div class="value" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div><div class="sub dash-atraso" id="dash-atraso">0 clientes em atraso</div></div>
+    <div class="card-hero azul" style="cursor:pointer" onclick="gotoClientesDevendo()" title="Ver clientes devendo"><div class="label">Total a Receber</div><div class="value" id="dash-total-fiado">R$ 0</div><div class="sub" id="dash-fiado-count">0 clientes devendo</div></div>
     <div class="card-hero green" style="cursor:pointer" onclick="goto('relatorio')" title="Lucro do mês (vendas − gastos)"><div class="label">Lucro</div><div class="value" id="dash-lucro">R$ 0</div><div class="sub" id="dash-lucro-pct" title="Margem real: lucro ÷ vendas do mês">0%</div></div>
     <div class="card-hero coral" style="cursor:pointer" onclick="goto('financeiro')" title="Gastos do mês"><div class="label">Gastos do Mês</div><div class="value" id="dash-gastos-mes">R$ 0</div><div class="sub" id="dash-gastos-mes-insumos" title="Parte do gasto que foi de insumos / matéria-prima">R$ 0,00</div></div>
     <div class="card-hero yellow" style="cursor:pointer" onclick="goto('financeiro')" title="Ver financeiro"><div class="label">Caixa Atual</div><div class="value" id="dash-caixa-atual">R$ 0</div><div class="sub" id="dash-caixa-sub">dinheiro disponível</div></div>
   </div>
 
-  <!-- ACESSO RÁPIDO -->
-  <div class="dash-section-title"><i data-lucide="zap" class="ic"></i>Acesso rápido</div>
-  <div class="qa-grid">
-    <button type="button" class="qa-btn" onclick="abrirMenuNovaVenda()"><span class="qa-ic"><i data-lucide="circle-plus"></i></span><span class="qa-lb">Nova venda</span></button>
-    <button type="button" class="qa-btn" onclick="openModal('modal-cliente')"><span class="qa-ic"><i data-lucide="user-plus"></i><span class="qa-count" id="qa-clientes-count" title="Clientes cadastrados">0</span></span><span class="qa-lb">Novo cliente</span></button>
-    <button type="button" class="qa-btn" onclick="pixMostrarNaTela()"><span class="qa-ic"><i data-lucide="qr-code"></i></span><span class="qa-lb">Pix Offline</span></button>
-    <button type="button" class="qa-btn" onclick="abrirNovoGasto()"><span class="qa-ic"><i data-lucide="receipt"></i></span><span class="qa-lb">Novo gasto</span></button>
-    <button type="button" class="qa-btn" onclick="gotoClientesDevendo()"><span class="qa-ic"><i data-lucide="wallet"></i></span><span class="qa-lb">Receber</span></button>
-    <button type="button" class="qa-btn" onclick="cartoesAbrirScan()"><span class="qa-ic"><i data-lucide="scan-line"></i></span><span class="qa-lb">Ler cartão</span></button>
-  </div>
-
   <!-- PARTE 2: alertas (sem mudança) -->
   <div class="dash-section-title"><i data-lucide="triangle-alert" class="ic"></i>Alertas</div>
   <div class="dash-grid2" id="dash-cards-grid-2" style="margin-bottom:10px">
-    <div class="card-compacto alerta atraso" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vencidos')" title="Ver clientes com parcelas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
+    <div class="card-compacto alerta atraso" id="card-contas-vencidas" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vencidos')" title="Ver clientes com parcelas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
     <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vence-hoje')" title="Ver clientes com parcelas que vencem hoje"><div class="icon"><i data-lucide="calendar-clock"></i></div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
     <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoEstoqueBaixo()" title="Ver itens abaixo do mínimo"><div class="icon"><i data-lucide="package"></i></div><div class="info"><span class="label">Estoque Baixo</span><span class="value" id="dash-estoque-baixo">0</span><span class="sub">abaixo do mínimo</span></div></div>
     <div class="card-compacto" style="cursor:pointer" onclick="filterVendaTipo('orcamento');goto('vendas')" title="Ver orçamentos"><div class="icon"><i data-lucide="clipboard-list"></i></div><div class="info"><span class="label">Orçamentos</span><span class="value" id="dash-orc-pendentes">0</span><span class="sub" id="dash-orc-sub">aguardando aprovação</span></div></div>
@@ -260,6 +249,17 @@
     <div class="pilula" onclick="gotoVendasHoje()" title="Ver vendas de hoje"><span class="label">Vendas do dia</span><span class="value" id="dash-vendas-hoje">R$ 0</span><span class="sub" id="dash-vendas-hoje-count">0 vendas</span></div>
     <div class="pilula" onclick="gotoFinanceiroDia('recebido')" title="Recebido hoje (pequeno: parte das vendas à vista)"><span class="label">Recebido hoje</span><span class="value" id="dash-recebido" style="color:var(--green)">R$ 0</span><span class="sub" id="dash-recebido-avista" title="Parte recebida em vendas à vista">R$ 0,00</span></div>
     <div class="pilula" onclick="gotoFinanceiroDia('gastos')" title="Gastos de hoje (pequeno: gasolina)"><span class="label">Gastos do dia</span><span class="value" id="dash-gastos-dia" style="color:var(--red)">R$ 0</span><span class="sub" id="dash-gastos-dia-comb" title="Parte do gasto que foi de combustível">R$ 0,00</span></div>
+  </div>
+
+  <!-- ACESSO RÁPIDO -->
+  <div class="dash-section-title"><i data-lucide="zap" class="ic"></i>Acesso rápido</div>
+  <div class="qa-grid">
+    <button type="button" class="qa-btn" onclick="abrirMenuNovaVenda()"><span class="qa-ic"><i data-lucide="circle-plus"></i></span><span class="qa-lb">Nova venda</span></button>
+    <button type="button" class="qa-btn" onclick="openModal('modal-cliente')"><span class="qa-ic"><i data-lucide="user-plus"></i><span class="qa-count" id="qa-clientes-count" title="Clientes cadastrados">0</span></span><span class="qa-lb">Novo cliente</span></button>
+    <button type="button" class="qa-btn" onclick="pixMostrarNaTela()"><span class="qa-ic"><i data-lucide="qr-code"></i></span><span class="qa-lb">Pix Offline</span></button>
+    <button type="button" class="qa-btn" onclick="abrirNovoGasto()"><span class="qa-ic"><i data-lucide="receipt"></i></span><span class="qa-lb">Novo gasto</span></button>
+    <button type="button" class="qa-btn" onclick="gotoClientesDevendo()"><span class="qa-ic"><i data-lucide="wallet"></i></span><span class="qa-lb">Receber</span></button>
+    <button type="button" class="qa-btn" onclick="cartoesAbrirScan()"><span class="qa-ic"><i data-lucide="scan-line"></i></span><span class="qa-lb">Ler cartão</span></button>
   </div>
 
   <!-- ABAS: Cobranças/Vencimentos ⇄ Últimas Movimentações -->
@@ -1799,7 +1799,7 @@
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Compra até o valor da parcela = parcela única. Acima disso, parcelas cheias e o resto na última (ex.: R$ 80 = 50 + 30, vencendo em 30 e 60 dias).</div>
       <div class="form-group" style="margin:0 0 4px"><label>Alerta de atraso no Início (% do Total a receber)</label><input class="form-control" id="cred-alerta-pct" type="number" step="1" min="1" max="100" inputmode="numeric"></div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Quando o valor em atraso chegar a essa porcentagem do Total a receber, a linha "clientes em atraso" do card acende em laranja. Padrão: 20%.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Quando o valor em atraso chegar a essa porcentagem do Total a receber, o card Contas Vencidas do Início acende em laranja. Padrão: 20%.</div>
       <div style="padding:10px 12px;background:var(--card-2);border-radius:8px;font-size:12px">
         <div id="cred-revisao-info" style="color:var(--muted)"></div>
         <button type="button" class="btn btn-outline btn-sm" id="cred-btn-revisado" style="margin-top:8px;display:none" onclick="creditoMarcarRevisado()">Marcar como revisado hoje</button>
@@ -2648,36 +2648,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.94.0"></script>
-<script src="00-core.js?v=5.94.0"></script>
-<script src="lib-qrcode.js?v=5.94.0"></script>
-<script src="01-ui-nav.js?v=5.94.0"></script>
-<script src="02-dashboard.js?v=5.94.0"></script>
-<script src="03-clientes.js?v=5.94.0"></script>
-<script src="04-vendas.js?v=5.94.0"></script>
-<script src="04b-pix-extrato.js?v=5.94.0"></script>
-<script src="11b-meu-dia.js?v=5.94.0"></script>
-<script src="11c-promessa-reneg.js?v=5.94.0"></script>
-<script src="11d-aprovar-lote.js?v=5.94.0"></script>
-<script src="05-producao.js?v=5.94.0"></script>
-<script src="06-estoque.js?v=5.94.0"></script>
-<script src="07-precificacao.js?v=5.94.0"></script>
-<script src="08-compras-fornecedores.js?v=5.94.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.94.0"></script>
-<script src="10-fab-inline.js?v=5.94.0"></script>
-<script src="10b-planejamento.js?v=5.94.0"></script>
-<script src="13-crm.js?v=5.94.0"></script>
-<script src="14-relacionamento.js?v=5.94.0"></script>
-<script src="15-cliente360.js?v=5.94.0"></script>
-<script src="16-automacoes.js?v=5.94.0"></script>
-<script src="17-banco.js?v=5.94.0"></script>
-<script src="18-credito.js?v=5.94.0"></script>
-<script src="19-conectores.js?v=5.94.0"></script>
-<script src="20-cartoes.js?v=5.94.0"></script>
-<script src="12-drive-backup.js?v=5.94.0"></script>
-<script src="11-app-init.js?v=5.94.0"></script>
-<script src="21-gemini-ia.js?v=5.94.0"></script>
-<script src="22-operacao-foco.js?v=5.94.0"></script>
+<script src="00a-config.js?v=5.94.1"></script>
+<script src="00-core.js?v=5.94.1"></script>
+<script src="lib-qrcode.js?v=5.94.1"></script>
+<script src="01-ui-nav.js?v=5.94.1"></script>
+<script src="02-dashboard.js?v=5.94.1"></script>
+<script src="03-clientes.js?v=5.94.1"></script>
+<script src="04-vendas.js?v=5.94.1"></script>
+<script src="04b-pix-extrato.js?v=5.94.1"></script>
+<script src="11b-meu-dia.js?v=5.94.1"></script>
+<script src="11c-promessa-reneg.js?v=5.94.1"></script>
+<script src="11d-aprovar-lote.js?v=5.94.1"></script>
+<script src="05-producao.js?v=5.94.1"></script>
+<script src="06-estoque.js?v=5.94.1"></script>
+<script src="07-precificacao.js?v=5.94.1"></script>
+<script src="08-compras-fornecedores.js?v=5.94.1"></script>
+<script src="09-financeiro-relatorios.js?v=5.94.1"></script>
+<script src="10-fab-inline.js?v=5.94.1"></script>
+<script src="10b-planejamento.js?v=5.94.1"></script>
+<script src="13-crm.js?v=5.94.1"></script>
+<script src="14-relacionamento.js?v=5.94.1"></script>
+<script src="15-cliente360.js?v=5.94.1"></script>
+<script src="16-automacoes.js?v=5.94.1"></script>
+<script src="17-banco.js?v=5.94.1"></script>
+<script src="18-credito.js?v=5.94.1"></script>
+<script src="19-conectores.js?v=5.94.1"></script>
+<script src="20-cartoes.js?v=5.94.1"></script>
+<script src="12-drive-backup.js?v=5.94.1"></script>
+<script src="11-app-init.js?v=5.94.1"></script>
+<script src="21-gemini-ia.js?v=5.94.1"></script>
+<script src="22-operacao-foco.js?v=5.94.1"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
