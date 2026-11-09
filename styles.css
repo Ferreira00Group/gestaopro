@@ -2223,3 +2223,11 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .sug-nome{font-size:14px;font-weight:600;color:var(--text);flex:1;min-width:120px}
 .sug-meta{font-size:11.5px;color:var(--muted)}
 #modal-similar{z-index:1200}
+
+/* v5.94.0 — cores semânticas dos cards do Início */
+:root{--azul:#6FB1F2;--coral:#FF8A80;--laranja:#FF9F1C}
+.card-hero.azul .value{color:var(--azul)}
+.card-hero.coral .value{color:var(--coral)}
+.card-hero .sub.dash-atraso{color:#9A9484;margin-top:2px}
+.card-hero .sub.dash-atraso.on{color:var(--laranja);font-weight:700}
+.card-compacto.alerta.atraso .info .value,.card-compacto.alerta.atraso .icon{color:var(--laranja)}

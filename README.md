@@ -1,4 +1,10 @@
-# GestãoPRO v5.93.0
+# GestãoPRO v5.94.0
+
+## Versão 5.94.0 — cores do Início e alerta de atraso
+- Total a receber em azul; Lucro verde (vermelho se negativo); Gastos do mês em coral; Caixa atual dourado (vermelho se negativo).
+- Card Total a receber: nova linha "N clientes em atraso", sempre visível em cinza; vira laranja com ícone quando o valor vencido chega a X% do Total a receber.
+- X% (padrão 20) é configurável em Configurações → Regras de crédito (Fiado) → "Alerta de atraso".
+- Card "Contas vencidas" com o número em laranja.
 
 ## Etiqueta do estoque com código
 - Cartões de Produto, Matéria-prima e Semiacabado mostram o tipo no corpo dourado e o **código na ponta**, uma cor por tipo: **P003** bronze, **M015** azul, **S015** violeta. Vale também para inativos e arquivados.
@@ -42,4 +48,4 @@ Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o
 - Orçamentos continua como antes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.93.0**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.94.0**.

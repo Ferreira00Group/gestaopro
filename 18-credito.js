@@ -13,7 +13,7 @@
 //         venda.creditoExcecao     {data, motivos[]} quando o dono registrou "mesmo assim" (ficha de papel que já aconteceu)
 // Atraso e "em aberto" vêm do mesmo FIFO que Contas a Receber usa, então a conta sempre bate com o resto do app.
 
-const CREDITO_PADRAO={ativo:true,limites:[0,80,130,200],parcelaValor:50,parcelaDias:30,revisarDias:60,vigenteDesde:null,revisadoEm:null};
+const CREDITO_PADRAO={ativo:true,limites:[0,80,130,200],parcelaValor:50,parcelaDias:30,revisarDias:60,alertaAtrasoPct:20,vigenteDesde:null,revisadoEm:null};
 let _creditoLiberarProxima=false; // o botão "Registrar mesmo assim" liga isto e chama salvarVenda() de novo
 let _creditoUltima=null;          // última avaliação mostrada no aviso de bloqueio
 
@@ -25,6 +25,7 @@ function creditoCfg(){
   if(!(Number(c.parcelaValor)>0)) c.parcelaValor=CREDITO_PADRAO.parcelaValor;
   if(!(parseInt(c.parcelaDias)>0)) c.parcelaDias=CREDITO_PADRAO.parcelaDias;
   if(!(parseInt(c.revisarDias)>0)) c.revisarDias=CREDITO_PADRAO.revisarDias;
+  { const p=Number(c.alertaAtrasoPct); c.alertaAtrasoPct=(p>=1&&p<=100)?p:CREDITO_PADRAO.alertaAtrasoPct; }
   return c;
 }
 
@@ -259,6 +260,7 @@ function abrirConfigCredito(){
   document.getElementById('cred-l3').value=c.limites[3];
   document.getElementById('cred-parc-valor').value=c.parcelaValor;
   document.getElementById('cred-parc-dias').value=c.parcelaDias;
+  document.getElementById('cred-alerta-pct').value=c.alertaAtrasoPct;
   creditoAtualizarRevisaoUI();
   document.getElementById('modal-config-credito').classList.add('open');
 }
@@ -273,11 +275,13 @@ function salvarConfigCredito(){
   const l3=parseFloat(document.getElementById('cred-l3').value);
   const parcelaValor=parseFloat(document.getElementById('cred-parc-valor').value);
   const parcelaDias=parseInt(document.getElementById('cred-parc-dias').value);
+  const alertaPct=parseFloat(document.getElementById('cred-alerta-pct').value);
   if(!(l1>=0&&l2>=0&&l3>=0)){showToast('Os limites precisam ser valores de 0 para cima','red');return;}
   if(!(l1<=l2&&l2<=l3)){showToast('Os níveis devem ser crescentes (Nível 1 ≤ Nível 2 ≤ Nível 3)','red');return;}
   if(!(parcelaValor>0)){showToast('Informe o valor de cada parcela','red');return;}
   if(!(parcelaDias>=1)){showToast('O prazo entre parcelas deve ser de 1 dia ou mais','red');return;}
-  state.credito=Object.assign({},creditoCfg(),{ativo:document.getElementById('cred-ativo').checked,limites:[0,round2(l1),round2(l2),round2(l3)],parcelaValor:round2(parcelaValor),parcelaDias});
+  if(!(alertaPct>=1&&alertaPct<=100)){showToast('O alerta de atraso deve ficar entre 1% e 100%','red');return;}
+  state.credito=Object.assign({},creditoCfg(),{ativo:document.getElementById('cred-ativo').checked,limites:[0,round2(l1),round2(l2),round2(l3)],parcelaValor:round2(parcelaValor),parcelaDias,alertaAtrasoPct:alertaPct});
   creditoRevalidarExcecoes();
   marcarAlterado();
   closeModal('modal-config-credito');showToast('Regras de crédito salvas','green');

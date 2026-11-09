@@ -81,6 +81,8 @@ function renderDashboard(){
   // Lucro = vendas do mês − gastos do mês; % = margem real (lucro ÷ vendas)
   const lucro=totalVendasMes-gastosMes;
   const margem=totalVendasMes>0?(lucro/totalVendasMes)*100:0;
+  const elCx=document.getElementById('dash-caixa-atual');
+  if(elCx) elCx.style.color=caixaAtual<0?'var(--red)':'';
   const elLucro=document.getElementById('dash-lucro');
   if(elLucro){elLucro.textContent=dashMoedaSinal(lucro);elLucro.style.color=lucro<0?'var(--red)':'';}
   dashSet('dash-lucro-pct',dashPct(margem));
@@ -104,6 +106,22 @@ function renderDashboard(){
   const vencemHojeArr=pendentesFiado.filter(u=>u.vencimento===hoje);
   dashSet('dash-contas-vencidas',vencidas.length);
   dashSet('dash-contas-vencidas-sub',vencidas.length===1?'1 parcela atrasada':vencidas.length+' parcelas atrasadas');
+  // Aviso de atraso no card Total a receber: sempre visível (cinza); acende em laranja quando o
+  // valor vencido (restante das parcelas atrasadas) chega a X% do Total a receber (config em Regras de crédito)
+  const totalReceber=dashSoma(devedores,c=>c.saldo);
+  const vencidoValor=vencidas.reduce((s,u)=>s+(u.valorRestante||0),0);
+  const cliAtraso=new Set(vencidas.map(u=>u.clienteId)).size;
+  const pctAtraso=totalReceber>0?(vencidoValor/totalReceber)*100:0;
+  const limAtraso=creditoCfg().alertaAtrasoPct;
+  const acendeAtraso=cliAtraso>0&&pctAtraso>=limAtraso;
+  const elAt=document.getElementById('dash-atraso');
+  if(elAt){
+    const txt=cliAtraso===0?'Nenhum cliente em atraso':(cliAtraso===1?'1 cliente em atraso':cliAtraso+' clientes em atraso');
+    const ico='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+    elAt.innerHTML=(acendeAtraso?ico:'')+txt;
+    elAt.classList.toggle('on',acendeAtraso);
+    elAt.title=fmt(vencidoValor)+' em atraso = '+pctAtraso.toFixed(1).replace('.',',')+'% do total a receber (alerta a partir de '+limAtraso+'%)';
+  }
   dashSet('dash-vencem-hoje',vencemHojeArr.length);
   dashSet('dash-vencem-hoje-sub',vencemHojeArr.length===1?'1 cobrança':vencemHojeArr.length+' cobranças');
 
