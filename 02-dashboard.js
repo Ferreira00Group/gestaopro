@@ -102,13 +102,13 @@ function renderDashboard(){
   const pendentesFiado=flatFiado.filter(u=>u.status!=='pago'&&u.vencimento);
   const vencidas=pendentesFiado.filter(u=>u.vencimento<hoje);
   const vencemHojeArr=pendentesFiado.filter(u=>u.vencimento===hoje);
-  dashSet('dash-contas-vencidas',vencidas.length);
-  dashSet('dash-contas-vencidas-sub',vencidas.length===1?'1 parcela atrasada':vencidas.length+' parcelas atrasadas');
   // Alerta de atraso no card Contas vencidas: acende em laranja quando o valor vencido (restante das
   // parcelas atrasadas) chega a X% do Total a receber (config em Regras de crédito)
   const totalReceber=dashSoma(devedores,c=>c.saldo);
   const vencidoValor=vencidas.reduce((s,u)=>s+(u.valorRestante||0),0);
   const cliAtraso=new Set(vencidas.map(u=>u.clienteId)).size;
+  dashSet('dash-contas-vencidas',fmt(vencidoValor));
+  dashSet('dash-contas-vencidas-sub',vencidas.length===0?'0 parcelas atrasadas':(vencidas.length===1?'1 parcela':vencidas.length+' parcelas')+' · '+(cliAtraso===1?'1 cliente':cliAtraso+' clientes'));
   const pctAtraso=totalReceber>0?(vencidoValor/totalReceber)*100:0;
   const limAtraso=creditoCfg().alertaAtrasoPct;
   const acendeAtraso=cliAtraso>0&&pctAtraso>=limAtraso;

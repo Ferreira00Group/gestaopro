@@ -252,21 +252,41 @@ function gerarRelatorio(){
   }
 
   const tvs=document.getElementById('rel-vendas-table');
-  if(vendasPeriodo.length===0) tvs.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma venda no período</span></div></td></tr>';
-  else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>`<tr>
-    <td data-label="Data">${fmtDate(v.data)}</td>
-    <td data-label="Cliente"><span class="nome-cartao-link" onclick="abrirCartaoCliente(${v.clienteId})">${escapeHtml(getCliente(v.clienteId).nome)}</span></td>
-    <td data-label="Itens" class="td-block">${escapeHtml(v.itens.map(it=>nomeItemVenda(it)+' ×'+it.qtd).join(', '))}</td>
-    <td data-label="Total"><strong>${fmt(v.total)}</strong></td>
-    <td data-label="Forma">${v.forma==='fiado'?'Fiado':v.forma==='dinheiro'?'Dinheiro':v.forma==='pix'?'PIX':'Cartão'}</td>
-  </tr>`).join('');
+  if(vendasPeriodo.length===0) tvs.innerHTML='<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma venda no período</span></div>';
+  else tvs.innerHTML=[...vendasPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(v=>{
+    const forma=v.forma==='fiado'?'Fiado':v.forma==='dinheiro'?'Dinheiro':v.forma==='pix'?'PIX':'Cartão';
+    const cli=getCliente(v.clienteId);
+    const nomeCli=(cli&&cli.nome)?escapeHtml(cli.nome):'Sem cliente';
+    return `<div class="dcard">
+    <div class="dcard-head">
+      <div class="dcard-title"><span class="nome-cartao-link" onclick="abrirCartaoCliente(${v.clienteId})">${nomeCli}</span></div>
+      <div class="dcard-valor">${fmt(v.total)}</div>
+    </div>
+    <div class="dcard-sub" style="margin-top:6px;overflow-wrap:anywhere">${escapeHtml(v.itens.map(it=>nomeItemVenda(it)+' ×'+it.qtd).join(', '))}</div>
+    <div class="dcard-foot">
+      <div class="dcard-meta">
+        <span class="dcard-sub">${fmtDate(v.data)}</span>
+        <span class="cat-pill" style="cursor:default;font-size:10px">${forma}</span>
+      </div>
+    </div>
+  </div>`;}).join('');
   const tff=document.getElementById('rel-fin-table');
-  if(finPeriodo.length===0) tff.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px"><div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação no período</span></div></td></tr>';
-  else tff.innerHTML=[...finPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(f=>`<tr>
-    <td data-label="Data">${fmtDate(f.data)}</td><td data-label="Descrição">${escapeHtml(f.desc)}</td>
-    <td data-label="Tipo"><span class="badge ${f.tipo==='entrada'?'badge-green':'badge-red'}">${f.tipo==='entrada'?'Entrada':'Saída'}</span></td>
-    <td data-label="Valor" class="${f.tipo==='entrada'?'':'debt-amount'}" style="${f.tipo==='entrada'?'color:var(--green);font-weight:700':''}">${f.tipo==='entrada'?'+':'-'} ${fmt(f.valor)}</td>
-  </tr>`).join('');
+  if(finPeriodo.length===0) tff.innerHTML='<div class="empty-inline"><i data-lucide="inbox"></i><span>Nenhuma movimentação no período</span></div>';
+  else tff.innerHTML=[...finPeriodo].sort((a,b)=>b.data.localeCompare(a.data)).map(f=>{
+    const entrada=f.tipo==='entrada';
+    return `<div class="dcard ${entrada?'dcard-green':'dcard-red'}">
+    <div class="dcard-head">
+      <div class="dcard-title">${escapeHtml(f.desc)}</div>
+      <div class="dcard-valor" style="color:${entrada?'var(--green)':'var(--red)'}">${entrada?'+':'-'} ${fmt(f.valor)}</div>
+    </div>
+    <div class="dcard-foot">
+      <div class="dcard-meta">
+        <span class="dcard-sub">${fmtDate(f.data)}</span>
+        <span class="badge ${entrada?'badge-green':'badge-red'}">${entrada?'Entrada':'Saída'}</span>
+        ${(!entrada&&f.categoria)?`<span class="cat-pill" style="cursor:default;font-size:10px">${escapeHtml(f.categoria)}</span>`:''}
+      </div>
+    </div>
+  </div>`;}).join('');
   destroyChart(chartRel);
   const graficoRelDisponivel=chartJsDisponivel();
   const prodMap={};
@@ -829,8 +849,8 @@ function gerarBalanco(){
   const el = document.getElementById('balanco-resultado');
   el.style.display = 'block';
   const linha = (label,valor,opts={}) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:${opts.grande?'12px':'9px'} 20px;${opts.sep?'border-top:2px solid var(--border);':''}background:${opts.grande?'#EBF5FB':'transparent'}">
-      <span style="font-size:${opts.grande?'14px':'13px'};font-weight:${opts.bold?'700':'400'};color:${opts.bold?'var(--text)':'var(--muted)'};padding-left:${(opts.indent||0)*16}px">${label}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:${opts.grande?'12px':'9px'} 20px;${opts.sep?'border-top:2px solid var(--border);':''}background:${opts.grande?'rgba(201,162,75,.08)':'transparent'}">
+      <span style="font-size:${opts.grande?'14px':'13px'};font-weight:${opts.bold?'700':'400'};color:${opts.grande?'var(--navy)':opts.bold?'var(--text)':'var(--muted)'};padding-left:${(opts.indent||0)*16}px">${label}</span>
       <span style="font-size:${opts.grande?'16px':'13px'};font-weight:${opts.bold?'800':'500'};color:${opts.cor||'var(--text)'}">${fmt(Math.abs(valor))}</span>
     </div>`;
 

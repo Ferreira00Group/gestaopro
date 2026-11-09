@@ -205,7 +205,7 @@
   <!-- PARTE 2: alertas (sem mudança) -->
   <div class="dash-section-title"><i data-lucide="triangle-alert" class="ic"></i>Alertas</div>
   <div class="dash-grid2" id="dash-cards-grid-2" style="margin-bottom:10px">
-    <div class="card-compacto alerta atraso" id="card-contas-vencidas" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vencidos')" title="Ver clientes com parcelas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">0</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
+    <div class="card-compacto alerta atraso" id="card-contas-vencidas" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vencidos')" title="Ver clientes com parcelas vencidas"><div class="icon"><i data-lucide="triangle-alert"></i></div><div class="info"><span class="label">Contas Vencidas</span><span class="value" id="dash-contas-vencidas">R$ 0,00</span><span class="sub" id="dash-contas-vencidas-sub">parcelas atrasadas</span></div></div>
     <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoClientesDevendo(false,'vence-hoje')" title="Ver clientes com parcelas que vencem hoje"><div class="icon"><i data-lucide="calendar-clock"></i></div><div class="info"><span class="label">Vencem Hoje</span><span class="value" id="dash-vencem-hoje">0</span><span class="sub" id="dash-vencem-hoje-sub">cobranças</span></div></div>
     <div class="card-compacto aviso" style="cursor:pointer" onclick="gotoEstoqueBaixo()" title="Ver itens abaixo do mínimo"><div class="icon"><i data-lucide="package"></i></div><div class="info"><span class="label">Estoque Baixo</span><span class="value" id="dash-estoque-baixo">0</span><span class="sub">abaixo do mínimo</span></div></div>
     <div class="card-compacto" style="cursor:pointer" onclick="filterVendaTipo('orcamento');goto('vendas')" title="Ver orçamentos"><div class="icon"><i data-lucide="clipboard-list"></i></div><div class="info"><span class="label">Orçamentos</span><span class="value" id="dash-orc-pendentes">0</span><span class="sub" id="dash-orc-sub">aguardando aprovação</span></div></div>
@@ -850,19 +850,13 @@
         </div>
         <p class="abc-nota">O faturamento considera vendas realizadas, excluindo orçamentos. O custo usa o snapshot da venda quando disponível; registros antigos sem custo histórico usam a ficha técnica atual. Itens avulsos sem custo informado aparecem com custo zero, portanto sua margem não deve ser interpretada como margem confirmada.</p>
       </section>
-      <div class="table-card table-cards" style="margin-bottom:20px">
+      <div class="table-card" style="margin-bottom:20px">
         <div style="padding:16px 20px 0"><strong style="font-size:14px">Vendas no Período</strong></div>
-        <div class="table-scroll"><table style="margin-top:12px">
-          <thead><tr><th>Data</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Forma</th></tr></thead>
-          <tbody id="rel-vendas-table"></tbody>
-        </table></div>
+        <div class="dcard-list" id="rel-vendas-table"></div>
       </div>
-      <div class="table-card table-cards">
+      <div class="table-card">
         <div style="padding:16px 20px 0"><strong style="font-size:14px">Movimentações Financeiras</strong></div>
-        <div class="table-scroll"><table style="margin-top:12px">
-          <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead>
-          <tbody id="rel-fin-table"></tbody>
-        </table></div>
+        <div class="dcard-list" id="rel-fin-table"></div>
       </div>
     </div>
   </div>
