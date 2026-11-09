@@ -1,5 +1,17 @@
-# GestãoPRO v5.92.0
+# GestãoPRO v5.92.1
 
+## Selo de situação no cartão do cliente
+- Cliente com parcela vencida mostra **"Atrasado há X dias"** (dias da parcela em aberto mais antiga), no lugar de "Devendo".
+  - 1 a 15 dias: laranja.
+  - 16 a 60 dias: vermelho.
+  - Mais de 60 dias: vermelho pulsante.
+- Cliente devendo **ainda no prazo** continua com "Devendo R$ X", agora em **azul**.
+- Em dia continua verde.
+
+## Correção: confirmação escondida atrás de outro modal
+- O diálogo "Confirmar" abria atrás de modais mais abaixo no HTML (ex.: Renegociar dívida) e só aparecia ao fechá-los. Agora fica sempre por cima.
+
+## Versão 5.92.0 (anterior)
 Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o botão **Renegociar**.
 
 ## Botão Renegociar no cartão do cliente
@@ -17,4 +29,4 @@ Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o
 - Orçamentos continua como antes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.92.0**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.92.1**.

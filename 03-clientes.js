@@ -75,6 +75,15 @@ function renderClientes(){
     return;
   }
 
+  // Parcela em aberto mais antiga já vencida, por cliente (mesma regra de "Contas vencidas" do painel)
+  const hojeAt = today();
+  const vencMaisAntigo = {};
+  getUnidadesFiadoFlat().forEach(u => {
+    if(u.status === 'pago' || !u.vencimento || u.vencimento >= hojeAt) return;
+    const k = String(u.clienteId);
+    if(!vencMaisAntigo[k] || u.vencimento < vencMaisAntigo[k]) vencMaisAntigo[k] = u.vencimento;
+  });
+
   // Renderiza em cards modernos, calculando métricas uma única vez por cliente
   cardsContainer.innerHTML = focoBarra + list.map(c => {
     const saldo = getSaldoCliente(c.id);
@@ -101,6 +110,19 @@ function renderClientes(){
     const scoreObj = typeof calcularScoreCliente === 'function' ? calcularScoreCliente(c, vendasCliente, saldo) : null;
     const scoreBadge = scoreObj ? creditoScoreBadgeHtml(scoreObj) : '';
     const arquivado = !estaAtivo(c);
+    // Selo de situação: atraso (laranja 1–15d, vermelho 16–60d, vermelho pulsante +60d),
+    // devendo no prazo (azul) ou em dia (verde)
+    const vencAtraso = vencMaisAntigo[String(c.id)];
+    const diasAtraso = vencAtraso ? -diasParaVencimento(vencAtraso, hojeAt) : 0;
+    let seloStatus;
+    if(saldo > 0 && diasAtraso > 0){
+      const faixaAtraso = diasAtraso > 60 ? 3 : diasAtraso > 15 ? 2 : 1;
+      seloStatus = `<span class="badge badge-atraso-${faixaAtraso}" title="Parcela mais antiga venceu em ${fmtDate(vencAtraso)}">Atrasado há ${diasAtraso} dia${diasAtraso > 1 ? 's' : ''}</span>`;
+    } else if(saldo > 0){
+      seloStatus = `<span class="badge badge-prazo">Devendo ${fmt(saldo)}</span>`;
+    } else {
+      seloStatus = `<span class="badge badge-green">Em dia ✓</span>`;
+    }
 
     return `
     <div class="cliente-card ${arquivado ? 'arquivado' : ''} ${_clienteFoco ? 'cliente-card-foco' : ''}" id="cliente-card-${c.id}">
@@ -122,9 +144,7 @@ function renderClientes(){
         </div>
         <div class="cliente-card-status-badge">
           ${scoreObj ? `<span class="badge-score badge-score-${scoreObj.ehNovo ? 'amarelo' : scoreObj.classe}" title="${scoreObj.ehNovo ? 'Cliente novo: menos de 3 compras registradas' : 'Score ' + scoreObj.score + '/100 · ' + scoreObj.rotulo}">Score <span class="score-num">${scoreObj.score}</span></span>` : ''}
-          ${saldo > 0 
-            ? `<span class="badge badge-red badge-pulse">Devendo ${fmt(saldo)}</span>` 
-            : `<span class="badge badge-green">Em dia ✓</span>`}
+          ${seloStatus}
         </div>
       </div>
 

@@ -2195,3 +2195,13 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .filtro-ativo-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 6px 5px 12px;border-radius:999px;border:1px solid rgba(201,162,75,.45);background:linear-gradient(180deg,#19191c,#0e0e10);color:var(--text);font-size:12.5px;font-weight:700}
 .filtro-ativo-chip button{border:none;background:rgba(255,255,255,.1);color:var(--text);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;padding:0}
 .filtro-ativo-link{font-size:12px;color:var(--gold);cursor:pointer;text-decoration:underline}
+
+/* ===== Selo de situação no cartão do cliente: no prazo / atraso por faixa ===== */
+#page-clientes .badge-prazo{color:#5AA9E6}
+#page-clientes .badge-atraso-1{color:#F0903C}
+#page-clientes .badge-atraso-2{color:var(--red)}
+#page-clientes .badge-atraso-3{color:var(--red);animation:badge-atraso-pulse 1.5s ease-in-out infinite}
+@keyframes badge-atraso-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+/* Confirmação genérica sempre acima de qualquer outro modal aberto (ex.: Renegociar dívida) */
+#modal-confirmar{z-index:1200}
