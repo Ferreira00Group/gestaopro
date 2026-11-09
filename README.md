@@ -1,4 +1,17 @@
-# GestãoPRO v5.92.1
+# GestãoPRO v5.93.0
+
+## Etiqueta do estoque com código
+- Cartões de Produto, Matéria-prima e Semiacabado mostram o tipo no corpo dourado e o **código na ponta**, uma cor por tipo: **P003** bronze, **M015** azul, **S015** violeta. Vale também para inativos e arquivados.
+- Tocar no código copia. A busca de cada aba aceita o código (P003, M015, S015); a aba Semiacabados ganhou a barra de busca.
+
+## Cadastro sem duplicar por erro de digitação (Produto, Matéria-prima, Semiacabado)
+- Ao digitar o nome aparece a lista do que já existe (código, unidade, estoque); tocar abre o item em vez de criar outro. A busca ignora acento e maiúscula e acha grafia parecida.
+- Nome igual a outro item: bloqueado, só oferece "Abrir esse" (acabou o "criar mesmo assim").
+- Nome parecido: pergunta "Usar esse" ou "É outro item" (na edição: "Voltar" ou "Salvar assim").
+- Nome salvo padronizado: sem espaços sobrando e com a primeira letra maiúscula.
+- Estoque: item novo mostra "Estoque inicial" (começa em 0); item existente mostra o "Estoque atual" travado, só para ler (ajuste pelo + / − do cartão ou pela Entrada de Estoque). No Semiacabado a edição não altera mais o estoque.
+
+## Versão 5.92.1 (anterior)
 
 ## Selo de situação no cartão do cliente
 - Cliente com parcela vencida mostra **"Atrasado há X dias"** (dias da parcela em aberto mais antiga), no lugar de "Devendo".
@@ -29,4 +42,4 @@ Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o
 - Orçamentos continua como antes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.92.1**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.93.0**.

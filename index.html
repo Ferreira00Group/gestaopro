@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.92.1">
+<link rel="stylesheet" href="styles.css?v=5.93.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -506,7 +506,7 @@
   <div id="estoque-produtos-wrap">
     <div id="estoque-filtro-baixo"></div>
     <div class="search-bar">
-      <input class="search-input" placeholder="Buscar produto..." oninput="filterEstoqueDebounced(this.value)">
+      <input class="search-input" placeholder="Buscar nome ou código..." oninput="filterEstoqueDebounced(this.value)">
       <label id="estoque-mostrar-arquivados" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap">
         <input type="checkbox" onchange="filterEstoqueArquivados(this.checked)" style="width:auto;margin:0">
         Mostrar arquivados
@@ -1272,6 +1272,20 @@
   </div>
 </div>
 
+<!-- ITEM EXISTENTE / PARECIDO (cadastro de Produto, Matéria-prima e Semiacabado) -->
+<div class="modal-overlay" id="modal-similar">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header"><h3 id="modal-similar-titulo">Já existe um item parecido</h3><button class="modal-close" onclick="closeModal('modal-similar')"><i data-lucide="x" class="ic"></i></button></div>
+    <div class="modal-body">
+      <p id="modal-similar-texto" style="font-size:14px;color:var(--text);margin-bottom:18px"></p>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="modal-similar-outro" onclick="similarEscolha('outro')">É outro item</button>
+        <button class="btn btn-primary" id="modal-similar-usar" onclick="similarEscolha('usar')">Usar esse</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRMAÇÃO GENÉRICA (substitui confirm() nativo, mais confiável no mobile) -->
 <div class="modal-overlay" id="modal-confirmar">
   <div class="modal" style="max-width:360px">
@@ -2033,7 +2047,7 @@
     <div class="modal-header"><h3 id="modal-materia-title">Nova Matéria-Prima</h3><button class="modal-close" onclick="closeModal('modal-materia')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="mp-edit-id">
-      <div class="form-group"><label>Nome</label><input class="form-control" id="mp-nome" placeholder="Ex: Farinha de trigo"></div>
+      <div class="form-group"><label>Nome</label><input class="form-control" id="mp-nome" placeholder="Ex: Farinha de trigo" autocomplete="off"><div id="mp-sugestoes"></div></div>
       <div class="form-group"><label>Unidade</label>
         <select class="form-control" id="mp-unidade">
           <option value="L">Litros (L)</option>
@@ -2047,7 +2061,7 @@
         <div class="form-group"><label>Custo por Unidade (R$)</label><input class="form-control" id="mp-custo" type="number" step="0.01" placeholder="0,00"></div>
         <div class="form-group"><label>Estoque Mínimo</label><input class="form-control" id="mp-minimo" type="number" step="0.1" placeholder="0"></div>
       </div>
-      <div class="form-group" id="mp-estoque-wrap"><label>Estoque Atual</label><input class="form-control" id="mp-estoque" type="number" step="0.01" placeholder="0"></div>
+      <div class="form-group" id="mp-estoque-wrap"><label id="mp-estoque-label">Estoque inicial</label><input class="form-control" id="mp-estoque" type="number" step="0.01" placeholder="0"><div id="mp-estoque-nota" style="font-size:11px;color:var(--muted);margin-top:4px"></div></div>
       <div class="form-group"><label>Fornecedor (opcional)</label>
         <select class="form-control" id="mp-fornecedor"><option value="">— Nenhum —</option></select>
       </div>
@@ -2069,7 +2083,7 @@
       <div class="form-row">
         <div class="form-group" style="flex:2">
           <label>Nome</label>
-          <input class="form-control" id="semi-nome" placeholder="Ex: Base de Sabão">
+          <input class="form-control" id="semi-nome" placeholder="Ex: Base de Sabão" autocomplete="off">
         </div>
         <div class="form-group">
           <label>Unidade</label>
@@ -2081,10 +2095,12 @@
           </select>
         </div>
       </div>
+      <div id="semi-sugestoes"></div>
       <div class="form-row">
         <div class="form-group">
-          <label>Estoque Atual</label>
+          <label id="semi-estoque-label">Estoque inicial</label>
           <input class="form-control" id="semi-estoque" type="number" step="0.01" placeholder="0">
+          <div id="semi-estoque-nota" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
         </div>
         <div class="form-group">
           <label>Estoque Mínimo</label>
@@ -2630,36 +2646,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.92.1"></script>
-<script src="00-core.js?v=5.92.1"></script>
-<script src="lib-qrcode.js?v=5.92.1"></script>
-<script src="01-ui-nav.js?v=5.92.1"></script>
-<script src="02-dashboard.js?v=5.92.1"></script>
-<script src="03-clientes.js?v=5.92.1"></script>
-<script src="04-vendas.js?v=5.92.1"></script>
-<script src="04b-pix-extrato.js?v=5.92.1"></script>
-<script src="11b-meu-dia.js?v=5.92.1"></script>
-<script src="11c-promessa-reneg.js?v=5.92.1"></script>
-<script src="11d-aprovar-lote.js?v=5.92.1"></script>
-<script src="05-producao.js?v=5.92.1"></script>
-<script src="06-estoque.js?v=5.92.1"></script>
-<script src="07-precificacao.js?v=5.92.1"></script>
-<script src="08-compras-fornecedores.js?v=5.92.1"></script>
-<script src="09-financeiro-relatorios.js?v=5.92.1"></script>
-<script src="10-fab-inline.js?v=5.92.1"></script>
-<script src="10b-planejamento.js?v=5.92.1"></script>
-<script src="13-crm.js?v=5.92.1"></script>
-<script src="14-relacionamento.js?v=5.92.1"></script>
-<script src="15-cliente360.js?v=5.92.1"></script>
-<script src="16-automacoes.js?v=5.92.1"></script>
-<script src="17-banco.js?v=5.92.1"></script>
-<script src="18-credito.js?v=5.92.1"></script>
-<script src="19-conectores.js?v=5.92.1"></script>
-<script src="20-cartoes.js?v=5.92.1"></script>
-<script src="12-drive-backup.js?v=5.92.1"></script>
-<script src="11-app-init.js?v=5.92.1"></script>
-<script src="21-gemini-ia.js?v=5.92.1"></script>
-<script src="22-operacao-foco.js?v=5.92.1"></script>
+<script src="00a-config.js?v=5.93.0"></script>
+<script src="00-core.js?v=5.93.0"></script>
+<script src="lib-qrcode.js?v=5.93.0"></script>
+<script src="01-ui-nav.js?v=5.93.0"></script>
+<script src="02-dashboard.js?v=5.93.0"></script>
+<script src="03-clientes.js?v=5.93.0"></script>
+<script src="04-vendas.js?v=5.93.0"></script>
+<script src="04b-pix-extrato.js?v=5.93.0"></script>
+<script src="11b-meu-dia.js?v=5.93.0"></script>
+<script src="11c-promessa-reneg.js?v=5.93.0"></script>
+<script src="11d-aprovar-lote.js?v=5.93.0"></script>
+<script src="05-producao.js?v=5.93.0"></script>
+<script src="06-estoque.js?v=5.93.0"></script>
+<script src="07-precificacao.js?v=5.93.0"></script>
+<script src="08-compras-fornecedores.js?v=5.93.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.93.0"></script>
+<script src="10-fab-inline.js?v=5.93.0"></script>
+<script src="10b-planejamento.js?v=5.93.0"></script>
+<script src="13-crm.js?v=5.93.0"></script>
+<script src="14-relacionamento.js?v=5.93.0"></script>
+<script src="15-cliente360.js?v=5.93.0"></script>
+<script src="16-automacoes.js?v=5.93.0"></script>
+<script src="17-banco.js?v=5.93.0"></script>
+<script src="18-credito.js?v=5.93.0"></script>
+<script src="19-conectores.js?v=5.93.0"></script>
+<script src="20-cartoes.js?v=5.93.0"></script>
+<script src="12-drive-backup.js?v=5.93.0"></script>
+<script src="11-app-init.js?v=5.93.0"></script>
+<script src="21-gemini-ia.js?v=5.93.0"></script>
+<script src="22-operacao-foco.js?v=5.93.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">
@@ -2673,7 +2689,8 @@
         </div>
       </div>
       <div class="form-group"><label>Nome do Produto</label>
-        <input class="form-control" id="np-nome" placeholder="Nome do produto">
+        <input class="form-control" id="np-nome" placeholder="Nome do produto" autocomplete="off">
+        <div id="np-sugestoes"></div>
       </div>
       <div id="np-campos-pronto">
         <div class="form-group"><label>SKU (opcional)</label>
@@ -2732,6 +2749,10 @@
       </div>
       <div class="form-group"><label>Estoque mínimo</label>
         <input class="form-control" type="number" min="0" id="ep-minimo" placeholder="0">
+      </div>
+      <div class="form-group"><label>Estoque atual</label>
+        <input class="form-control" id="ep-estoque" readonly style="opacity:.75">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Só leitura. Para mudar, use + / − no cartão ou a Entrada de Estoque.</div>
       </div>
       <div id="ep-variantes-wrap"></div>
       <div class="modal-footer">

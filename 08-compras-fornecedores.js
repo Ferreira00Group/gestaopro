@@ -838,6 +838,7 @@ function npSetTipo(tipo){
   npTipoAtual=tipo;
   document.getElementById('np-tab-pronto').classList.toggle('active',tipo==='pronto');
   document.getElementById('np-tab-semi').classList.toggle('active',tipo==='semiacabado');
+  renderSugestoesNome('np-sugestoes',tipo==='semiacabado'?'s':'p',(document.getElementById('np-nome')||{}).value);
   document.getElementById('np-campos-pronto').style.display=tipo==='pronto'?'block':'none';
   document.getElementById('np-campos-semi').style.display=tipo==='semiacabado'?'block':'none';
   document.getElementById('np-campos-semi-mp').style.display=tipo==='semiacabado'?'block':'none';
@@ -863,6 +864,7 @@ function npRenderMPLista(){
 }
 function abrirNovoProduto(){
   document.getElementById('np-nome').value='';
+  limparSugestoes('np-sugestoes');
   document.getElementById('np-sku').value='';
   document.getElementById('np-preco').value='';
   document.getElementById('np-unidade').value='L';
@@ -873,9 +875,10 @@ function abrirNovoProduto(){
   npSetTipo('pronto');
   requestAnimationFrame(()=>requestAnimationFrame(()=>openModal('modal-novo-produto')));
 }
-function salvarNovoProduto(){
-  const nome=document.getElementById('np-nome').value.trim();
+function salvarNovoProduto(pularSimilar){
+  const nome=padronizarNomeItem(document.getElementById('np-nome').value);
   if(!nome){showToast('Informe o nome do produto','red');return;}
+  if(!pularSimilar&&!validarNomeCadastro(npTipoAtual==='semiacabado'?'s':'p',nome,null,null,()=>salvarNovoProduto(true))) return;
   if(npTipoAtual==='semiacabado'){
     const novo={
       id:nextId('semiacabados'),
@@ -917,6 +920,7 @@ function editarProduto(id){
   document.getElementById('ep-sku').value=p.sku||'';
   document.getElementById('ep-preco').value=p.preco||'';
   document.getElementById('ep-minimo').value=p.minimo||0;
+  document.getElementById('ep-estoque').value=fmtNumItem(estoqueItem('p',p))+((p.variantes&&p.variantes.length>0)?' (soma das variantes)':'');
   // Variantes
   const wrap=document.getElementById('ep-variantes-wrap');
   if(p.variantes&&p.variantes.length>0){
@@ -930,11 +934,13 @@ function editarProduto(id){
   }
   requestAnimationFrame(()=>requestAnimationFrame(()=>openModal('modal-editar-produto')));
 }
-function salvarEdicaoProduto(){
+function salvarEdicaoProduto(pularSimilar){
   const id=parseInt(document.getElementById('ep-id').value);
   const p=state.produtos.find(p=>p.id===id);
   if(!p)return;
-  p.nome=document.getElementById('ep-nome').value.trim()||p.nome;
+  const novoNome=padronizarNomeItem(document.getElementById('ep-nome').value)||p.nome;
+  if(!pularSimilar&&!validarNomeCadastro('p',novoNome,p.id,p.nome,()=>salvarEdicaoProduto(true))) return;
+  p.nome=novoNome;
   p.sku=document.getElementById('ep-sku').value.trim();
   p.preco=parseFloat(document.getElementById('ep-preco').value)||p.preco;
   p.minimo=parseInt(document.getElementById('ep-minimo').value)||0;

@@ -350,9 +350,9 @@ function salvarCondicoesPagamento(){
   showToast('Condições de pagamento salvas','green');
 }
 
-function salvarMateria(){
+function salvarMateria(pularSimilar){
   const eid=document.getElementById('mp-edit-id').value;
-  const nome=document.getElementById('mp-nome').value.trim();
+  const nome=padronizarNomeItem(document.getElementById('mp-nome').value);
   const unidade=document.getElementById('mp-unidade').value;
   const custo=parseFloat(document.getElementById('mp-custo').value)||0;
   const minimo=parseFloat(document.getElementById('mp-minimo').value)||0;
@@ -360,6 +360,8 @@ function salvarMateria(){
   const ativoChk=document.getElementById('mp-ativo');
   const ativo=ativoChk?ativoChk.checked:true;
   if(!nome){showToast('Informe o nome','red');return;}
+  const mOrig=eid?state.materias.find(m=>m.id==eid):null;
+  if(!pularSimilar&&!validarNomeCadastro('m',nome,eid?parseInt(eid):null,mOrig?mOrig.nome:null,()=>salvarMateria(true))) return;
   if(eid){
     const m=state.materias.find(m=>m.id==eid);
     m.nome=nome;m.unidade=unidade;m.custo=custo;m.minimo=minimo;m.fornecedorId=fornecedorId;
@@ -384,16 +386,7 @@ function salvarMateria(){
     showToast('Matéria-prima cadastrada','green');
     closeModal('modal-materia');marcarAlterado();renderEstoque();renderAlertaEstoquePage();
   };
-  const exata=state.materias.find(m=>normalizarNomeMp(m.nome)===normalizarNomeMp(nome));
-  if(exata){
-    confirmarAcao(`Já existe uma matéria-prima com esse nome: "${exata.nome}". Criar mesmo assim uma segunda entrada?`,criarMateria);
-    return;
-  }
-  const parecida=encontrarMpParecida(nome);
-  if(parecida){
-    confirmarAcao(`Já existe uma matéria-prima parecida: "${parecida.mp.nome}". Continuar e criar "${nome}" como nova mesmo assim?`,criarMateria);
-    return;
-  }
+  // duplicado exato/parecido já foi tratado acima por validarNomeCadastro (sem "criar mesmo assim" no exato)
   criarMateria();
 }
 function editarMateria(id){
@@ -404,7 +397,9 @@ function editarMateria(id){
   document.getElementById('mp-custo').value=m.custo;
   document.getElementById('mp-minimo').value=m.minimo;
   const _ck=document.getElementById('mp-ativo'); if(_ck) _ck.checked=estaAtivo(m);
-  document.getElementById('mp-estoque-wrap').style.display='none';
+  document.getElementById('mp-estoque-wrap').style.display='block';
+  prepararCampoEstoque('mp-estoque','mp-estoque-label','mp-estoque-nota',true,m.qtd);
+  limparSugestoes('mp-sugestoes');
   populaSelectFornecedores();
   document.getElementById('mp-fornecedor').value=m.fornecedorId||'';
   document.getElementById('modal-materia-title').textContent='Editar Matéria-Prima';
@@ -423,6 +418,8 @@ function clearMateria(){
   document.getElementById('mp-fornecedor').value='';
   document.getElementById('modal-materia-title').textContent='Nova Matéria-Prima';
   document.getElementById('mp-estoque-wrap').style.display='block';
+  prepararCampoEstoque('mp-estoque','mp-estoque-label','mp-estoque-nota',false,'');
+  limparSugestoes('mp-sugestoes');
 }
 function populaSelectFornecedores(){
   const sel=document.getElementById('mp-fornecedor');

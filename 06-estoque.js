@@ -17,7 +17,7 @@ function showEstoqueTab(tab,btn){
     renderFornecedores();renderHistoricoCompras();renderHistoricoPreco();
     return;
   }
-  showEstoqueSearch(tab!=='semiacabados');
+  showEstoqueSearch(true);
   const btnCopiar=document.getElementById('btn-copiar-lista-estoque');
   if(btnCopiar) btnCopiar.style.display=(tab==='produtos')?'':'none';
   const chkArq=document.getElementById('estoque-mostrar-arquivados');
@@ -138,6 +138,168 @@ function stepperDigitado(el,tipo,id,vid){
   if(isNaN(n)||n<0){showToast('Quantidade inválida','red');renderEstoque();return;}
   stepperAplicar(tipo,id,vid,n);
 }
+// ============ CÓDIGOS, BUSCA E TRAVA DE DUPLICADOS (Produto / Matéria-prima / Semiacabado) ============
+const fmtMateriaCod=id=>'M'+String(id).padStart(3,'0');
+const fmtSemiCod=id=>'S'+String(id).padStart(3,'0');
+const ITEM_TIPO={p:{rotulo:'Produto',cls:'prod'},m:{rotulo:'Matéria-prima',cls:'mp'},s:{rotulo:'Semiacabado',cls:'semi'}};
+function codItem(tipo,id){return tipo==='m'?fmtMateriaCod(id):tipo==='s'?fmtSemiCod(id):fmtProdutoCod(id);}
+function itensDoTipo(tipo){return tipo==='m'?(state.materias||[]):tipo==='s'?(state.semiacabados||[]):(state.produtos||[]);}
+function estoqueItem(tipo,it){
+  if(tipo==='p'&&it.variantes&&it.variantes.length>0) return it.variantes.reduce((s,v)=>s+(v.estoque||0),0);
+  return tipo==='m'?(it.qtd||0):(it.estoque||0);
+}
+function unidadeItem(tipo,it){return tipo==='p'?'un':(it.unidade||'');}
+const fmtNumItem=n=>String(Math.round((n||0)*100)/100).replace('.',',');
+// Nome padronizado: sem espaços sobrando e com a primeira letra maiúscula (o resto fica como digitado)
+function padronizarNomeItem(s){
+  s=String(s||'').replace(/\s+/g,' ').trim();
+  return s?s.charAt(0).toUpperCase()+s.slice(1):s;
+}
+// "m15", "M015", "p3-1" -> "m:15" / "p:3"
+function normCodigoBusca(txt){
+  const m=String(txt==null?'':txt).trim().match(/^([pms])\s*0*(\d+)(?:\s*-\s*\d+)?$/i);
+  return m?m[1].toLowerCase()+':'+parseInt(m[2],10):null;
+}
+// Itens já cadastrados que combinam com o que a pessoa está digitando (nome sem acento/maiúscula,
+// grafia parecida ou código). Inclui inativos e arquivados.
+function buscarItensCadastro(tipo,termo,ignoreId){
+  const t=normalizarNomeMp(termo);
+  if(!t) return [];
+  const cod=normCodigoBusca(termo);
+  const out=[];
+  itensDoTipo(tipo).forEach(it=>{
+    if(ignoreId!=null&&it.id==ignoreId) return;
+    const nome=normalizarNomeMp(it.nome);
+    let score=0;
+    if(cod&&cod===tipo+':'+it.id) score=1.5;
+    else if(nome===t) score=1.2;
+    else if(nome.includes(t)||(t.length>=4&&t.includes(nome))) score=1;
+    else{
+      // grafia parecida: compara com o nome todo, com cada palavra e com o começo do nome
+      let s=similaridadeTexto(termo,it.nome);
+      if(t.length>=4){
+        nome.split(' ').forEach(w=>{if(w.length>=3) s=Math.max(s,similaridadeTexto(t,w));});
+        s=Math.max(s,similaridadeTexto(t,nome.slice(0,t.length)));
+      }
+      if(s>=0.7) score=s*0.9;
+    }
+    if(score>0) out.push({tipo,id:it.id,it,score});
+  });
+  return out.sort((a,b)=>b.score-a.score).slice(0,5);
+}
+// Nome igual a outro item (bloqueia) ou parecido (pergunta). ignoreId = item que está sendo editado.
+function checarNomeDuplicado(tipo,nome,ignoreId){
+  const n=normalizarNomeMp(nome);
+  let exato=null,parecido=null,melhor=0;
+  itensDoTipo(tipo).forEach(it=>{
+    if(ignoreId!=null&&it.id==ignoreId) return;
+    const nn=normalizarNomeMp(it.nome);
+    if(nn===n){exato=it;return;}
+    const menor=Math.min(nn.length,n.length);
+    let s=similaridadeTexto(nome,it.nome);
+    if(menor>=5&&(nn.includes(n)||n.includes(nn))) s=Math.max(s,0.8);
+    if(s>melhor){melhor=s;parecido=it;}
+  });
+  if(exato) return {tipo:'exato',item:exato};
+  if(parecido&&melhor>=0.72) return {tipo:'parecido',item:parecido};
+  return null;
+}
+// Diálogo de duas saídas. op: {exato} só "Abrir esse" | {edicao,aoOutro} "Voltar"/"Salvar assim" | {aoOutro} "Usar esse"/"É outro item"
+let _similarCb=null;
+function dialogSimilar(tipo,it,nomeDigitado,op){
+  op=op||{};
+  const info=`<b>${codItem(tipo,it.id)} · ${escapeHtml(it.nome)}</b> (estoque: ${fmtNumItem(estoqueItem(tipo,it))} ${escapeHtml(unidadeItem(tipo,it))})`;
+  const titulo=document.getElementById('modal-similar-titulo'),texto=document.getElementById('modal-similar-texto');
+  const bUsar=document.getElementById('modal-similar-usar'),bOutro=document.getElementById('modal-similar-outro');
+  if(op.exato){
+    titulo.textContent='Esse item já existe';
+    texto.innerHTML=`Já existe ${info}. Quer abrir ele em vez de criar outro?`;
+    bUsar.textContent='Abrir esse';bOutro.style.display='none';
+  }else if(op.edicao){
+    titulo.textContent='Nome parecido com outro item';
+    texto.innerHTML=`Já existe ${info}, parecido com <b>${escapeHtml(nomeDigitado)}</b>. Salvar com esse nome mesmo assim?`;
+    bUsar.textContent='Voltar';bOutro.textContent='Salvar assim';bOutro.style.display='';
+  }else{
+    titulo.textContent='Já existe um item parecido';
+    texto.innerHTML=`Já existe ${info}. Você digitou <b>${escapeHtml(nomeDigitado)}</b>. É o mesmo item?`;
+    bUsar.textContent='Usar esse';bOutro.textContent='É outro item';bOutro.style.display='';
+  }
+  _similarCb={usar:op.edicao?function(){}:()=>pickItemCadastro(tipo,it.id),outro:op.aoOutro||function(){}};
+  document.getElementById('modal-similar').classList.add('open');
+}
+function similarEscolha(qual){
+  const cb=_similarCb;
+  closeModal('modal-similar');
+  if(cb&&cb[qual]) cb[qual]();
+}
+// Valida o nome antes de salvar. Retorna true se pode salvar agora; false se bloqueou ou abriu o
+// diálogo (que chama seguir() se a pessoa escolher "É outro item" / "Salvar assim").
+function validarNomeCadastro(tipo,nome,ignoreId,nomeOriginal,seguir){
+  if(nomeOriginal!=null&&normalizarNomeMp(nomeOriginal)===normalizarNomeMp(nome)) return true;
+  const dup=checarNomeDuplicado(tipo,nome,ignoreId);
+  if(!dup) return true;
+  const edicao=ignoreId!=null;
+  if(dup.tipo==='exato'){
+    if(edicao) showToast(`Já existe ${codItem(tipo,dup.item.id)} · ${dup.item.nome} com esse nome`,'red');
+    else dialogSimilar(tipo,dup.item,nome,{exato:true});
+    return false;
+  }
+  dialogSimilar(tipo,dup.item,nome,{edicao,aoOutro:seguir});
+  return false;
+}
+// Abre o item existente para edição (fecha o cadastro de novo item que estava aberto)
+function pickItemCadastro(tipo,id){
+  if(tipo==='m'){editarMateria(id);return;}
+  closeModal('modal-novo-produto');
+  if(tipo==='s'){closeModal('modal-semiacabado');editarSemiacabado(id);return;}
+  editarProduto(id);
+}
+function limparSugestoes(boxId){const b=document.getElementById(boxId);if(b) b.innerHTML='';}
+function renderSugestoesNome(boxId,tipo,termo){
+  const box=document.getElementById(boxId);
+  if(!box) return;
+  const t=String(termo||'').trim();
+  if(t.length<2){box.innerHTML='';return;}
+  const res=buscarItensCadastro(tipo,t,null);
+  if(!res.length){box.innerHTML='';return;}
+  const cls=ITEM_TIPO[tipo].cls;
+  box.innerHTML=`<div class="sug-lista"><div class="sug-titulo">Já existe — toque para abrir em vez de criar outro</div>${res.map(r=>{
+    const it=r.it,ina=!estaAtivo(it);
+    return `<div class="sug-item" onclick="pickItemCadastro('${tipo}',${it.id})"><span class="sug-cod selo-cod-${cls}">${codItem(tipo,it.id)}</span><span class="sug-nome">${escapeHtml(it.nome)}</span><span class="sug-meta">${escapeHtml(unidadeItem(tipo,it))} · ${fmtNumItem(estoqueItem(tipo,it))} em estoque${ina?(tipo==='p'?' · arquivado':' · inativo'):''}</span></div>`;
+  }).join('')}</div>`;
+}
+document.addEventListener('input',function(e){
+  const t=e.target;
+  if(!t||!t.id) return;
+  if(t.id==='mp-nome'){
+    if(!document.getElementById('mp-edit-id').value) renderSugestoesNome('mp-sugestoes','m',t.value);
+  }else if(t.id==='semi-nome'){
+    if(!document.getElementById('semi-edit-id').value) renderSugestoesNome('semi-sugestoes','s',t.value);
+  }else if(t.id==='np-nome'){
+    renderSugestoesNome('np-sugestoes',npTipoAtual==='semiacabado'?'s':'p',t.value);
+  }
+});
+// Estoque no cadastro: item novo = "Estoque inicial" (editável, começa em 0); item existente = "Estoque atual" só leitura
+function prepararCampoEstoque(inputId,labelId,notaId,edicao,valor){
+  const inp=document.getElementById(inputId),lab=document.getElementById(labelId),nota=document.getElementById(notaId);
+  if(inp){inp.readOnly=!!edicao;inp.value=edicao?valor:'';inp.style.opacity=edicao?'.75':'';}
+  if(lab) lab.textContent=edicao?'Estoque atual':'Estoque inicial';
+  if(nota){nota.style.display='block';nota.textContent=edicao?'Só leitura. Para mudar, use + / − no cartão ou a Entrada de Estoque.':'Começa em 0. Preencha só se já houver estoque físico.';}
+}
+function copiarCodigoItem(cod,ev){
+  if(ev) ev.stopPropagation();
+  const ok=()=>showToast('Código '+cod+' copiado','green');
+  const fallback=()=>{
+    const ta=document.createElement('textarea');
+    ta.value=cod;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');ok();}catch(err){showToast('Não foi possível copiar','red');}
+    document.body.removeChild(ta);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(cod).then(ok).catch(fallback);
+  else fallback();
+}
+
 // ---- cartão de estoque (mesmo visual do card de cliente) ----
 function estoqueCardHtml(o){
   const item=(par)=>`<div class="card-metric-item"><span class="card-metric-label">${par[0]}</span><span class="card-metric-val" style="display:block">${par[1]}</span></div>`;
@@ -145,7 +307,7 @@ function estoqueCardHtml(o){
     <div class="cliente-avatar-btn"><span class="cliente-avatar"><i data-lucide="${o.icone}" class="ic"></i></span><span class="card-metric-label">${o.rotulo}</span></div>
     <div class="cliente-card-header">
       <div class="cliente-card-title-group">
-        <div class="cliente-card-badges"><span class="badge-cartao-selo">${o.selo}</span>${o.arquivado?'<span class="badge badge-gray">Arquivado</span>':''}</div>
+        <div class="cliente-card-badges">${o.cod?`<span class="selo-duplo"><span class="badge-cartao-selo">${o.selo}</span><span class="selo-cod selo-cod-${o.tipoCls}" onclick="copiarCodigoItem('${o.cod}',event)" title="Tocar para copiar o código">${o.cod}</span></span>`:`<span class="badge-cartao-selo">${o.selo}</span>`}${o.arquivado?'<span class="badge badge-gray">Arquivado</span>':''}</div>
         <div class="cliente-card-nome">${o.nome}</div>${o.sub||''}
       </div>
       <div class="cliente-card-status-badge">${o.badge}</div>
@@ -183,7 +345,7 @@ function renderEstoque(){
       const variantesTxt=temVariantes?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${p.variantes.map(v=>`<span class="variante-tag" title="Código ${fmtProdutoCod(p.id,v.id)}">${fmtProdutoCod(p.id,v.id)} · ${escapeHtml(v.nome)}: ${v.estoque}</span>`).join('')}</div>`:'';
       const arquivado=!estaAtivo(p);
       return estoqueCardHtml({
-        icone:'package',rotulo:'Produto',selo:fmtProdutoCod(p.id),arquivado,nome:escapeHtml(p.nome),
+        icone:'package',rotulo:'Produto',selo:'Produto',cod:fmtProdutoCod(p.id),tipoCls:'prod',arquivado,nome:escapeHtml(p.nome),
         sub:variantesTxt,
         badge:`<span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span>`,
         col1:[['SKU',escapeHtml(p.sku||'-')],['Preço venda',fmt(p.preco)]],
@@ -200,7 +362,10 @@ function renderEstoque(){
     if(!state.estoque_mostrar_inativas)list=list.filter(m=>estaAtivo(m));
     const chkIna=document.getElementById('estoque-mostrar-inativas');
     if(chkIna){chkIna.style.display='inline-flex';chkIna.querySelector('input').checked=!!state.estoque_mostrar_inativas;}
-    if(state.estoque_filter)list=list.filter(m=>m.nome.toLowerCase().includes(state.estoque_filter));
+    if(state.estoque_filter){
+      const fN=normalizarNomeMp(state.estoque_filter),fCod=state.estoque_filter.replace(/\s+/g,''),buscaCod=/^m\d/.test(fCod);
+      list=list.filter(m=>normalizarNomeMp(m.nome).includes(fN)||(buscaCod&&fmtMateriaCod(m.id).toLowerCase().includes(fCod)));
+    }
     if(estoqueBaixoFiltro)list=list.filter(m=>estaAtivo(m)&&m.qtd<=m.minimo);
     tb.innerHTML=list.map(m=>{
       const prev=calcularPrevisaoConsumo(m.id);
@@ -213,7 +378,7 @@ function renderEstoque(){
       const ativoM=estaAtivo(m);
       const baixoM=ativoM&&m.qtd<=m.minimo;
       return estoqueCardHtml({
-        icone:'flask-conical',rotulo:'Matéria-prima',selo:'Matéria-prima',nome:escapeHtml(m.nome),arquivado:!ativoM,
+        icone:'flask-conical',rotulo:'Matéria-prima',selo:'Matéria-prima',cod:fmtMateriaCod(m.id),tipoCls:'mp',nome:escapeHtml(m.nome),arquivado:!ativoM,
         badge:ativoM?`<span class="badge ${baixoM?'badge-red badge-alert':'badge-green'}">${baixoM?'Baixo':'OK'}</span>`:'<span class="badge badge-gray">Inativa</span>',
         col1:[['Estoque',stepperHtml('m',m.id,null,m.qtd,baixoM)],['Unidade',m.unidade],['Mínimo',m.minimo+' '+m.unidade]],
         col2:[['Custo médio/un',fmt(m.custo)],['Fornecedor',forn?`<span style="font-size:12px;cursor:pointer;color:var(--blue)" onclick="gotoFornecedores()">${escapeHtml(forn.nome)}</span>`:'<span style="color:var(--muted);font-size:12px">—</span>'],['Previsão',prevHtml]],
@@ -226,21 +391,24 @@ function renderEstoque(){
 function renderSemiacabados(){
   const head={};
   const tb=document.getElementById('estoque-table');
-  const searchWrap=document.querySelector('#page-estoque .search-bar');
-  if(searchWrap) searchWrap.style.display='none';
   head.innerHTML='<tr><th>Nome</th><th>Estoque</th><th>Mínimo</th><th>MP Utilizadas</th><th>Status</th><th>Ações</th></tr>';
   if(!state.semiacabados||state.semiacabados.length===0){
     tb.innerHTML=estoqueVazioHtml('Nenhum semiacabado cadastrado.');
     return;
   }
-  tb.innerHTML=(state.semiacabados||[]).map(s=>{
+  let listaS=state.semiacabados;
+  if(state.estoque_filter){
+    const fN=normalizarNomeMp(state.estoque_filter),fCod=state.estoque_filter.replace(/\s+/g,''),buscaCod=/^s\d/.test(fCod);
+    listaS=listaS.filter(s=>normalizarNomeMp(s.nome).includes(fN)||(buscaCod&&fmtSemiCod(s.id).toLowerCase().includes(fCod)));
+  }
+  tb.innerHTML=listaS.map(s=>{
     const baixo=s.estoque<=s.minimo;
     const mps=(s.mps||[]).map(mp=>{
       const m=state.materias.find(x=>x.id===mp.mpId);
       return m?`<span class="variante-tag">${escapeHtml(m.nome)}: ${mp.qtd}${m.unidade}/un</span>`:'';
     }).join('');
     return estoqueCardHtml({
-      icone:'droplets',rotulo:'Semiacabado',selo:'Semiacabado',nome:escapeHtml(s.nome),
+      icone:'droplets',rotulo:'Semiacabado',selo:'Semiacabado',cod:fmtSemiCod(s.id),tipoCls:'semi',nome:escapeHtml(s.nome),
       sub:`<div style="font-size:11px;color:var(--muted)">${s.unidade}</div>`,
       badge:`<span class="badge ${baixo?'badge-red badge-alert':'badge-green'}">${baixo?'Baixo':'OK'}</span>`,
       col1:[['Estoque',stepperHtml('s',s.id,null,s.estoque,baixo,s.unidade)],['Mínimo',s.minimo+' '+s.unidade]],
@@ -248,7 +416,7 @@ function renderSemiacabados(){
       acoes:`<button class="icon-btn edit" onclick="editarSemiacabado(${s.id})"><i data-lucide="pencil" class="ic"></i></button>
         <button class="icon-btn del" onclick="excluirSemiacabado(${s.id})"><i data-lucide="trash-2" class="ic"></i></button>`
     });
-  }).join('');
+  }).join('')||estoqueVazioHtml('Nenhum semiacabado encontrado');
 }
 // ============ MOVIMENTAÇÕES DE ESTOQUE (histórico) ============
 // Lê state.movEstoque (gravado por registrarMovEstoque em 00-core.js). Só existe a partir da v5.35.0.
@@ -344,28 +512,29 @@ function renderSemiMPLista(){
 function populateSemiacabadoModal(){
   document.getElementById('semi-edit-id').value='';
   document.getElementById('semi-nome').value='';
-  document.getElementById('semi-estoque').value='';
+  prepararCampoEstoque('semi-estoque','semi-estoque-label','semi-estoque-nota',false,'');
+  limparSugestoes('semi-sugestoes');
   document.getElementById('semi-minimo').value='';
   document.getElementById('semi-unidade').value='L';
   semiMPsTemp=[];
   renderSemiMPLista();
   document.getElementById('modal-semi-title').textContent='Novo Semiacabado';
 }
-function salvarSemiacabado(){
+function salvarSemiacabado(pularSimilar){
   const eid=document.getElementById('semi-edit-id').value;
-  const nome=document.getElementById('semi-nome').value.trim();
+  const nome=padronizarNomeItem(document.getElementById('semi-nome').value);
   const unidade=document.getElementById('semi-unidade').value;
   const estoque=parseFloat(document.getElementById('semi-estoque').value)||0;
   const minimo=parseFloat(document.getElementById('semi-minimo').value)||0;
   if(!nome){showToast('Informe o nome','red');return;}
+  const sOrig=eid?(state.semiacabados||[]).find(s=>s.id==eid):null;
+  if(!pularSimilar&&!validarNomeCadastro('s',nome,eid?parseInt(eid):null,sOrig?sOrig.nome:null,()=>salvarSemiacabado(true))) return;
   const mps=semiMPsTemp.filter(mp=>mp.mpId&&mp.qtd>0);
   if(!state.semiacabados) state.semiacabados=[];
   if(eid){
     const s=state.semiacabados.find(s=>s.id==eid);
-    const estoqueAntes=s.estoque||0;
-    s.nome=nome;s.unidade=unidade;s.estoque=estoque;s.minimo=minimo;s.mps=mps;
-    // se o estoque foi corrigido no cadastro, a diferença entra no histórico
-    registrarMovEstoque('s',s.id,null,s.nome,estoque-estoqueAntes,estoque,'ajuste_cadastro',s.unidade);
+    // estoque é só leitura na edição: ajustes passam pelo + / − do cartão ou pela Entrada de Estoque
+    s.nome=nome;s.unidade=unidade;s.minimo=minimo;s.mps=mps;
     showToast('Semiacabado atualizado','green');
   } else {
     const novoId=nextId('semiacabados');
@@ -383,7 +552,8 @@ function editarSemiacabado(id){
   document.getElementById('semi-edit-id').value=id;
   document.getElementById('semi-nome').value=s.nome;
   document.getElementById('semi-unidade').value=s.unidade||'L';
-  document.getElementById('semi-estoque').value=s.estoque||0;
+  prepararCampoEstoque('semi-estoque','semi-estoque-label','semi-estoque-nota',true,s.estoque||0);
+  limparSugestoes('semi-sugestoes');
   document.getElementById('semi-minimo').value=s.minimo||0;
   semiMPsTemp=(s.mps||[]).map(mp=>({...mp}));
   renderSemiMPLista();
