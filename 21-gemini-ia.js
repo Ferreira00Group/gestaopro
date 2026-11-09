@@ -139,11 +139,15 @@ function coletarContextoERP(periodo = 'mes_atual') {
 
           if (Array.isArray(v.itens)) {
             v.itens.forEach(it => {
-              const prodNome = it.nome || (typeof getProduto === 'function' ? getProduto(it.produtoId)?.nome : 'Produto');
-              const recItem = Number(it.total || (it.qtd * it.preco) || 0);
-              const qtdItem = Number(it.qtd || 1);
-              faturamentoPorProduto[prodNome] = (faturamentoPorProduto[prodNome] || 0) + recItem;
-              qtdVendidaPorProduto[prodNome] = (qtdVendidaPorProduto[prodNome] || 0) + qtdItem;
+              // Item avulso (valor digitado, sem produto cadastrado — ex.: "Saldo Anterior") não é produto:
+              // fica fora da Curva ABC e do giro de estoque (mesma regra do relatório detalhado).
+              if (!(it.avulso || it.produtoId == null)) {
+                const prodNome = it.nome || (typeof getProduto === 'function' ? getProduto(it.produtoId)?.nome : 'Produto');
+                const recItem = Number(it.total || (it.qtd * it.preco) || 0);
+                const qtdItem = Number(it.qtd || 1);
+                faturamentoPorProduto[prodNome] = (faturamentoPorProduto[prodNome] || 0) + recItem;
+                qtdVendidaPorProduto[prodNome] = (qtdVendidaPorProduto[prodNome] || 0) + qtdItem;
+              }
 
               const custoUn = Number(it.custoFichaUn || 0);
               if (custoUn > 0 && it.preco > 0) {
@@ -209,11 +213,12 @@ function coletarContextoERP(periodo = 'mes_atual') {
   const receitaAcumulada = rankingProdutos.reduce((acc, p) => acc + p.receita, 0);
   let somaParcial = 0;
   const curvaABC = rankingProdutos.map(p => {
+    // Pareto clássico: a classe vem do acumulado ANTES do item; o item que cruza 80%/95% fica na classe de cima.
+    const pctAntes = receitaAcumulada > 0 ? (somaParcial / receitaAcumulada) * 100 : 0;
     somaParcial += p.receita;
-    const pctAcumulada = receitaAcumulada > 0 ? (somaParcial / receitaAcumulada) * 100 : 0;
     let classe = 'C';
-    if (pctAcumulada <= 80) classe = 'A';
-    else if (pctAcumulada <= 95) classe = 'B';
+    if (pctAntes < 80) classe = 'A';
+    else if (pctAntes < 95) classe = 'B';
     return {
       nome: p.nome,
       receita: Number(p.receita.toFixed(2)),
@@ -316,7 +321,9 @@ function coletarContextoERP(periodo = 'mes_atual') {
       const qtdVendida = Number(qtdVendidaPorProduto[p.nome] || 0);
       const divisorDias = mesesRetroativos * 30;
       const giroDiario = qtdVendida > 0 ? (qtdVendida / divisorDias) : 0;
-      const diasRestantes = giroDiario > 0 ? Math.floor(estoqueTotal / giroDiario) : (estoqueTotal > 0 ? 999 : 0);
+      // diasRestantes = null quando não há vendas no período (antes usava 999 e confundia com cobertura real longa)
+      const semVendas = giroDiario <= 0 && estoqueTotal > 0;
+      const diasRestantes = estoqueTotal <= 0 ? 0 : (giroDiario > 0 ? Math.floor(estoqueTotal / giroDiario) : null);
 
       runwayEstoque.push({
         id: p.id,
@@ -325,7 +332,8 @@ function coletarContextoERP(periodo = 'mes_atual') {
         minimo: min,
         preco: Number(p.preco || 0),
         giroDiario: Number(giroDiario.toFixed(2)),
-        diasRestantes: estoqueTotal <= 0 ? 0 : diasRestantes,
+        diasRestantes,
+        semVendas,
         status: estoqueTotal <= 0 ? 'zerado' : (estoqueTotal <= min ? 'baixo' : 'ok'),
         variantes: temVariantes ? p.variantes.map(v => ({
           id: v.id,
@@ -427,7 +435,7 @@ function coletarContextoERP(periodo = 'mes_atual') {
     },
     serieMensal,
     curvaABC,
-    runwayEstoque: runwayEstoque.sort((a, b) => a.diasRestantes - b.diasRestantes),
+    runwayEstoque: runwayEstoque.sort((a, b) => (a.diasRestantes ?? Infinity) - (b.diasRestantes ?? Infinity)),
     produtosParados: produtosParados.sort((a, b) => b.valorParado - a.valorParado),
     produtosEstoqueZero: prodZero,
     produtosEstoqueBaixo: prodBaixo,
@@ -920,16 +928,15 @@ function renderSubAbaPainel() {
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         ${ctx.curvaABC.length > 0 ? ctx.curvaABC.map(p => `
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:6px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="badge" style="background:${p.classe === 'A' ? 'var(--gold,#C9A24B)' : (p.classe === 'B' ? '#4CC38A' : '#8E897C')};color:#000;font-size:10px;font-weight:800;padding:2px 7px">Classe ${p.classe}</span>
-              <strong>${p.nome}</strong>
-              <span style="font-size:11px;color:var(--muted)">(${p.qtd} un vendidas)</span>
+          <div class="ia-linha-resumo">
+            <div class="ia-linha-info">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge" style="background:${p.classe === 'A' ? 'var(--gold,#C9A24B)' : (p.classe === 'B' ? '#4CC38A' : '#8E897C')};color:#000;font-size:10px;font-weight:800;padding:2px 7px;white-space:nowrap">Classe ${p.classe}</span>
+                <strong>${p.nome}</strong>
+              </div>
+              <span class="ia-linha-sub">${p.qtd} un ${Number(p.qtd) === 1 ? 'vendida' : 'vendidas'} · ${String(p.pctDoTotal).replace('.', ',')}% da receita</span>
             </div>
-            <div>
-              <span style="color:var(--muted);font-size:11.5px">${p.pctDoTotal}% da receita</span> · 
-              <strong>${p.receita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-            </div>
+            <strong class="ia-linha-valor">${p.receita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
           </div>
         `).join('') : '<p style="color:var(--muted);font-size:12px;margin:0">Nenhuma venda registrada.</p>'}
       </div>
@@ -941,22 +948,25 @@ function renderSubAbaPainel() {
         <h4 style="margin:0;font-size:13.5px;color:var(--gold,#C9A24B);display:flex;align-items:center;gap:6px">
           <i data-lucide="package-search" style="width:16px;height:16px"></i> Runway de Cobertura de Estoque (Dias até Ruptura)
         </h4>
-        <span style="font-size:11px;color:var(--muted)">Ordenado pelos mais críticos</span>
+        <span style="font-size:11px;color:var(--muted)">Ordenado pelos mais críticos · azul: mais de 180 dias (excesso)</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${ctx.runwayEstoque.length > 0 ? ctx.runwayEstoque.map(r => `
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:6px">
-            <div>
+        ${ctx.runwayEstoque.length > 0 ? ctx.runwayEstoque.map(r => {
+          const LIMITE_EXCESSO_DIAS = 180; // cobertura acima disso = capital parado
+          let tagClasse, tagTexto;
+          if (r.semVendas) { tagClasse = 'ia-tag-baixa'; tagTexto = 'Sem vendas'; }
+          else if (r.diasRestantes <= 0) { tagClasse = 'ia-tag-alta'; tagTexto = 'RUPTURA IMEDIATA'; }
+          else if (r.diasRestantes > LIMITE_EXCESSO_DIAS) { tagClasse = 'ia-tag-excesso'; tagTexto = `${r.diasRestantes.toLocaleString('pt-BR')} dias · excesso`; }
+          else { tagClasse = r.diasRestantes <= 7 ? 'ia-tag-media' : 'ia-tag-baixa'; tagTexto = `${r.diasRestantes} dias restantes`; }
+          return `
+          <div class="ia-linha-resumo">
+            <div class="ia-linha-info">
               <strong>${r.nome}</strong>
-              <span style="font-size:11px;color:var(--muted);margin-left:6px">Estoque: ${r.estoque} un (Mín: ${r.minimo}) · Giro: ${r.giroDiario}/dia</span>
+              <span class="ia-linha-sub">Estoque: ${r.estoque} un (Mín: ${r.minimo}) · Giro: ${Number(r.giroDiario).toLocaleString('pt-BR')}/dia</span>
             </div>
-            <div>
-              <span class="ia-tag-urgencia ${r.diasRestantes <= 0 ? 'ia-tag-alta' : (r.diasRestantes <= 7 ? 'ia-tag-media' : 'ia-tag-baixa')}">
-                ${r.diasRestantes <= 0 ? 'RUPTURA IMEDIATA' : (r.diasRestantes >= 999 ? 'Sem vendas' : `${r.diasRestantes} dias restantes`)}
-              </span>
-            </div>
-          </div>
-        `).join('') : '<p style="color:var(--muted);font-size:12px;margin:0">Nenhum produto cadastrado.</p>'}
+            <span class="ia-tag-urgencia ${tagClasse}">${tagTexto}</span>
+          </div>`;
+        }).join('') : '<p style="color:var(--muted);font-size:12px;margin:0">Nenhum produto cadastrado.</p>'}
       </div>
     </div>
   `;

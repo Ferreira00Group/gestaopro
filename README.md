@@ -1,6 +1,13 @@
-# GestãoPRO v5.94.3
+# GestãoPRO v5.95.0
 
-## Versão 5.94.3 — topbar mais limpa
+## Versão 5.95.0 — Curva ABC e Runway de estoque corrigidos
+- **Curva ABC (resumo e relatório detalhado):** itens avulsos (valor digitado, sem produto cadastrado, como "Item avulso" e "Saldo Anterior") ficam fora da curva e do giro do estoque. A contagem "N produtos classificados" e as porcentagens agora consideram só produtos.
+- **Classes A/B/C:** passou a usar o Pareto clássico — o item que cruza 80% / 95% do acumulado fica na classe de cima.
+- **Runway:** "Sem vendas" agora só aparece quando o giro é zero (antes, produto com mais de 999 dias de cobertura, como a Cera, aparecia como sem vendas). Itens sem vendas vão para o fim da lista.
+- **Excesso de estoque:** cobertura acima de 180 dias aparece em azul com "· excesso".
+- **Visual:** linhas do resumo e do runway em duas linhas fixas (sem quebra irregular no celular); "1 un vendida" no singular; números com vírgula decimal (33,5% · 1,47/dia).
+
+## Versão 5.94.3 (anterior) — topbar mais limpa
 - Removido o botão Modo Foco do topo, o botão "Sair do Foco", a opção em Configurações do Sistema, o atalho Alt+F e os estilos do recurso. Notificações, PDV Balcão e Expedição foram mantidos.
 - Removido o botão Copiloto IA do topo; o contador de pendências agora aparece no botão flutuante Copiloto IA.
 

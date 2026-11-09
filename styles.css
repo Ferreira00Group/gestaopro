@@ -2217,3 +2217,11 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .central-ia-title{font-size:13.5px;font-weight:700;color:#FFF}
 .central-ia-sub{font-size:11.5px;color:var(--muted)}
 .central-ia-btns{display:flex;gap:8px;flex-wrap:wrap}
+
+/* v5.95.0 — linhas do Resumo da Curva ABC e do Runway de estoque (duas linhas fixas, sem quebra irregular no celular) */
+.ia-linha-resumo{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.04);padding-bottom:6px}
+.ia-linha-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ia-linha-sub{font-size:11px;color:var(--muted)}
+.ia-linha-valor{white-space:nowrap;flex-shrink:0}
+.ia-linha-resumo .ia-tag-urgencia{white-space:nowrap;flex-shrink:0}
+.ia-tag-excesso{background:rgba(86,156,214,0.18);color:#6FB1E8;border:1px solid rgba(86,156,214,0.35)}

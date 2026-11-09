@@ -325,9 +325,9 @@ function gerarRelatorio(){
       const qtd=Number(it.qtd)||0;
       if(qtd<=0)return;
       const nome=String(nomeItemVenda(it)||'Item sem identificação');
-      const chave=it.avulso||it.produtoId==null
-        ? 'avulso:'+nome.trim().toLocaleLowerCase('pt-BR')
-        : 'produto:'+String(it.produtoId)+'|variante:'+String(it.varianteId??'');
+      // Item avulso (valor digitado, sem produto cadastrado — ex.: "Saldo Anterior") não é produto: fica fora da Curva ABC
+      if(it.avulso||it.produtoId==null)return;
+      const chave='produto:'+String(it.produtoId)+'|variante:'+String(it.varianteId??'');
       if(!abcMap.has(chave))abcMap.set(chave,{chave,nome,qtd:0,faturamento:0,custoTotal:0});
       const item=abcMap.get(chave);
       const faturamento=Number(it.total??(qtd*(Number(it.preco)||0)))||0;
@@ -344,8 +344,9 @@ function gerarRelatorio(){
   let abcAcumulado=0;
   const abcItens=abcOrdenada.map(p=>{
     const participacao=abcTotal>0?(p.faturamento/abcTotal)*100:0;
+    const acumuladoAntes=abcAcumulado; // Pareto clássico: classe pelo acumulado ANTES do item (quem cruza 80%/95% fica na classe de cima)
     abcAcumulado+=participacao;
-    const classe=abcTotal<=0?'—':(abcAcumulado<=80?'A':(abcAcumulado<=95?'B':'C'));
+    const classe=abcTotal<=0?'—':(acumuladoAntes<80?'A':(acumuladoAntes<95?'B':'C'));
     return {...p,participacao,acumulado:abcAcumulado,classe,margem:p.faturamento-p.custoTotal};
   });
   const abcBody=document.getElementById('rel-curva-abc-body');
