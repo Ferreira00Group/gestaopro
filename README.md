@@ -1,6 +1,10 @@
-# GestãoPRO v5.94.2
+# GestãoPRO v5.94.3
 
-## Versão 5.94.2 — Central de Análise abre pelo botão flutuante
+## Versão 5.94.3 — topbar mais limpa
+- Removido o botão Modo Foco do topo, o botão "Sair do Foco", a opção em Configurações do Sistema, o atalho Alt+F e os estilos do recurso. Notificações, PDV Balcão e Expedição foram mantidos.
+- Removido o botão Copiloto IA do topo; o contador de pendências agora aparece no botão flutuante Copiloto IA.
+
+## Versão 5.94.2 (anterior) — Central de Análise abre pelo botão flutuante
 - O card "Central de Análise de Dados & Copiloto" saiu da tela inicial; o botão flutuante Copiloto IA agora abre esse conteúdo numa janela deslizante (Expedição, Resultados IA, Painel Local e Copiloto IA).
 - Removida a linha da data no topo do Início.
 
@@ -57,4 +61,4 @@ Cards do painel agora abrem a tela já filtrada, e o cartão do cliente ganhou o
 - Orçamentos continua como antes.
 
 ## Publicação
-Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.94.2**.
+Substitua os arquivos do projeto no GitHub pelo conteúdo deste pacote. A versão do app, URLs com cache-busting e cache do Service Worker foram atualizados para **5.94.3**.

@@ -1,45 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════
-// MÓDULO 22: MODO FOCO, PREFERÊNCIAS DE NOTIFICAÇÕES, PDV BALCÃO E EXPEDIÇÃO (v5.84.0)
+// MÓDULO 22: PREFERÊNCIAS DE NOTIFICAÇÕES, PDV BALCÃO E EXPEDIÇÃO (v5.84.0)
 // GestãoPRO — Operação Intensiva e Alta Produtividade
 // ═══════════════════════════════════════════════════════════════════
 
-// ─── 1. MODO FOCO (VISUALIZAÇÃO IMERSIVA & ALTA CONCENTRAÇÃO) ───
-function isModoFocoAtivo() {
-  return document.body.classList.contains('modo-foco');
-}
-
-function toggleModoFoco(forcar) {
-  const ativo = typeof forcar === 'boolean' ? forcar : !isModoFocoAtivo();
-  if (ativo) {
-    document.body.classList.add('modo-foco');
-    localStorage.setItem('gp_modo_foco', 'true');
-    if (typeof showToast === 'function') {
-      showToast('Modo Foco Ativado: Barra lateral e distrações recolhidas.', 'gold');
-    }
-  } else {
-    document.body.classList.remove('modo-foco');
-    localStorage.setItem('gp_modo_foco', 'false');
-    if (typeof showToast === 'function') {
-      showToast('Modo Foco Desativado: Visualização padrão restaurada.');
-    }
-  }
-  atualizarBotoesModoFoco();
-}
-
-function atualizarBotoesModoFoco() {
-  const btn = document.getElementById('btn-topbar-foco');
-  const sair = document.getElementById('btn-sair-foco');
-  const ativo = isModoFocoAtivo();
-  if (btn) {
-    btn.classList.toggle('ativo', ativo);
-    btn.setAttribute('title', ativo ? 'Desativar Modo Foco (Alt+F)' : 'Ativar Modo Foco (Alt+F)');
-  }
-  if (sair) {
-    sair.style.display = ativo ? 'inline-flex' : 'none';
-  }
-}
-
-// ─── 2. PREFERÊNCIAS DE NOTIFICAÇÕES (PUSH & ALERTAS) ───
+// ─── 1. PREFERÊNCIAS DE NOTIFICAÇÕES (PUSH & ALERTAS) ───
 function getConfigNotificacoes() {
   if (typeof state === 'undefined' || !state) {
     return { estoqueBaixo: true, vencimentosHoje: true, contasPagar: true };
@@ -196,7 +160,7 @@ function verificarAlertasNotificacoes() {
   }
 }
 
-// ─── 3. SUGESTÃO 1: MODO PDV / CAIXA BALCÃO RÁPIDO ───
+// ─── 2. SUGESTÃO 1: MODO PDV / CAIXA BALCÃO RÁPIDO ───
 let _pdvCesta = [];
 let _pdvClienteId = null;
 let _pdvAbaAtiva = 'catalogo';
@@ -632,7 +596,7 @@ function finalizarVendaPDV(formaPagamento) {
   if (typeof closeModal === 'function') closeModal('modal-pdv-rapido');
 }
 
-// ─── 4. FILA DE SEPARAÇÃO E EXPEDIÇÃO (PICKING) ───
+// ─── 3. FILA DE SEPARAÇÃO E EXPEDIÇÃO (PICKING) ───
 // O modelo real de venda grava produtoId/varianteId (não grava it.nome para itens de catálogo).
 // A fila resolve o nome pelo catálogo e mantém itens avulsos pelo campo nome.
 let _pickingConferidos = {};
@@ -809,20 +773,8 @@ function imprimirRomaneioPedido(vendaId) {
 
 // ─── INICIALIZAÇÃO DE LISTENERS GLOBAIS ───
 document.addEventListener('DOMContentLoaded', () => {
-  // Restaura preferência de Modo Foco salva
-  const focoSalvo = localStorage.getItem('gp_modo_foco') === 'true';
-  if (focoSalvo) {
-    document.body.classList.add('modo-foco');
-  }
-  atualizarBotoesModoFoco();
-
-  // Atalho de teclado Alt+F para Modo Foco
-  document.addEventListener('keydown', (e) => {
-    if (e.altKey && (e.key === 'f' || e.key === 'F')) {
-      e.preventDefault();
-      toggleModoFoco();
-    }
-  });
+  // Limpa a preferência antiga do Modo Foco (recurso removido)
+  try { localStorage.removeItem('gp_modo_foco'); } catch (e) {}
 
   // Checagem periódica suave de alertas e notificações
   setTimeout(() => {

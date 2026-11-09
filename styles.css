@@ -1461,33 +1461,8 @@ body.modal-open #btn-flutuante-ia,
 }
 
 /* ═══════════════════════════════════════════
-   ESTILOS OPERACIONAIS: MODO FOCO, PDV E EXPEDIÇÃO (v5.84.0)
+   ESTILOS OPERACIONAIS: PDV E EXPEDIÇÃO (v5.84.0)
    ═══════════════════════════════════════════ */
-body.modo-foco #sidebar,
-body.modo-foco #hamburger,
-body.modo-foco #sidebar-backdrop {
-  display: none !important;
-}
-
-body.modo-foco #main {
-  margin-left: 0 !important;
-  width: 100% !important;
-  max-width: 1280px !important;
-  margin: 0 auto !important;
-  padding: 14px 20px !important;
-}
-
-body.modo-foco .dash-extra-info,
-body.modo-foco .dica-box {
-  display: none !important;
-}
-
-#btn-topbar-foco.ativo {
-  background: var(--gold,#C9A24B) !important;
-  color: #000 !important;
-  border-color: var(--gold,#C9A24B) !important;
-}
-
 /* ═══════════════════════════════════════════════════════════════════
    PDV BALCÃO RÁPIDO — MOBILE-FIRST + DESKTOP RESPONSIVO
    ═══════════════════════════════════════════════════════════════════ */

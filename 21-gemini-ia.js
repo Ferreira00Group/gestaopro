@@ -1260,7 +1260,7 @@ function atualizarSelosAnaliseDados() {
   const badges = [
     document.getElementById('nav-badge-analisedados'),
     document.getElementById('nav-badge-copiloto'),
-    document.getElementById('ia-badge-acoes')
+    document.getElementById('ia-badge-flutuante')
   ];
 
   badges.forEach(b => {
