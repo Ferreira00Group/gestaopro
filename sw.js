@@ -1,4 +1,4 @@
-// ============ SERVICE WORKER — GestãoPRO v5.95.0 ============
+// ============ SERVICE WORKER — GestãoPRO v5.96.1 ============
 // Estratégia: rede primeiro, sempre — com internet, o app sempre busca a
 // versão mais nova de cada arquivo (evita a inconsistência de um arquivo
 // atualizar e outro ficar preso na versão antiga). O cache só é usado como
@@ -7,7 +7,7 @@
 // O cache é nomeado com a APP_VERSION (00a-config.js) — ao subir uma nova
 // versão, um novo cache é criado e o antigo é limpo no activate.
 
-importScripts('00a-config.js?v=5.95.0');
+importScripts('00a-config.js?v=5.96.1');
 
 const CACHE_NAME = 'gestaopro-cache-v' + APP_VERSION;
 
@@ -62,11 +62,13 @@ const ASSETS = [
   './11-app-init.js' + v,
   './21-gemini-ia.js' + v,
   './22-operacao-foco.js' + v,
+  './lib-qrcode.js' + v, // gerador de QR do Pix — sem isso o QR some quando o app abre sem internet
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
   './logo-topbar.png',
+  './logo.png',
 ];
 
 self.addEventListener('install', (event)=>{

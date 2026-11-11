@@ -94,17 +94,9 @@ function renderClientes(){
     const totalGasto = numCompras > 0 ? vendasCliente.reduce((s, v) => s + (v.total || 0), 0) : 0;
     const ticketMedio = numCompras > 0 ? (totalGasto / numCompras) : 0;
 
-    let freqTxt = '—';
-    if(numCompras >= 2){
-      const datas = vendasCliente.filter(v => v.data).map(v => new Date(v.data)).sort((a,b) => a - b);
-      if(datas.length >= 2){
-        const diffTotal = (datas[datas.length - 1] - datas[0]) / (1000 * 60 * 60 * 24);
-        const freq = Math.round(diffTotal / (datas.length - 1));
-        freqTxt = `a cada ${freq}d`;
-      }
-    } else if(numCompras === 1){
-      freqTxt = '1 compra';
-    }
+    // Próxima prevista = mesmo dia da última compra no mês seguinte (regra única em 14-relacionamento.js)
+    const datasValidas = vendasCliente.filter(v => v.tipo !== 'orcamento' && v.data).map(v => String(v.data).slice(0,10)).sort();
+    const proximaPrev = (datasValidas.length && typeof relProximaPrevista === 'function') ? relProximaPrevista(datasValidas[datasValidas.length - 1]) : '';
 
     const nCartao = typeof cartoesDoCliente === 'function' ? cartoesDoCliente(c.id) : c.cartaoNum;
     const scoreObj = typeof calcularScoreCliente === 'function' ? calcularScoreCliente(c, vendasCliente, saldo) : null;
@@ -180,8 +172,8 @@ function renderClientes(){
             <span class="card-metric-val">${ticketMedio > 0 ? fmt(ticketMedio) : '<span style="color:var(--muted)">—</span>'}${numCompras > 0 ? ` <span style="font-size:10.5px;color:var(--muted)">(${numCompras})</span>` : ''}</span>
           </div>
           <div class="card-metric-item">
-            <span class="card-metric-label">Frequência</span>
-            <span class="card-metric-val" style="color:var(--muted)">${freqTxt}</span>
+            <span class="card-metric-label">Próxima prevista</span>
+            <span class="card-metric-val" style="color:var(--muted)">${proximaPrev ? fmtDate(proximaPrev) : '—'}</span>
           </div>
         </div>
       </div>

@@ -2077,9 +2077,18 @@ function mostrarComprovanteAtendimentoMes(at, vendaSalva){
   const boxPed = document.getElementById('comp-at-pedido');
   if(vendaSalva && vendaSalva.itens && vendaSalva.itens.length){
     const itensStr = vendaSalva.itens.map(it => `<div>• ${it.qtd}x ${escapeHtml(nomeItemVenda(it))} — <strong>${fmt(it.total||(it.qtd*it.preco))}</strong></div>`).join('');
+    const { subtotal, desconto } = atendimentoCalcDesconto(vendaSalva);
+    const blocoDesc = desconto > 0.009 ? `
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed var(--border);padding-top:6px;margin-top:6px;color:var(--muted)">
+        <span>Subtotal:</span><span>${fmt(subtotal)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(76,195,138,.12);border:1px solid rgba(76,195,138,.45);border-radius:8px;padding:7px 10px;margin:6px 0;color:#4CC38A;font-weight:800">
+        <span>🏷️ Desconto aplicado</span><span>−${fmt(desconto)}</span>
+      </div>` : '';
     boxPed.innerHTML = `
       <div style="margin-bottom:6px">${itensStr}</div>
-      <div style="display:flex;justify-content:space-between;border-top:1px dashed var(--border);padding-top:6px;margin-top:6px">
+      ${blocoDesc}
+      <div style="display:flex;justify-content:space-between;${desconto > 0.009 ? '' : 'border-top:1px dashed var(--border);margin-top:6px;'}padding-top:6px">
         <span>Total do Pedido:</span>
         <strong style="color:var(--gold)">${fmt(vendaSalva.total)}</strong>
       </div>
@@ -2108,12 +2117,16 @@ function mostrarComprovanteAtendimentoMes(at, vendaSalva){
   document.getElementById('modal-comprovante-atendimento').classList.add('open');
 }
 
-function enviarComprovanteAtendimentoWhatsapp(){
-  const d = window._ultimoComprovanteAtendimento;
-  if(!d || !d.c){ showToast('Comprovante não disponível','red'); return; }
-  const c = d.c;
-  if(!c.tel){ showToast('Cliente não possui telefone cadastrado','red'); return; }
+// Desconto do pedido = soma dos itens − total (sem o juros no ato). Cobre desconto extra e desconto por condição de pagamento.
+function atendimentoCalcDesconto(venda){
+  const subtotal = (venda.itens || []).reduce((s, it) => s + (it.total || (it.qtd * it.preco) || 0), 0);
+  const base = (venda.total || 0) - (venda.jurosAto || 0);
+  const desconto = Math.max(0, Math.round((subtotal - base) * 100) / 100);
+  return { subtotal, desconto };
+}
 
+function montarMensagemAtendimento(d){
+  const c = d.c;
   let msg = `*GestãoPRO — Atendimento Mensal Realizado*\n`;
   msg += `Cliente: *_${c.nome}_*\n\n`;
 
@@ -2122,11 +2135,18 @@ function enviarComprovanteAtendimentoWhatsapp(){
     msg += `Valor recebido: *${fmt(d.at.valorPago)}* (${formaLabel(d.at.formaPago)})\n\n`;
   }
 
+  let economia = 0;
   if(d.vendaSalva && d.vendaSalva.itens && d.vendaSalva.itens.length){
     msg += `📦 *NOVO PEDIDO (Mês Seguinte):*\n`;
     d.vendaSalva.itens.forEach(it => {
       msg += `- ${it.qtd}x ${nomeItemVenda(it)}: ${fmt(it.total||(it.qtd*it.preco))}\n`;
     });
+    const { subtotal, desconto } = atendimentoCalcDesconto(d.vendaSalva);
+    if(desconto > 0.009){
+      economia = desconto;
+      msg += `Subtotal: ${fmt(subtotal)}\n`;
+      msg += `🏷️ *Desconto aplicado: −${fmt(desconto)}*\n`;
+    }
     msg += `Total do Pedido: *${fmt(d.vendaSalva.total)}*\n`;
     if(d.vendaSalva.vencimento){
       msg += `Vencimento programado: *${fmtDate(d.vendaSalva.vencimento)}*\n`;
@@ -2135,16 +2155,199 @@ function enviarComprovanteAtendimentoWhatsapp(){
   }
 
   msg += `💰 *SALDO ATUAL CONSOLIDADO: ${fmt(d.saldoFinal)}*\n\n`;
-  
+
   if(d.saldoFinal > 0.009 && pixDisponivel()){
     msg += `💳 *Chave Pix (celular):* ${pixChaveExibicao()}\n`;
     msg += `Pix Copia e Cola:\n${pixPayload(d.saldoFinal)}\n\n`;
   }
 
-  msg += `Obrigado pela preferência e parceria!`;
+  if(economia > 0.009){
+    msg += `🎉 Você economizou *${fmt(economia)}* neste pedido!\n\n`;
+  }
 
+  msg += `Obrigado pela preferência e parceria!`;
+  return msg;
+}
+
+// Opção 1: texto — abre direto na conversa do cliente
+function enviarComprovanteAtendimentoWhatsapp(){
+  const d = window._ultimoComprovanteAtendimento;
+  if(!d || !d.c){ showToast('Comprovante não disponível','red'); return; }
+  const c = d.c;
+  if(!c.tel){ showToast('Cliente não possui telefone cadastrado','red'); return; }
+
+  const msg = montarMensagemAtendimento(d);
   const num = c.tel.replace(/\D/g,'');
   const ddi = num.length <= 11 ? '55' + num : num;
   const url = 'https://api.whatsapp.com/send?phone=' + ddi + '&text=' + encodeURIComponent(msg);
   window.open(url, '_blank');
+}
+
+// ───────── Opção 2: print (imagem desenhada no canvas, sem biblioteca externa) ─────────
+function _cvTexto(ctx, txt, maxW){ // corta com "…" se passar da largura
+  txt = String(txt);
+  if(ctx.measureText(txt).width <= maxW) return txt;
+  while(txt.length > 1 && ctx.measureText(txt + '…').width > maxW) txt = txt.slice(0, -1);
+  return txt + '…';
+}
+function _cvQuebra(ctx, txt, maxW){ // quebra em linhas
+  const palavras = String(txt).split(' '); const linhas = []; let atual = '';
+  palavras.forEach(p => {
+    const t = atual ? atual + ' ' + p : p;
+    if(ctx.measureText(t).width > maxW && atual){ linhas.push(atual); atual = p; } else atual = t;
+  });
+  if(atual) linhas.push(atual);
+  return linhas;
+}
+function _cvRound(ctx, x, y, w, h, r){
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+function _desenharComprovanteAtendimento(ctx, W, H, d){
+  const FONT = 'Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  const GOLD = '#F6B52A', GREEN = '#4CC38A', RED = '#E5604D', MUTED = '#9A9AA6', TEXT = '#FFFFFF', CARD = '#1A1A1E', BORDER = '#34343A';
+  const PAD = 36, IW = W - PAD * 2;
+  const set = (size, weight, color) => { ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = color; };
+  const esq = (txt, x, y) => { ctx.textAlign = 'left'; ctx.fillText(txt, x, y); };
+  const dir = (txt, x, y) => { ctx.textAlign = 'right'; ctx.fillText(txt, x, y); };
+  const cen = (txt, x, y) => { ctx.textAlign = 'center'; ctx.fillText(txt, x, y); };
+  ctx.textBaseline = 'alphabetic';
+
+  // fundo
+  if(H){
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#0B0B0D'); g.addColorStop(1, '#17140C');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  let y = 48;
+  // cabeçalho: logo em texto
+  set(34, 800, TEXT); esq('Gestão', PAD, y + 12);
+  const wG = ctx.measureText('Gestão').width;
+  set(34, 800, '#000'); const wP = ctx.measureText('Pro').width;
+  if(H){ const gg = ctx.createLinearGradient(PAD + wG + 6, 0, PAD + wG + wP + 24, 0); gg.addColorStop(0, '#F6B52A'); gg.addColorStop(1, '#C98C14'); ctx.fillStyle = gg; _cvRound(ctx, PAD + wG + 6, y - 22, wP + 18, 44, 10); ctx.fill(); }
+  set(34, 800, '#000'); esq('Pro', PAD + wG + 15, y + 12);
+  set(15, 600, MUTED); dir(fmtDate(today()), W - PAD, y - 2);
+  set(13, 600, MUTED); dir('Comprovante de Atendimento', W - PAD, y + 18);
+  y += 40;
+  if(H){ ctx.fillStyle = BORDER; ctx.fillRect(PAD, y, IW, 1); }
+  y += 30;
+
+  // cliente
+  const c = d.c;
+  set(13, 700, GOLD); esq('CLIENTE', PAD, y); y += 28;
+  set(26, 800, TEXT);
+  _cvQuebra(ctx, c.nome, IW).forEach(l => { esq(l, PAD, y); y += 32; });
+  if(c.cartaoNum){ set(14, 600, MUTED); esq('Cartão nº ' + cartoesNum(c.cartaoNum), PAD, y); y += 22; }
+  y += 14;
+
+  // card 1: pagamento
+  const card = (alt, desenha) => { // desenha(yTopo) devolve altura usada
+    const yIni = y;
+    const h = desenha(yIni + 18, false);
+    if(H){ ctx.fillStyle = CARD; _cvRound(ctx, PAD, yIni, IW, h + 36, 16); ctx.fill(); ctx.strokeStyle = BORDER; ctx.lineWidth = 1; ctx.stroke(); }
+    desenha(yIni + 18, true);
+    y = yIni + h + 36 + 14;
+  };
+
+  card(0, (yy, draw) => {
+    let t = yy;
+    t += 14; if(draw){ set(12, 800, GOLD); esq('1. PAGAMENTO DO MÊS ANTERIOR', PAD + 20, t); } t += 28;
+    if(d.at.valorPago > 0.009){
+      if(draw){ set(17, 600, TEXT); esq('Saldo anterior: ', PAD + 20, t); const w1 = ctx.measureText('Saldo anterior: ').width; set(17, 800, TEXT); esq(fmt(d.at.saldoAnterior), PAD + 20 + w1, t); }
+      const pill = `Pago: ${fmt(d.at.valorPago)} (${formaLabel(d.at.formaPago)})`;
+      ctx.font = `700 14px ${FONT}`; const wp = ctx.measureText(pill).width + 26;
+      if(draw){ ctx.fillStyle = 'rgba(76,195,138,.16)'; _cvRound(ctx, W - PAD - 20 - wp, t - 20, wp, 30, 15); ctx.fill(); set(14, 700, GREEN); cen(pill, W - PAD - 20 - wp / 2, t); }
+    } else if(draw){ set(15, 500, MUTED); esq('Nenhum pagamento registrado nesta visita.', PAD + 20, t); }
+    t += 14;
+    return t - yy;
+  });
+
+  // card 2: pedido
+  const vs = d.vendaSalva;
+  const temPedido = vs && vs.itens && vs.itens.length;
+  let economia = 0;
+  card(0, (yy, draw) => {
+    let t = yy;
+    t += 14; if(draw){ set(12, 800, GOLD); esq('2. NOVO PEDIDO (MÊS SEGUINTE)', PAD + 20, t); } t += 30;
+    if(!temPedido){ if(draw){ set(15, 500, MUTED); esq('Sem produtos adicionados.', PAD + 20, t); } return t + 10 - yy; }
+    vs.itens.forEach(it => {
+      const val = fmt(it.total || (it.qtd * it.preco));
+      ctx.font = `700 17px ${FONT}`; const wv = ctx.measureText(val).width;
+      if(draw){ set(17, 500, TEXT); esq(_cvTexto(ctx, `${it.qtd}x ${nomeItemVenda(it)}`, IW - 40 - wv - 14), PAD + 20, t); set(17, 700, TEXT); dir(val, W - PAD - 20, t); }
+      t += 28;
+    });
+    const { subtotal, desconto } = atendimentoCalcDesconto(vs);
+    economia = desconto;
+    t += 4; if(draw){ ctx.fillStyle = BORDER; ctx.fillRect(PAD + 20, t - 14, IW - 40, 1); }
+    if(desconto > 0.009){
+      t += 10; if(draw){ set(16, 500, MUTED); esq('Subtotal', PAD + 20, t); dir(fmt(subtotal), W - PAD - 20, t); } t += 14;
+      if(draw){ ctx.fillStyle = 'rgba(76,195,138,.15)'; _cvRound(ctx, PAD + 20, t, IW - 40, 46, 12); ctx.fill(); ctx.strokeStyle = 'rgba(76,195,138,.6)'; ctx.lineWidth = 1.5; ctx.stroke(); set(18, 800, GREEN); esq('DESCONTO APLICADO', PAD + 36, t + 30); dir('−' + fmt(desconto), W - PAD - 36, t + 30); }
+      t += 46 + 12;
+    }
+    t += 14; if(draw){ set(18, 600, TEXT); esq('Total do Pedido', PAD + 20, t); set(26, 800, GOLD); dir(fmt(vs.total), W - PAD - 20, t + 2); } t += 28;
+    if(draw){ set(14, 500, MUTED); esq('Vencimento programado: ', PAD + 20, t); const wv2 = ctx.measureText('Vencimento programado: ').width; set(14, 800, TEXT); esq(vs.vencimento ? fmtDate(vs.vencimento) : '30 dias', PAD + 20 + wv2, t); }
+    t += 12;
+    return t - yy;
+  });
+
+  // saldo consolidado
+  {
+    const yIni = y, h = 70;
+    if(H){ ctx.fillStyle = 'rgba(255,255,255,.04)'; _cvRound(ctx, PAD, yIni, IW, h, 16); ctx.fill(); ctx.strokeStyle = BORDER; ctx.lineWidth = 1; ctx.stroke(); }
+    set(17, 700, TEXT); esq('Saldo Atual Consolidado', PAD + 20, yIni + 43);
+    set(26, 800, d.saldoFinal > 0.009 ? RED : GREEN); dir(fmt(d.saldoFinal), W - PAD - 20, yIni + 44);
+    y = yIni + h + 14;
+  }
+
+  // Pix (só com saldo devedor e Pix configurado)
+  if(d.saldoFinal > 0.009 && pixDisponivel()){
+    const cfg = getPixCfg(); const yIni = y, h = 96;
+    if(H){ ctx.fillStyle = 'rgba(246,181,42,.08)'; _cvRound(ctx, PAD, yIni, IW, h, 16); ctx.fill(); ctx.strokeStyle = 'rgba(246,181,42,.5)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    set(12, 800, GOLD); esq('PAGUE VIA PIX' + (cfg.tipo === 'celular' ? ' (CELULAR)' : ''), PAD + 20, yIni + 30);
+    set(24, 800, TEXT); esq(pixChaveExibicao(), PAD + 20, yIni + 62);
+    if(cfg.nome){ set(13, 500, MUTED); esq(_cvTexto(ctx, cfg.nome, IW - 40), PAD + 20, yIni + 83); }
+    y = yIni + h + 14;
+  }
+
+  // economia + agradecimento
+  if(economia > 0.009){
+    set(18, 800, GREEN); cen(`Você economizou ${fmt(economia)} neste pedido!`, W / 2, y + 26); y += 44;
+  }
+  y += 6; set(14, 500, MUTED); cen('Obrigado pela preferência e parceria!', W / 2, y + 16); y += 40;
+  return y;
+}
+
+async function gerarImagemComprovanteAtendimento(d){
+  try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+  const W = 720, ESC = 2;
+  // 1ª passada só mede a altura; 2ª desenha de verdade
+  const medidor = document.createElement('canvas').getContext('2d');
+  const H = Math.ceil(_desenharComprovanteAtendimento(medidor, W, 0, d));
+  const cv = document.createElement('canvas'); cv.width = W * ESC; cv.height = H * ESC;
+  const ctx = cv.getContext('2d'); ctx.scale(ESC, ESC);
+  _desenharComprovanteAtendimento(ctx, W, H, d);
+  return new Promise((ok, erro) => cv.toBlob(b => b ? ok(b) : erro(new Error('Falha ao gerar imagem')), 'image/png'));
+}
+
+async function enviarComprovanteAtendimentoPrint(){
+  const d = window._ultimoComprovanteAtendimento;
+  if(!d || !d.c){ showToast('Comprovante não disponível','red'); return; }
+  let blob;
+  try{ blob = await gerarImagemComprovanteAtendimento(d); }
+  catch(e){ console.error(e); showToast('Não foi possível gerar o print','red'); return; }
+  const nomeArq = 'comprovante-' + String(d.c.nome || 'cliente').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase() + '.png';
+  const arquivo = new File([blob], nomeArq, { type: 'image/png' });
+  // Menu de compartilhar do celular: escolhe WhatsApp e o contato
+  if(navigator.canShare && navigator.canShare({ files: [arquivo] })){
+    try{ await navigator.share({ files: [arquivo], title: 'Comprovante de Atendimento' }); return; }
+    catch(e){ if(e && e.name === 'AbortError') return; /* outro erro: cai no download */ }
+  }
+  // Fallback: baixa a imagem para anexar manualmente
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = nomeArq;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  showToast('Print salvo — anexe no WhatsApp','green');
 }

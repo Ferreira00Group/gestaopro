@@ -1,4 +1,13 @@
-# GestãoPRO v5.95.0
+# GestãoPRO v5.96.1
+
+## Versão 5.96.1 — QR Code do Pix funciona offline
+- **Correção:** o gerador de QR (`lib-qrcode.js`) e o `logo.png` não estavam na lista de arquivos guardados para uso offline (`sw.js`). Sem internet, o QR do Pix aparecia como "QR Code indisponível". Agora os dois entram no cache na instalação da versão. Importante: abrir o app **uma vez com internet** depois de atualizar, para o celular baixar esses arquivos.
+
+## Versão 5.96.0 — Próxima prevista, desconto no comprovante e envio por print
+- **Cartão do cliente:** o campo "Frequência" virou "Próxima prevista". A data é o mesmo dia da última compra no mês seguinte (30/10 → 30/11); se o mês seguinte for mais curto, cai no último dia (31/10 → 30/11). Vale também para quem tem só 1 compra.
+- **Regra única:** a mesma conta (`relProximaPrevista` em 14-relacionamento.js) alimenta o cartão, o Cliente 360, "Recompra próxima", relatórios e automações.
+- **Atendimento concluído:** o comprovante mostra Subtotal, "Desconto aplicado" em destaque e o Total; o texto do WhatsApp traz as mesmas linhas e a mensagem "Você economizou R$ X".
+- **Texto ou print:** dois botões no comprovante. "Enviar texto" abre a conversa do cliente (com Pix Copia e Cola); "Enviar print" gera uma imagem (canvas) e abre o menu de compartilhar do celular, com a chave Pix escrita quando há saldo. Se o aparelho não compartilhar arquivos, a imagem é baixada.
 
 ## Versão 5.95.0 — Curva ABC e Runway de estoque corrigidos
 - **Curva ABC (resumo e relatório detalhado):** itens avulsos (valor digitado, sem produto cadastrado, como "Item avulso" e "Saldo Anterior") ficam fora da curva e do giro do estoque. A contagem "N produtos classificados" e as porcentagens agora consideram só produtos.

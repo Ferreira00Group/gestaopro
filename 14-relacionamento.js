@@ -2,7 +2,7 @@
 // Tudo calculado em cima das vendas já registradas (nada novo para cadastrar):
 //  • Segmentos de cliente: VIP, Frequente, Inativo, "Recompra próxima"
 //  • Ranking de clientes (faturamento, lucro estimado, nº de compras, última compra)
-//  • Próxima compra prevista = última compra + intervalo médio entre compras (mín. 2 compras)
+//  • Próxima compra prevista = mesmo dia da última compra no mês seguinte (fim de mês: cai no último dia)
 //  • WhatsApp de relacionamento (registra uma atividade concluída no CRM)
 //  • Caixa diário (aba em Relatórios) e Previsão de vendas (aba em Relatórios)
 
@@ -18,6 +18,15 @@ function relSomaDias(data,n){
   const p=data.split('-'); const d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2])+n*REL_DIA);
   return d.toISOString().slice(0,10);
 }
+// Soma n meses mantendo o mesmo dia (30/10 -> 30/11). Se o mês de destino é mais curto, cai no último dia (31/10 -> 30/11).
+function relSomaMeses(data,n){
+  const p=String(data).slice(0,10).split('-'); const a=+p[0], m=+p[1]-1, d=+p[2];
+  const t=a*12+m+n, ay=Math.floor(t/12), am=((t%12)+12)%12;
+  const ultimoDia=new Date(Date.UTC(ay,am+1,0)).getUTCDate();
+  return new Date(Date.UTC(ay,am,Math.min(d,ultimoDia))).toISOString().slice(0,10);
+}
+// Regra única da "Próxima prevista" (cartão do cliente, Cliente 360, recompra, relatórios e automações)
+function relProximaPrevista(ultima){ return ultima?relSomaMeses(ultima,1):''; }
 function relVendasValidas(){ return state.vendas.filter(v=>v.tipo!=='orcamento'&&v.data); }
 function relLucroVenda(v){
   const custo=(v.itens||[]).reduce((s,it)=>s+(it.qtd||0)*(it.custoFichaUn||0),0);
@@ -39,7 +48,7 @@ function relCalcClientes(){
     let intervalo=0;
     if(datas.length>=2) intervalo=Math.max(1,Math.round(relDias(datas[0],ultima)/(datas.length-1)));
     const diasSem=ultima?relDias(ultima,hoje):null;
-    const proxima=(ultima&&intervalo)?relSomaDias(ultima,intervalo):'';
+    const proxima=relProximaPrevista(ultima);
     return {c,compras:datas.length,fat,fat12,lucro,ultima,intervalo,diasSem,proxima,seg:{}};
   });
   // VIP: top 10% por faturamento dos últimos 12 meses (mínimo 1, só quem comprou no período)
