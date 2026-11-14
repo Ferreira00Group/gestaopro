@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.96.1">
+<link rel="stylesheet" href="styles.css?v=5.97.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -1847,16 +1847,33 @@
         <div style="font-size:24px;font-weight:800;color:var(--red)" id="reneg-saldo">R$ 0,00</div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px" id="reneg-cliente-nome"></div>
       </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label style="display:flex;justify-content:space-between;align-items:center;gap:8px">Quais compras entram na renegociação?
+          <button type="button" class="btn btn-outline btn-sm" onclick="renegSelecionarTudo()">Selecionar tudo</button></label>
+        <div id="reneg-itens"></div>
+        <div id="reneg-sel-total" style="font-size:12.5px;margin-top:6px"></div>
+      </div>
       <div id="reneg-enc-wrap" style="display:none;margin-bottom:14px">
-        <div style="font-size:13px;margin-bottom:6px">Encargos de atraso calculados: <strong id="reneg-enc-valor"></strong></div>
+        <div style="font-size:13px;margin-bottom:6px">Encargos de atraso das compras selecionadas: <strong id="reneg-enc-valor"></strong></div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:4px"><input type="radio" name="reneg-enc" value="perdoar" checked style="width:auto;margin:0" onchange="renegAtualizar()"> Perdoar os encargos</label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="radio" name="reneg-enc" value="incluir" style="width:auto;margin:0" onchange="renegAtualizar()"> Incluir os encargos no novo saldo</label>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Nº de parcelas</label><input class="form-control" id="reneg-n" type="number" min="1" max="36" step="1" inputmode="numeric" value="3" oninput="renegAtualizar()"></div>
-        <div class="form-group"><label>Intervalo (dias)</label><input class="form-control" id="reneg-intervalo" type="number" min="1" max="365" step="1" inputmode="numeric" value="30" oninput="renegAtualizar()"></div>
+        <div class="form-group"><label>Nº de parcelas</label><input class="form-control" id="reneg-n" type="number" min="1" max="36" step="1" inputmode="numeric" value="1" oninput="renegRegen()"></div>
+        <div class="form-group"><label>Primeiro vencimento</label><input class="form-control" id="reneg-primeiro" type="date" onchange="renegRegen()" oninput="renegRegen()"></div>
       </div>
-      <div class="form-group"><label>Primeiro vencimento</label><input class="form-control" id="reneg-primeiro" type="date" onchange="renegAtualizar()" oninput="renegAtualizar()"></div>
+      <div style="font-size:12px;color:var(--muted);margin:-6px 0 10px">parcelas mensais a partir do primeiro vencimento — você pode editar a data de cada uma abaixo</div>
+      <div class="form-group" style="margin-bottom:6px">
+        <label>Juros no ato <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+        <div style="display:flex;gap:8px">
+          <select class="form-control" id="reneg-juros-tipo" style="flex:1" onchange="renegAtualizar()">
+            <option value="pct">% sobre o valor</option>
+            <option value="fixo">Valor fixo (R$)</option>
+          </select>
+          <input class="form-control" type="number" step="0.01" min="0" id="reneg-juros-valor" placeholder="0,00" style="flex:1" oninput="renegAtualizar()">
+        </div>
+      </div>
+      <div class="parcelas-wrap" id="reneg-datas"></div>
       <div class="form-group"><label>Observação</label><input class="form-control" id="reneg-obs" placeholder="opcional"></div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Se o cliente der entrada, registre o pagamento em "Receber" antes de renegociar o restante.</div>
       <div id="reneg-preview"></div>
@@ -2609,36 +2626,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.96.1"></script>
-<script src="00-core.js?v=5.96.1"></script>
-<script src="lib-qrcode.js?v=5.96.1"></script>
-<script src="01-ui-nav.js?v=5.96.1"></script>
-<script src="02-dashboard.js?v=5.96.1"></script>
-<script src="03-clientes.js?v=5.96.1"></script>
-<script src="04-vendas.js?v=5.96.1"></script>
-<script src="04b-pix-extrato.js?v=5.96.1"></script>
-<script src="11b-meu-dia.js?v=5.96.1"></script>
-<script src="11c-promessa-reneg.js?v=5.96.1"></script>
-<script src="11d-aprovar-lote.js?v=5.96.1"></script>
-<script src="05-producao.js?v=5.96.1"></script>
-<script src="06-estoque.js?v=5.96.1"></script>
-<script src="07-precificacao.js?v=5.96.1"></script>
-<script src="08-compras-fornecedores.js?v=5.96.1"></script>
-<script src="09-financeiro-relatorios.js?v=5.96.1"></script>
-<script src="10-fab-inline.js?v=5.96.1"></script>
-<script src="10b-planejamento.js?v=5.96.1"></script>
-<script src="13-crm.js?v=5.96.1"></script>
-<script src="14-relacionamento.js?v=5.96.1"></script>
-<script src="15-cliente360.js?v=5.96.1"></script>
-<script src="16-automacoes.js?v=5.96.1"></script>
-<script src="17-banco.js?v=5.96.1"></script>
-<script src="18-credito.js?v=5.96.1"></script>
-<script src="19-conectores.js?v=5.96.1"></script>
-<script src="20-cartoes.js?v=5.96.1"></script>
-<script src="12-drive-backup.js?v=5.96.1"></script>
-<script src="11-app-init.js?v=5.96.1"></script>
-<script src="21-gemini-ia.js?v=5.96.1"></script>
-<script src="22-operacao-foco.js?v=5.96.1"></script>
+<script src="00a-config.js?v=5.97.0"></script>
+<script src="00-core.js?v=5.97.0"></script>
+<script src="lib-qrcode.js?v=5.97.0"></script>
+<script src="01-ui-nav.js?v=5.97.0"></script>
+<script src="02-dashboard.js?v=5.97.0"></script>
+<script src="03-clientes.js?v=5.97.0"></script>
+<script src="04-vendas.js?v=5.97.0"></script>
+<script src="04b-pix-extrato.js?v=5.97.0"></script>
+<script src="11b-meu-dia.js?v=5.97.0"></script>
+<script src="11c-promessa-reneg.js?v=5.97.0"></script>
+<script src="11d-aprovar-lote.js?v=5.97.0"></script>
+<script src="05-producao.js?v=5.97.0"></script>
+<script src="06-estoque.js?v=5.97.0"></script>
+<script src="07-precificacao.js?v=5.97.0"></script>
+<script src="08-compras-fornecedores.js?v=5.97.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.97.0"></script>
+<script src="10-fab-inline.js?v=5.97.0"></script>
+<script src="10b-planejamento.js?v=5.97.0"></script>
+<script src="13-crm.js?v=5.97.0"></script>
+<script src="14-relacionamento.js?v=5.97.0"></script>
+<script src="15-cliente360.js?v=5.97.0"></script>
+<script src="16-automacoes.js?v=5.97.0"></script>
+<script src="17-banco.js?v=5.97.0"></script>
+<script src="18-credito.js?v=5.97.0"></script>
+<script src="19-conectores.js?v=5.97.0"></script>
+<script src="20-cartoes.js?v=5.97.0"></script>
+<script src="12-drive-backup.js?v=5.97.0"></script>
+<script src="11-app-init.js?v=5.97.0"></script>
+<script src="21-gemini-ia.js?v=5.97.0"></script>
+<script src="22-operacao-foco.js?v=5.97.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

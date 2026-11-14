@@ -2,8 +2,8 @@
 // PROMESSA: cliente.promessa = {data, obs, criadaEm}. Vale só para as parcelas JÁ vencidas na
 //   data em que foi anotada (venc <= criadaEm). Até a data, o cliente sai da Cobrança do dia;
 //   passada a data sem pagar, volta destacado como "promessa quebrada".
-// RENEGOCIAÇÃO: state.renegociacoes = [{id, clienteId, data, base, encargos, modoEnc, total,
-//   parcelas:[{valor,vencimento}], obs, substituidaPor?}]. Não mexe em vendas nem em pagamentos
+// RENEGOCIAÇÃO: state.renegociacoes = [{id, clienteId, data, base, encargos, modoEnc, jurosAto?, total,
+//   parcelas:[{valor,vencimento}], vendasIds, obs, substituidaPor?}]. Só as compras escolhidas entram (v.renegociadaId). Não mexe em vendas nem em pagamentos
 //   (nada entra no caixa/faturamento). O motor do fiado (00-core.js) trata "base" como baixa das
 //   dívidas antigas e cria as parcelas novas como unidades de cobrança (vendaId 'R<id>').
 
@@ -96,13 +96,22 @@ function removerPromessa(){
 }
 
 // ───────── Renegociação ─────────
-function renegParcelas(total, n, primeiro, intervalo){
-  const cents = Math.round(total*100), base = Math.floor(cents/n);
+function pad2(n){ return String(n).padStart(2,'0'); }
+// Soma meses mantendo o dia (31/01 + 1 mês = 28 ou 29/02 — nunca pula para março)
+function addMesesISO(iso, meses){
+  const [y,m,d] = String(iso).split('-').map(Number);
+  const t = (m-1)+meses, ny = y+Math.floor(t/12), nm = ((t%12)+12)%12;
+  const ult = new Date(Date.UTC(ny, nm+1, 0)).getUTCDate();
+  return ny+'-'+pad2(nm+1)+'-'+pad2(Math.min(d, ult));
+}
+// Divide o total em parcelas iguais, uma para cada data informada (a última absorve os centavos)
+function renegParcelas(total, datas){
+  const n = datas.length, cents = Math.round(total*100), base = Math.floor(cents/n);
   const out = []; let acc = 0;
   for(let i=0;i<n;i++){
-    const v = (i===n-1) ? (cents-acc) : base; // a última absorve os centavos que sobram
+    const v = (i===n-1) ? (cents-acc) : base;
     acc += v;
-    out.push({valor:v/100, vencimento:somarDiasISO(primeiro, i*intervalo)});
+    out.push({valor:v/100, vencimento:datas[i]});
   }
   return out;
 }
@@ -117,34 +126,124 @@ function renegLinhasCobranca(clienteId){
   return '\n'+us.map(u=>'• Parcela '+u.parcelaNum+'/'+u.parcelaTotal+' (renegociação) — venc. '+fmtDate(u.vencimento)+' = '+fmt(u.valorRestante)).join('\n');
 }
 
+// Compras (e renegociações ativas) do cliente que ainda têm valor em aberto e podem entrar na renegociação
+let renegItens = [];
+function renegMontarItens(clienteId){
+  const mapa = getMapaSituacaoFiado(), hoje = today(), itens = [];
+  state.vendas.filter(v=>v.clienteId==clienteId && v.forma==='fiado' && v.tipo!=='orcamento' && !vendaRenegociada(v.id)).forEach(v=>{
+    const m = mapa[v.id]; if(!m) return;
+    const rest = round2(m.valorRestante||0); if(rest<=0.009) return;
+    const total = round2(m.parcelas.reduce((s,p)=>s+p.valor,0));
+    itens.push({chave:'v'+v.id, tipo:'venda', id:v.id, restante:rest, total, venc:m.vencimentoPendente||v.vencimento||'', data:v.data,
+      desc:(v.itens||[]).map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')||'Venda'});
+  });
+  (state.renegociacoes||[]).filter(r=>r.clienteId==clienteId && !r.substituidaPor).forEach(r=>{
+    const m = mapa['R'+r.id]; if(!m) return;
+    const rest = round2(m.valorRestante||0); if(rest<=0.009) return;
+    const abertas = m.parcelas.filter(p=>p.status!=='pago').length;
+    itens.push({chave:'r'+r.id, tipo:'reneg', id:r.id, restante:rest, total:round2(r.total), venc:m.vencimentoPendente||'', data:r.data,
+      desc:'Renegociação de '+fmtDate(r.data)+' — '+abertas+' parcela'+(abertas>1?'s':'')+' em aberto'});
+  });
+  itens.sort((a,b)=>(a.venc||a.data||'').localeCompare(b.venc||b.data||''));
+  itens.forEach(it=>{ it.vencida = !!it.venc && it.venc<hoje; });
+  return itens;
+}
+function renegItensHtml(){
+  const hoje = today();
+  const algumaVencida = renegItens.some(it=>it.vencida);
+  return renegItens.map(it=>{
+    let st = !it.venc ? 'sem vencimento' : (it.venc<hoje ? 'venceu em '+fmtDate(it.venc) : (it.venc===hoje ? 'vence hoje' : 'vence em '+fmtDate(it.venc)));
+    if(it.restante < it.total-0.009) st += ' · já pago '+fmt(round2(it.total-it.restante));
+    const chk = (!algumaVencida || it.vencida) ? 'checked' : '';
+    return `<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--border);cursor:pointer">
+      <input type="checkbox" id="reneg-it-${it.chave}" ${chk} style="width:auto;margin:3px 0 0" onchange="renegAtualizar()">
+      <span style="flex:1;font-size:13px">${it.tipo==='venda'?fmtDate(it.data)+' · ':''}${escapeHtml(it.desc)}<br><small style="color:${it.vencida?'var(--red)':'var(--muted)'}">${escapeHtml(st)}</small></span>
+      <strong style="font-size:13px">${fmt(it.restante)}</strong></label>`;
+  }).join('');
+}
+function renegSelecionados(){
+  return renegItens.filter(it=>{ const el=document.getElementById('reneg-it-'+it.chave); return el && el.checked; });
+}
+function renegSelecionarTudo(){
+  renegItens.forEach(it=>{ const el=document.getElementById('reneg-it-'+it.chave); if(el) el.checked=true; });
+  renegAtualizar();
+}
+// Encargos de atraso só das compras selecionadas
+function renegEncargosSel(clienteId, sel){
+  const cfg = encargosCfg(), r = {total:0, multa:0, juros:0};
+  if(!cfg.ativo || !sel.length) return r;
+  const ids = new Set(sel.map(it=>it.tipo==='venda' ? it.id : 'R'+it.id));
+  getUnidadesFiadoFlat().filter(u=>u.clienteId==clienteId && ids.has(u.vendaId)).forEach(u=>{
+    const e = encargoDaUnidade(u, today(), cfg);
+    if(e){ r.multa += e.multa; r.juros += e.juros; }
+  });
+  r.multa = round2(r.multa); r.juros = round2(r.juros); r.total = round2(r.multa + r.juros);
+  return r;
+}
 function renegLerForm(){
   const clienteId = parseInt(document.getElementById('reneg-cliente-id').value);
-  const saldo = round2(getSaldoCliente(clienteId));
-  const enc = encargosCfg().ativo ? calcEncargosCliente(clienteId).total : 0;
+  const sel = renegSelecionados();
+  const base = round2(sel.reduce((s,it)=>s+it.restante, 0));
+  const encObj = renegEncargosSel(clienteId, sel), enc = encObj.total;
   const radio = document.querySelector('input[name="reneg-enc"]:checked');
   const modo = (enc>0 && radio) ? radio.value : 'perdoar';
-  const total = round2(saldo + (modo==='incluir' ? enc : 0));
+  const baseJuros = round2(base + (modo==='incluir' ? enc : 0));
+  const tipoJ = document.getElementById('reneg-juros-tipo').value;
+  const valJ = Math.max(0, parseFloat(document.getElementById('reneg-juros-valor').value)||0);
+  const jurosAto = round2(tipoJ==='pct' ? baseJuros*valJ/100 : valJ);
+  const total = round2(baseJuros + jurosAto);
+  const n = parseInt(document.getElementById('reneg-n').value);
+  const nOk = Number.isInteger(n) && n>=1 && n<=36;
+  const datas = [];
+  if(nOk) for(let i=0;i<n;i++){ const el = document.getElementById('reneg-data-'+i); datas.push(el ? el.value : ''); }
+  let erro = '';
+  if(!sel.length) erro = 'Selecione ao menos uma compra para renegociar.';
+  else if(base<=0.009) erro = 'Nada em aberto nas compras selecionadas.';
+  else if(!nOk) erro = 'Informe de 1 a 36 parcelas.';
+  else if(datas.some(d=>!d)) erro = 'Informe a data de vencimento de todas as parcelas.';
+  else if(datas.some(d=>d < today())) erro = 'As datas de vencimento não podem ser anteriores a hoje.';
+  const parcelas = erro ? [] : renegParcelas(total, datas);
+  return {clienteId, sel, base, enc, encMulta:encObj.multa, encJuros:encObj.juros, modo, jurosAto, total, n, datas, parcelas, erro};
+}
+// Gera as datas mensais (editáveis) a partir do 1º vencimento e do nº de parcelas
+function renegRegen(){
+  const el = document.getElementById('reneg-datas');
   const n = parseInt(document.getElementById('reneg-n').value);
   const primeiro = document.getElementById('reneg-primeiro').value;
-  const intervalo = parseInt(document.getElementById('reneg-intervalo').value);
-  let erro = '';
-  if(saldo<=0.009) erro = 'Cliente sem saldo devedor.';
-  else if(!(n>=1 && n<=36)) erro = 'Informe de 1 a 36 parcelas.';
-  else if(!primeiro) erro = 'Informe o primeiro vencimento.';
-  else if(primeiro < today()) erro = 'O primeiro vencimento não pode ser no passado.';
-  else if(!(intervalo>=1 && intervalo<=365)) erro = 'Intervalo entre parcelas: de 1 a 365 dias.';
-  const parcelas = erro ? [] : renegParcelas(total, n, primeiro, intervalo);
-  return {clienteId, saldo, enc, modo, total, n, primeiro, intervalo, parcelas, erro};
+  if(!(Number.isInteger(n) && n>=1 && n<=36)){ el.innerHTML = ''; renegAtualizar(); return; }
+  let h = '';
+  for(let i=0;i<n;i++){
+    const ds = primeiro ? addMesesISO(primeiro, i) : '';
+    h += `<div class="parcela-linha">
+      <span class="parcela-num">${i+1}×</span>
+      <input class="form-control" type="date" id="reneg-data-${i}" value="${ds}" onchange="renegAtualizar()" oninput="renegAtualizar()" style="max-width:160px;padding:7px 10px;font-size:13px">
+      <span style="font-size:12px;color:var(--muted)">vencimento</span>
+      <strong id="reneg-val-${i}" style="margin-left:auto;font-size:13px"></strong>
+    </div>`;
+  }
+  el.innerHTML = h;
+  renegAtualizar();
 }
 function renegAtualizar(){
   const d = renegLerForm();
   const el = document.getElementById('reneg-preview');
+  const saldoTotal = round2(getSaldoCliente(d.clienteId));
+  document.getElementById('reneg-sel-total').innerHTML = 'Selecionado: <strong>'+fmt(d.base)+'</strong>'+(saldoTotal>d.base+0.009?' <span style="color:var(--muted)">de '+fmt(saldoTotal)+' em aberto — o restante não muda</span>':'');
+  document.getElementById('reneg-enc-wrap').style.display = d.enc>0 ? 'block' : 'none';
+  document.getElementById('reneg-enc-valor').textContent = fmt(d.enc);
+  for(let i=0;i<36;i++){
+    const sp = document.getElementById('reneg-val-'+i); if(!sp) break;
+    sp.textContent = d.parcelas[i] ? fmt(d.parcelas[i].valor) : '';
+  }
   if(d.erro){ el.innerHTML = '<div style="color:var(--red);font-size:12.5px">'+escapeHtml(d.erro)+'</div>'; return; }
-  el.innerHTML = `<div style="font-size:13px;margin-bottom:6px">Novo total: <strong>${fmt(d.total)}</strong> em <strong>${d.n}x</strong>
-      ${d.enc>0?`<span style="color:var(--muted)"> · encargos ${d.modo==='incluir'?'incluídos ('+fmt(d.enc)+')':'perdoados ('+fmt(d.enc)+')'}</span>`:''}</div>
-    <div class="table-scroll"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>
-    ${d.parcelas.map((p,i)=>`<tr><td>${i+1}/${d.n}</td><td>${fmtDate(p.vencimento)}</td><td>${fmt(p.valor)}</td></tr>`).join('')}
-    </tbody></table></div>`;
+  const vals = d.parcelas.map(p=>p.valor), igual = vals.every(v=>Math.abs(v-vals[0])<0.0101);
+  el.innerHTML = `<div class="parcelas-resumo">
+      <div class="lin"><span>Valor das compras</span><span>${fmt(d.base)}</span></div>
+      ${d.enc>0?`<div class="lin"><span>Encargos de atraso</span><span>${d.modo==='incluir'?'+'+fmt(d.enc)+' (incluídos)':fmt(d.enc)+' (perdoados)'}</span></div>`:''}
+      <div class="lin"><span>Juros no ato</span><span>${d.jurosAto>0?'+':''}${fmt(d.jurosAto)}</span></div>
+      <div class="lin tot"><span>Total a receber</span><span>${fmt(d.total)}</span></div>
+      <div style="margin-top:4px;font-size:12px;color:var(--muted)">${d.n} parcela${d.n>1?'s':''}${igual?' de '+fmt(vals[0]):''} · a última absorve os centavos.</div>
+    </div>`;
 }
 function renegAnterioresHtml(clienteId){
   const ativas = (state.renegociacoes||[]).filter(r=>r.clienteId==clienteId && !r.substituidaPor);
@@ -158,19 +257,20 @@ function abrirRenegociar(clienteId){
   const c = getCliente(clienteId); if(!c) return;
   const saldo = round2(getSaldoCliente(clienteId));
   if(saldo<=0.009){ showToast('Cliente sem saldo devedor','red'); return; }
-  const enc = encargosCfg().ativo ? calcEncargosCliente(clienteId).total : 0;
+  renegItens = renegMontarItens(clienteId);
+  if(!renegItens.length){ showToast('Nenhuma compra em aberto para renegociar','red'); return; }
   document.getElementById('reneg-cliente-id').value = clienteId;
   document.getElementById('reneg-cliente-nome').textContent = c.nome;
   document.getElementById('reneg-saldo').textContent = fmt(saldo);
-  document.getElementById('reneg-enc-wrap').style.display = enc>0 ? 'block' : 'none';
-  document.getElementById('reneg-enc-valor').textContent = fmt(enc);
+  document.getElementById('reneg-itens').innerHTML = renegItensHtml();
   document.querySelector('input[name="reneg-enc"][value="perdoar"]').checked = true;
-  document.getElementById('reneg-n').value = 3;
+  document.getElementById('reneg-n').value = 1;
   document.getElementById('reneg-primeiro').value = somarDiasISO(today(), 30);
-  document.getElementById('reneg-intervalo').value = 30;
+  document.getElementById('reneg-juros-tipo').value = 'pct';
+  document.getElementById('reneg-juros-valor').value = '';
   document.getElementById('reneg-obs').value = '';
   document.getElementById('reneg-anteriores').innerHTML = renegAnterioresHtml(clienteId);
-  renegAtualizar();
+  renegRegen();
   document.getElementById('modal-reneg').classList.add('open');
   if(typeof lucide!=='undefined') lucide.createIcons();
 }
@@ -178,21 +278,21 @@ function confirmarRenegociacao(){
   const d = renegLerForm();
   if(d.erro){ showToast(d.erro,'red'); return; }
   const obs = document.getElementById('reneg-obs').value.trim();
-  const txt = 'Renegociar '+fmt(d.saldo)+(d.modo==='incluir'&&d.enc>0?' + '+fmt(d.enc)+' de encargos':'')+' em '+d.n+'x? O saldo atual (inclusive o que está vencido) é substituído pelas novas parcelas. Dá para desfazer depois.';
+  const txt = 'Renegociar '+fmt(d.base)+' ('+d.sel.length+' compra'+(d.sel.length>1?'s':'')+')'+(d.modo==='incluir'&&d.enc>0?' + '+fmt(d.enc)+' de encargos':'')+(d.jurosAto>0?' + '+fmt(d.jurosAto)+' de juros':'')+' em '+d.n+'x? Só as compras selecionadas são substituídas pelas novas parcelas; o resto do saldo não muda. Dá para desfazer depois.';
   confirmarAcao(txt, ()=>aplicarRenegociacao(d, obs));
 }
 function aplicarRenegociacao(d, obs){
   if(!Array.isArray(state.renegociacoes)) state.renegociacoes = [];
   const id = state.renegociacoes.reduce((m,r)=>Math.max(m,r.id),0) + 1;
-  // marca as vendas que estavam em aberto (para travar edição/exclusão e mostrar o selo)
-  const mapa = getMapaSituacaoFiado();
-  state.vendas.filter(v=>v.clienteId==d.clienteId && v.forma==='fiado' && v.tipo!=='orcamento' && situacaoVenda(v,mapa).status!=='pago')
-    .forEach(v=>{ v.renegociadaId = id; });
-  // renegociação anterior ainda ativa passa a ser "substituída" (o saldo dela entra na base desta)
-  state.renegociacoes.filter(r=>r.clienteId==d.clienteId && !r.substituidaPor).forEach(r=>{ r.substituidaPor = id; });
+  // marca só as compras escolhidas (para travar edição/exclusão e mostrar o selo)
+  const vendasIds = d.sel.filter(it=>it.tipo==='venda').map(it=>it.id);
+  state.vendas.forEach(v=>{ if(vendasIds.includes(v.id)) v.renegociadaId = id; });
+  // renegociações anteriores escolhidas passam a ser "substituídas" (o saldo delas entra na base desta)
+  const renegsIds = d.sel.filter(it=>it.tipo==='reneg').map(it=>it.id);
+  state.renegociacoes.forEach(r=>{ if(renegsIds.includes(r.id)) r.substituidaPor = id; });
   state.renegociacoes.push({
-    id, clienteId:d.clienteId, data:today(), base:d.saldo, encargos:round2(d.enc), modoEnc:d.modo,
-    total:d.total, parcelas:d.parcelas, obs
+    id, clienteId:d.clienteId, data:today(), base:d.base, encargos:round2(d.enc), modoEnc:d.modo,
+    ...(d.jurosAto>0?{jurosAto:d.jurosAto}:{}), total:d.total, parcelas:d.parcelas, vendasIds, obs
   });
   const c = state.clientes.find(x=>x.id==d.clienteId);
   if(c) delete c.promessa; // a promessa antiga não vale mais

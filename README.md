@@ -1,4 +1,13 @@
-# GestãoPRO v5.96.1
+# GestãoPRO v5.97.0
+
+## Versão 5.97.0 — Renegociação por compra, datas editáveis, juros no ato e nova cobrança
+- **Renegociar só o que você escolher:** a tela lista as compras (e renegociações ativas) em aberto, com produto, data, valor que falta e situação. Só as marcadas entram; o resto do saldo não muda. Já vêm marcadas as vencidas (ou todas, se nenhuma venceu). Botão "Selecionar tudo".
+- **Parcelas mensais com data editável:** igual ao parcelamento da venda — nº de parcelas, 1º vencimento e uma data editável para cada parcela (a última absorve os centavos). Saiu o "Intervalo (dias)".
+- **Juros no ato:** mesmo campo da venda ("% sobre o valor" ou "Valor fixo") e resumo com Valor das compras / Encargos / Juros / Total a receber.
+- **Encargos de atraso** passam a considerar só as compras selecionadas.
+- **Motor do fiado (`00-core.js`):** as compras renegociadas são quitadas pela baixa da renegociação; compras normais e parcelas de renegociação entram juntas na fila de pagamento, por **vencimento** (antes as compras eram pagas antes das parcelas, mesmo vencendo depois). O saldo total de nenhum cliente muda; renegociações antigas continuam valendo.
+- **Mensagem de cobrança (WhatsApp):** endereço logo abaixo do nome ("📍 Endereço:"), grupos "⚠️ Em atraso", "🔔 Vence hoje", "📋 Em aberto" (sem data) e "📅 A vencer"; "Total em aberto" e "Para pagar hoje"; compras com produto e data; parcelas de renegociação mostram de quais compras vieram.
+- **Pix da cobrança:** se há valor vencido/vencendo hoje e ainda sobra coisa a vencer, o Pix e o copia e cola cobram só o devido agora (com a indicação "vence hoje" / "valor vencido"); senão cobram o saldo todo. Extrato e "Mostrar no celular" não mudaram.
 
 ## Versão 5.96.1 — QR Code do Pix funciona offline
 - **Correção:** o gerador de QR (`lib-qrcode.js`) e o `logo.png` não estavam na lista de arquivos guardados para uso offline (`sw.js`). Sem internet, o QR do Pix aparecia como "QR Code indisponível". Agora os dois entram no cache na instalação da versão. Importante: abrir o app **uma vez com internet** depois de atualizar, para o celular baixar esses arquivos.

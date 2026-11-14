@@ -1533,19 +1533,58 @@ function registrarPagamento(){
 function cobrarWhatsapp(clienteId){
   const c=getCliente(clienteId);
   const saldo=getSaldoCliente(clienteId);
-  const mapaFiado=getMapaSituacaoFiado();
-  const vendas=state.vendas.filter(v=>v.clienteId===clienteId&&v.forma==='fiado'&&situacaoVenda(v,mapaFiado).status!=='pago');
-  const lista=vendas.map(v=>{
-    // v5.51.3: venda com pagamento parcial mostra quanto já foi pago e quanto resta (antes só aparecia o total
-    // da venda, e o cliente via R$ 70,00 na linha e R$ 20,00 no "Total devedor").
-    const rest=round2(situacaoVenda(v,mapaFiado).valorRestante||0);
-    const parcial=rest>0.009&&rest<round2(v.total)-0.009;
-    return `• ${fmtDate(v.data)} — ${v.itens.map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')} = ${fmt(v.total)}`+(parcial?` (já pago ${fmt(round2(v.total-rest))} · resta ${fmt(rest)})`:'');
-  }).join('\n')+(typeof renegLinhasCobranca==='function'?renegLinhasCobranca(clienteId):'');
-  const enderecoLinha=(c.end||c.referencia)?`\n📍 ${c.end||''}${c.end&&c.referencia?' — ':''}${c.referencia||''}`:'';
+  const hoje=today();
+  // Tudo que ainda está em aberto (compras e parcelas de renegociação), do que vence primeiro ao último
+  const unidades=getUnidadesFiadoFlat()
+    .filter(u=>u.clienteId==clienteId&&u.status!=='pago'&&u.valorRestante>0.009)
+    .sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||'')||(a.data||'').localeCompare(b.data||'')||((a.parcelaNum||0)-(b.parcelaNum||0)));
+  const itensTxt=v=>(v.itens||[]).map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')||'Venda';
+  const linhaUn=(u,mostrarVenc)=>{
+    let txt;
+    if(u.renegociacaoId){
+      txt=`Renegociação de ${fmtDate(u.data)} — parcela ${u.parcelaNum}/${u.parcelaTotal}`;
+    } else {
+      const v=state.vendas.find(x=>x.id===u.vendaId);
+      txt=`${fmtDate(u.data)} — ${v?itensTxt(v):'Venda'}`+(u.parcelaNum?` (parcela ${u.parcelaNum}/${u.parcelaTotal})`:'');
+    }
+    if(mostrarVenc&&u.vencimento) txt+=` — venc. ${fmtDate(u.vencimento)}`;
+    txt+=` = ${fmt(u.valor)}`;
+    // pagamento parcial: mostra quanto já foi pago e quanto resta
+    if(u.valorPago>0.009) txt+=` (já pago ${fmt(u.valorPago)} · resta ${fmt(u.valorRestante)})`;
+    return '• '+txt;
+  };
+  const atraso=unidades.filter(u=>u.vencimento&&u.vencimento<hoje);
+  const venceHoje=unidades.filter(u=>u.vencimento===hoje);
+  const semData=unidades.filter(u=>!u.vencimento);
+  const aVencer=unidades.filter(u=>u.vencimento&&u.vencimento>hoje);
+  const blocos=[];
+  if(atraso.length) blocos.push('⚠️ *Em atraso*\n'+atraso.map(u=>linhaUn(u,true)).join('\n'));
+  if(venceHoje.length) blocos.push(`🔔 *Vence hoje (${fmtDate(hoje)})*\n`+venceHoje.map(u=>linhaUn(u,false)).join('\n'));
+  if(semData.length) blocos.push('📋 *Em aberto*\n'+semData.map(u=>linhaUn(u,false)).join('\n'));
+  if(aVencer.length) blocos.push('📅 *A vencer*\n'+aVencer.map(u=>linhaUn(u,true)).join('\n'));
+  const lista=blocos.length?blocos.join('\n\n'):`• Saldo em aberto = ${fmt(saldo)}`;
+  // Quanto é devido agora (vencido + hoje + sem data). Só destaca se for menos que o total.
+  const agora=valorDevidoAgora(clienteId,hoje);
+  let totais=`*Total em aberto: ${fmt(saldo)}*`;
+  if(agora>0.009&&agora<saldo-0.009) totais+=`\n*Para pagar hoje: ${fmt(agora)}*`;
+  // De quais compras vieram as parcelas de renegociação (inclui renegociações que substituíram outras)
+  const origemDe=(rid,vistos)=>{
+    vistos=vistos||new Set(); if(vistos.has(rid)) return []; vistos.add(rid);
+    let vs=state.vendas.filter(v=>v.renegociadaId===rid);
+    (state.renegociacoes||[]).filter(r=>r.substituidaPor===rid).forEach(r=>{ vs=vs.concat(origemDe(r.id,vistos)); });
+    return vs;
+  };
+  const origemTxt=(state.renegociacoes||[])
+    .filter(r=>r.clienteId==clienteId&&!r.substituidaPor&&unidades.some(u=>u.renegociacaoId===r.id))
+    .map(r=>{
+      const vs=origemDe(r.id).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+      if(!vs.length) return '';
+      return `_Renegociação de ${fmtDate(r.data)}, referente a:_\n`+vs.map(v=>`_• ${fmtDate(v.data)} — ${itensTxt(v)} = ${fmt(v.total)}_`).join('\n');
+    }).filter(Boolean).join('\n\n');
+  const enderecoLinha=(c.end||c.referencia)?`\n📍 Endereço: ${c.end||''}${c.end&&c.referencia?' — ':''}${c.referencia||''}`:'';
   const enc=calcEncargosCliente(clienteId);
   const encTxt=enc.total>0?`\n\n⚠️ *Encargos de atraso:* ${fmt(enc.total)}\n(multa ${fmt(enc.multa)} + juros ${fmt(enc.juros)})\n*Total com encargos: ${fmt(saldo+enc.total)}*`:'';
-  const msg=`Olá ${c.nome}! 👋\n\nPassando para lembrar do seu saldo em aberto:${enderecoLinha}\n\n${lista}\n\n*Total devedor: ${fmt(saldo)}*${encTxt}${pixBlocoCobranca(clienteId)}\n\nQualquer dúvida estou à disposição! 😊`;
+  const msg=`Olá ${c.nome}! 👋${enderecoLinha}\n\nPassando para lembrar do seu saldo em aberto.\n\n${lista}\n\n${totais}${encTxt}${origemTxt?'\n\n'+origemTxt:''}${pixBlocoCobrancaAgora(clienteId)}\n\nQualquer dúvida estou à disposição! 😊`;
   const tel=c.tel.replace(/\D/g,'');
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,'_blank');
   registrarCobranca(clienteId); // guarda a data da última cobrança (v5.38)

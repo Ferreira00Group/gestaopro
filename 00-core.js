@@ -926,49 +926,53 @@ function getUnidadesFiadoFlat(){
   (state.renegociacoes||[]).forEach(r=>{ if(!porCliente[r.clienteId]) porCliente[r.clienteId]=[]; });
   Object.keys(porCliente).forEach(cIdStr=>{
     const cId=parseInt(cIdStr);
+    const rnCli=(state.renegociacoes||[]).filter(r=>r.clienteId==cId);
+    const rnIds=new Set(rnCli.map(r=>r.id));
     const unidades=[];
     porCliente[cIdStr].forEach(v=>{
+      // compra "renegociada": foi trocada pelas parcelas da renegociação (v.renegociadaId) e é
+      // quitada pela baixa (r.base) — não compete com os pagamentos novos do cliente.
+      const reneg=!!(v.renegociadaId&&rnIds.has(v.renegociadaId));
       if(v.parcelado&&Array.isArray(v.parcelas)&&v.parcelas.length>0){
         v.parcelas.forEach((p,idx)=>unidades.push({
           clienteId:cId,vendaId:v.id,parcelaIdx:idx,parcelaNum:idx+1,parcelaTotal:v.parcelas.length,
-          valor:p.valor,vencimento:p.vencimento,data:v.data
+          valor:p.valor,vencimento:p.vencimento,data:v.data,_reneg:reneg
         }));
       } else {
         unidades.push({
           clienteId:cId,vendaId:v.id,parcelaIdx:null,parcelaNum:null,parcelaTotal:null,
-          valor:v.total,vencimento:v.vencimento,data:v.data
+          valor:v.total,vencimento:v.vencimento,data:v.data,_reneg:reneg
         });
       }
     });
-    // ordena da dívida mais antiga para a mais nova (por vencimento; sem vencimento, pela data da venda)
-    unidades.sort((a,b)=>(a.vencimento||a.data||'').localeCompare(b.vencimento||b.data||'')||(a.data||'').localeCompare(b.data||''));
-    // pagamentos + baixa das renegociações (a baixa quita as unidades ANTIGAS; as parcelas novas vêm depois)
+    const cmp=(a,b)=>(a.vencimento||a.data||'').localeCompare(b.vencimento||b.data||'')||(a.data||'').localeCompare(b.data||'')||((a.parcelaNum||0)-(b.parcelaNum||0));
+    unidades.sort(cmp);
+    // pagamentos + baixa das renegociações (a baixa quita as compras renegociadas; as parcelas novas vêm depois)
     let saldoPago=state.pagamentos.filter(p=>p.clienteId==cId).reduce((s,p)=>s+p.valor,0)
-      +(state.renegociacoes||[]).filter(r=>r.clienteId==cId).reduce((s,r)=>s+r.base,0);
-    unidades.forEach(u=>{
+      +rnCli.reduce((s,r)=>s+r.base,0);
+    const aplicar=u=>{
       let status,valorPago;
       if(saldoPago<=0.009){ status='aberto'; valorPago=0; }
       else if(saldoPago>=u.valor-0.009){ status='pago'; valorPago=u.valor; saldoPago-=u.valor; }
       else { status='parcial'; valorPago=saldoPago; saldoPago=0; }
       u.status=status; u.valorPago=valorPago; u.valorRestante=Math.max(0,u.valor-valorPago);
-      flat.push(u);
-    });
+    };
+    // 1) compras renegociadas: consomem a baixa primeiro
+    unidades.filter(u=>u._reneg).forEach(u=>{ aplicar(u); flat.push(u); });
     // Parcelas das renegociações (v5.42): renegociações já substituídas por outra consomem
-    // pagamento primeiro (ficam ocultas); depois as ativas, por vencimento.
+    // a baixa também (ficam ocultas); as ativas entram na fila normal.
     const ru=[];
-    (state.renegociacoes||[]).filter(r=>r.clienteId==cId).forEach(r=>(r.parcelas||[]).forEach((pc,i)=>ru.push({
+    rnCli.forEach(r=>(r.parcelas||[]).forEach((pc,i)=>ru.push({
       clienteId:cId,vendaId:'R'+r.id,parcelaIdx:i,parcelaNum:i+1,parcelaTotal:r.parcelas.length,
       valor:pc.valor,vencimento:pc.vencimento,data:r.data,renegociacaoId:r.id,_sub:!!r.substituidaPor
     })));
-    ru.sort((a,b)=>(a._sub?0:1)-(b._sub?0:1)||(a.vencimento||'').localeCompare(b.vencimento||''));
-    ru.forEach(u=>{
-      let status,valorPago;
-      if(saldoPago<=0.009){ status='aberto'; valorPago=0; }
-      else if(saldoPago>=u.valor-0.009){ status='pago'; valorPago=u.valor; saldoPago-=u.valor; }
-      else { status='parcial'; valorPago=saldoPago; saldoPago=0; }
-      u.status=status; u.valorPago=valorPago; u.valorRestante=Math.max(0,u.valor-valorPago);
-      if(!u._sub) flat.push(u);
-    });
+    // 2) parcelas de renegociações substituídas (ocultas)
+    ru.filter(u=>u._sub).sort(cmp).forEach(aplicar);
+    // 3) o que sobrou — compras normais e parcelas de renegociação ativas — por VENCIMENTO,
+    // do mais antigo para o mais novo (o pagamento quita primeiro o que vence primeiro)
+    const fila=unidades.filter(u=>!u._reneg).concat(ru.filter(u=>!u._sub));
+    fila.sort(cmp);
+    fila.forEach(u=>{ aplicar(u); flat.push(u); });
   });
   return flat;
 }

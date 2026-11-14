@@ -105,16 +105,40 @@ function pixChaveExibicao(customCfg){
   }
   return c;
 }
-function pixBloco(valor, customCfg){
+function pixBloco(valor, customCfg, nota){
   const p = customCfg || getPixCfg();
   if(!p.chave) return '';
   const numVal = parseFloat(valor) || 0;
   const isLivre = numVal <= 0.009;
-  return `💳 *Pix* (${pixTipoNome(p.tipo)}): ${pixChaveExibicao(p)}${p.nome?`\nTitular: ${p.nome}`:''}${p.cidade?`\nCidade: ${p.cidade}`:''}\nValor: ${isLivre ? '✨ Valor livre (digite o valor no seu banco)' : fmt(numVal)}\n\nPix copia e cola:\n${pixPayload(numVal, p)}`;
+  return `💳 *Pix* (${pixTipoNome(p.tipo)}): ${pixChaveExibicao(p)}${p.nome?`\nTitular: ${p.nome}`:''}${p.cidade?`\nCidade: ${p.cidade}`:''}\nValor: ${isLivre ? '✨ Valor livre (digite o valor no seu banco)' : fmt(numVal)+(nota?' ('+nota+')':'')}\n\nPix copia e cola:\n${pixPayload(numVal, p)}`;
 }
 function pixValorCobranca(clienteId){
   const saldo=getSaldoCliente(clienteId);
   return round2(saldo+(encargosCfg().pixComEncargos?calcEncargosCliente(clienteId).total:0));
+}
+// Valor que o cliente deve pagar AGORA: o que já venceu, vence hoje ou não tem data.
+function valorDevidoAgora(clienteId, hoje){
+  hoje=hoje||today();
+  return round2(getUnidadesFiadoFlat()
+    .filter(u=>u.clienteId==clienteId&&u.status!=='pago'&&(!u.vencimento||u.vencimento<=hoje))
+    .reduce((s,u)=>s+u.valorRestante,0));
+}
+// Bloco Pix da mensagem de cobrança: se há parcela vencida/vencendo hoje e ainda sobra coisa a
+// vencer, o Pix cobra só o que é devido agora; senão, cobra o saldo todo (como sempre foi).
+function pixBlocoCobrancaAgora(clienteId){
+  const saldo=getSaldoCliente(clienteId);
+  if(saldo<=0.009||!pixDisponivel()) return '';
+  const hoje=today();
+  const agora=valorDevidoAgora(clienteId,hoje);
+  const parcial=agora>0.009&&agora<saldo-0.009;
+  const enc=encargosCfg().pixComEncargos?calcEncargosCliente(clienteId).total:0;
+  let nota='';
+  if(parcial){
+    const abertas=getUnidadesFiadoFlat().filter(u=>u.clienteId==clienteId&&u.status!=='pago'&&(!u.vencimento||u.vencimento<=hoje));
+    const temAtraso=abertas.some(u=>u.vencimento&&u.vencimento<hoje), temHoje=abertas.some(u=>!u.vencimento||u.vencimento===hoje);
+    nota=temAtraso&&temHoje?'vencido + vence hoje':(temAtraso?'valor vencido':'vence hoje');
+  }
+  return '\n\n'+pixBloco(round2((parcial?agora:saldo)+enc),null,nota);
 }
 function pixBlocoCobranca(clienteId){
   const saldo=getSaldoCliente(clienteId);
