@@ -580,8 +580,20 @@ function filtroAtivoHtml(rotulo,onLimpar,extra){
   return `<div class="filtro-ativo"><span class="filtro-ativo-chip">${rotulo}<button type="button" onclick="${onLimpar}" title="Limpar filtro" aria-label="Limpar filtro">✕</button></span>${extra||''}</div>`;
 }
 
+// v5.99.0 — ao navegar, o texto de TODAS as buscas some (busca global e a de cada tela).
+// Só o texto digitado: chips e filtros de tipo/status continuam como estão.
+function limparBuscasAoNavegar(){
+  if(typeof limparBuscaGlobalTexto==='function') limparBuscaGlobalTexto();
+  if(typeof state!=='undefined'&&state){
+    state.venda_filter='';state.estoque_filter='';state.fornecedor_filter='';state.precificacao_filter='';
+  }
+  try{ if(typeof movFiltro!=='undefined'&&movFiltro) movFiltro.q=''; }catch(e){}
+  document.querySelectorAll('input.search-input').forEach(i=>{i.value='';});
+}
+
 function gotoClientesDevendo(semHistorico=false, filtro='devendo'){
   if(!semHistorico) registrarHistoricoGestaoPro('clientes');
+  limparBuscasAoNavegar();
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
   const pgCl = document.getElementById('page-clientes');
@@ -620,6 +632,7 @@ function goto(page, semHistorico=false){
     document.querySelectorAll('.nav-group').forEach(x=>x.classList.toggle('open',x===g));
   }
   closeSidebar();
+  limparBuscasAoNavegar();
   if(page!=='clientes'&&typeof clienteFocoLimpar==='function') clienteFocoLimpar();
   if(page==='clientes'&&typeof limparFiltrosClientes==='function') limparFiltrosClientes();
   // entrar pelo menu sempre abre sem os filtros de atalho do painel
@@ -854,6 +867,71 @@ function render(page){
   document.addEventListener('touchcancel',fim);
 })();
 
+
+// ============ MENU PUXÁVEL PELA BORDA ESQUERDA (v5.99.0) ============
+// Abre arrastando a partir da borda esquerda; fecha arrastando o menu (ou o fundo) para a esquerda.
+// Só no celular/tablet (a partir de 1024px o menu já é fixo). Desligado com janela aberta.
+(function(){
+  const BORDA=24, LIMIAR=10;
+  let sb,bd,hb,larg=260,modo=null,x0=0,y0=0,t0=0,dx=0,travado=false,ultX=0,ultT=0,vel=0;
+  const get=()=>{sb=document.getElementById('sidebar');bd=document.getElementById('sidebar-backdrop');hb=document.getElementById('hamburger');return sb&&bd&&hb;};
+  const bloqueado=()=>{
+    if(window.innerWidth>=1024) return true;
+    if(document.querySelector('.modal-overlay.open')) return true;
+    if(document.getElementById('qa-sheet-backdrop')&&document.getElementById('qa-sheet-backdrop').classList.contains('open')) return true;
+    const ls=document.getElementById('lock-screen'); if(ls&&ls.style.display==='flex') return true;
+    return false;
+  };
+  const aplicar=p=>{ // p: 0 (fechado) .. 1 (aberto)
+    sb.style.transform='translateX('+Math.round((p-1)*larg)+'px)';
+    bd.style.background='rgba(0,0,0,'+(0.45*p).toFixed(3)+')';
+  };
+  const definir=abrir=>{
+    sb.classList.remove('arrastando');bd.classList.remove('arrastando');
+    sb.classList.toggle('open',abrir);bd.classList.toggle('open',abrir);hb.classList.toggle('open',abrir);
+    sb.style.transform='';bd.style.background='';bd.style.pointerEvents='';
+    if(!abrir&&typeof recolherFooterMenu==='function') recolherFooterMenu();
+  };
+  document.addEventListener('touchstart',e=>{
+    modo=null;travado=false;
+    if(e.touches.length!==1||!get()||bloqueado()) return;
+    const t=e.touches[0];
+    const aberto=sb.classList.contains('open');
+    if(!aberto&&t.clientX<=BORDA) modo='abrir';
+    else if(aberto&&(e.target.closest&&(e.target.closest('#sidebar')||e.target.id==='sidebar-backdrop'))) modo='fechar';
+    else return;
+    larg=sb.offsetWidth||260;
+    x0=ultX=t.clientX;y0=t.clientY;t0=ultT=Date.now();dx=0;vel=0;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!modo) return;
+    const t=e.touches[0];
+    const mx=t.clientX-x0,my=t.clientY-y0;
+    if(!travado){
+      if(Math.abs(my)>LIMIAR&&Math.abs(my)>Math.abs(mx)){modo=null;return;}   // é rolagem vertical
+      if(Math.abs(mx)<=LIMIAR) return;
+      if((modo==='abrir'&&mx<0)||(modo==='fechar'&&mx>0)){modo=null;return;}  // sentido errado
+      travado=true;sb.classList.add('arrastando');bd.classList.add('arrastando');bd.style.pointerEvents='all';
+    }
+    const agora=Date.now();
+    if(agora>ultT){vel=(t.clientX-ultX)/(agora-ultT);ultX=t.clientX;ultT=agora;}
+    dx=mx;
+    const p=modo==='abrir'?Math.min(1,Math.max(0,dx/larg)):Math.min(1,Math.max(0,1+dx/larg));
+    aplicar(p);
+    if(e.cancelable) e.preventDefault();
+  },{passive:false});
+  const fim=()=>{
+    if(!modo) return;
+    const m=modo;modo=null;
+    if(!travado) return;
+    travado=false;
+    const rapido=Math.abs(vel)>0.5;
+    if(m==='abrir') definir(rapido&&vel>0 ? true : (rapido&&vel<0 ? false : dx>larg*0.4));
+    else definir(rapido&&vel<0 ? false : (rapido&&vel>0 ? true : dx>-larg*0.4));
+  };
+  document.addEventListener('touchend',fim);
+  document.addEventListener('touchcancel',fim);
+})();
 
 // v5.51.2 — teclado aberto: campo em foco visível + força re-rasterização quando o teclado termina de
 // abrir/fechar (Chrome Android às vezes deixa áreas em branco/pretas na tela depois do resize).

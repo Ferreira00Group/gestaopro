@@ -137,7 +137,7 @@ const DEFAULT_STATE = {
   ],
   // Descontos comerciais por condição de pagamento, independentes dos canais de venda.
   condicoesPagamento:{avista:20,fiado:0},
-  descontosQuantidade:{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10},
+  descontosQuantidade:{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10,brindeAtivo:true,brindeValor:50,brindeQtd:1},
   estoque_tab:'produtos',
   cliente_filter:'',
   cliente_status_filter:'',
@@ -491,8 +491,8 @@ function carregarDados(){
       if(!state.cartoes||typeof state.cartoes!=='object'||Array.isArray(state.cartoes)) state.cartoes={total:100,vinculos:{}};
       if(!state.condicoesPagamento||typeof state.condicoesPagamento!=='object') state.condicoesPagamento={avista:20,fiado:0};
       state.condicoesPagamento={avista:Math.max(0,Math.min(100,Number(state.condicoesPagamento.avista??20)||0)),fiado:Math.max(0,Math.min(100,Number(state.condicoesPagamento.fiado??0)||0))};
-      if(!state.descontosQuantidade||typeof state.descontosQuantidade!=='object') state.descontosQuantidade={individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10};
-      state.descontosQuantidade={individualAtivo:state.descontosQuantidade.individualAtivo!==false,individualQtd:Math.max(1,Number(state.descontosQuantidade.individualQtd)||5),individualPct:Math.max(0,Math.min(100,Number(state.descontosQuantidade.individualPct)||0)),geralAtivo:state.descontosQuantidade.geralAtivo!==false,geralQtd:Math.max(1,Number(state.descontosQuantidade.geralQtd)||15),geralPct:Math.max(0,Math.min(100,Number(state.descontosQuantidade.geralPct)||0))};
+      if(!state.descontosQuantidade||typeof state.descontosQuantidade!=='object') state.descontosQuantidade={individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10,brindeAtivo:true,brindeValor:50,brindeQtd:1};
+      state.descontosQuantidade={individualAtivo:state.descontosQuantidade.individualAtivo!==false,individualQtd:Math.max(1,Number(state.descontosQuantidade.individualQtd)||5),individualPct:Math.max(0,Math.min(100,Number(state.descontosQuantidade.individualPct)||0)),geralAtivo:state.descontosQuantidade.geralAtivo!==false,geralQtd:Math.max(1,Number(state.descontosQuantidade.geralQtd)||15),geralPct:Math.max(0,Math.min(100,Number(state.descontosQuantidade.geralPct)||0)),brindeAtivo:state.descontosQuantidade.brindeAtivo!==false,brindeValor:Math.max(1,Number(state.descontosQuantidade.brindeValor)||50),brindeQtd:Math.max(1,Math.floor(Number(state.descontosQuantidade.brindeQtd))||1)};
       if(!state.semiacabados) state.semiacabados=[];
       if(!state.rotas) state.rotas=[];
       if(!Array.isArray(state.renegociacoes)) state.renegociacoes=[];
@@ -1457,6 +1457,28 @@ function copiarTexto(txt,msgOk){
   return fallback();
 }
 
+// ============ BUSCA DE CLIENTES: LINHA COM Nº DO CARTÃO E PINO DA ROTA (v5.99.0) ============
+// Mesmo ícone de pino (map-pin) dourado do card do cliente, em SVG embutido para aparecer
+// sempre dentro de listas montadas por innerHTML.
+function pinRotaSvg(){
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+}
+// Linha de resultado: "042  Nome" e, embaixo, "📍 Rota" (sem a linha quando não tem rota).
+function clienteBuscaItemHtml(c,onclick,sufixoNome){
+  const cartao=typeof cartoesDoCliente==='function'?cartoesDoCliente(c.id):c.cartaoNum;
+  const rota=typeof getRota==='function'?getRota(c.rotaId):null;
+  const num=cartao!=null?`<span class="busca-cli-num">${String(cartao).padStart(3,'0')}</span>`:'';
+  const linhaRota=rota?`<span class="busca-cli-rota">${pinRotaSvg()}<span>${escapeHtml(rota.nome)}</span></span>`:'';
+  return `<div class="busca-item busca-cli" onclick="${onclick}"><strong>${num}<span class="busca-cli-nome">${escapeHtml(c.nome)}${sufixoNome||''}</span></strong>${linhaRota}</div>`;
+}
+// Limpa só o texto da busca global (sem devolver o foco ao campo)
+function limparBuscaGlobalTexto(){
+  if(typeof state!=='undefined'&&state) state.global_search='';
+  const inp=document.getElementById('busca-global-input'); if(inp) inp.value='';
+  const el=document.getElementById('busca-global-resultados'); if(el){el.style.display='none';el.innerHTML='';}
+  const btn=document.getElementById('busca-bar-clear'); if(btn) btn.style.display='none';
+}
+
 // ============ BUSCA GLOBAL ============
 function buscaGlobal(termo){
   state.global_search=termo;
@@ -1474,7 +1496,7 @@ function buscaGlobal(termo){
     el.style.display='block';return;
   }
   let html='';
-  if(resClientes.length){html+=`<div class="busca-grupo-titulo">Clientes</div>`+resClientes.map(c=>`<div class="busca-item" onclick="irParaCliente(${c.id})"><strong>${escapeHtml(c.nome)}</strong><span>${escapeHtml(c.tel||'')}</span></div>`).join('');}
+  if(resClientes.length){html+=`<div class="busca-grupo-titulo">Clientes</div>`+resClientes.map(c=>clienteBuscaItemHtml(c,`irParaCliente(${c.id})`)).join('');}
   if(resProdutos.length){html+=`<div class="busca-grupo-titulo">Produtos</div>`+resProdutos.map(p=>`<div class="busca-item" onclick="goto('estoque');fecharBuscaGlobal()"><strong>${escapeHtml(p.nome)}</strong><span><b style="font-family:monospace">${fmtProdutoCod(p.id)}</b> ${escapeHtml(p.sku||'')} ${p.categoria?'· '+escapeHtml(p.categoria):''}</span></div>`).join('');}
   if(resVendas.length){html+=`<div class="busca-grupo-titulo">Vendas</div>`+resVendas.map(v=>`<div class="busca-item" onclick="goto('vendas');fecharBuscaGlobal()"><strong>${escapeHtml(getCliente(v.clienteId).nome)}</strong><span>${fmtDate(v.data)} · ${fmt(v.total)}</span></div>`).join('');}
   el.innerHTML=html;

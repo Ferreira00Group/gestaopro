@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="styles.css?v=5.97.0">
+<link rel="stylesheet" href="styles.css?v=5.99.0">
 </head>
 <body>
 <div id="lock-screen" style="position:fixed;inset:0;z-index:99999;background:#0B0B0C;display:none;align-items:center;justify-content:center;padding:24px">
@@ -1627,7 +1627,8 @@
         <span style="font-size:13px;font-weight:600;color:var(--muted)">Total (preço cheio)</span>
         <span style="font-size:20px;font-weight:800;color:var(--navy)" id="venda-total-geral">R$ 0,00</span>
       </div>
-      <div id="venda-condicao-desconto-info" style="font-size:12px;line-height:1.5;margin:8px 0 12px 2px;min-height:18px"></div>
+      <div id="venda-condicao-desconto-info" style="font-size:12px;line-height:1.5;margin:8px 0 4px 2px;min-height:18px"></div>
+      <div id="venda-brinde-info" style="font-size:12px;line-height:1.5;margin:0 0 12px 2px"></div>
       <div class="form-group">
         <label>Desconto extra <span style="font-weight:400;color:var(--muted)">(R$, opcional)</span></label>
         <input class="form-control" type="number" step="0.01" min="0" id="venda-desconto-extra" placeholder="0,00" oninput="calcTotalVendaGeral()">
@@ -2538,7 +2539,7 @@
   <div class="modal" style="max-width:480px">
     <div class="modal-header"><h3>Descontos por Quantidade</h3><button class="modal-close" onclick="closeModal('modal-descontos-quantidade')"><i data-lucide="x" class="ic"></i></button></div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Válidos somente para vendas fiado e aplicados automaticamente a todos os produtos.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Descontos válidos somente para vendas fiado e aplicados automaticamente a todos os produtos. O brinde vale à vista e no fiado.</p>
       <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
         <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="dq-individualAtivo"> Ativar desconto por produto</label>
         <div class="form-group" style="margin-top:10px"><label>Quantidade mínima do mesmo produto</label><input class="form-control" type="number" min="1" step="1" id="dq-individualQtd"></div>
@@ -2548,6 +2549,12 @@
         <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="dq-geralAtivo"> Ativar desconto geral da compra</label>
         <div class="form-group" style="margin-top:10px"><label>Quantidade mínima total da compra</label><input class="form-control" type="number" min="1" step="1" id="dq-geralQtd"></div>
         <div class="form-group"><label>Desconto geral (%)</label><input class="form-control" type="number" min="0" max="100" step="0.1" id="dq-geralPct"></div>
+      </div>
+      <div style="border:1px solid var(--gold);border-radius:10px;padding:12px;margin-top:12px">
+        <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="dq-brindeAtivo"> 🎁 Ativar brinde por valor</label>
+        <div class="form-group" style="margin-top:10px"><label>A cada (R$) do total a cobrar</label><input class="form-control" type="number" min="1" step="0.01" id="dq-brindeValor"></div>
+        <div class="form-group"><label>Brindes por faixa</label><input class="form-control" type="number" min="1" step="1" id="dq-brindeQtd"></div>
+        <p style="font-size:12px;color:var(--muted);margin:0">Na Nova Venda, toque no card 🎁 Brinde e depois no produto que será o brinde. Se passar do direito, o app só avisa.</p>
       </div>
       <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-descontos-quantidade')">Cancelar</button><button class="btn btn-primary" onclick="salvarDescontosQuantidade()">Salvar promoções</button></div>
     </div>
@@ -2626,36 +2633,36 @@
 })();
 </script>
 
-<script src="00a-config.js?v=5.97.0"></script>
-<script src="00-core.js?v=5.97.0"></script>
-<script src="lib-qrcode.js?v=5.97.0"></script>
-<script src="01-ui-nav.js?v=5.97.0"></script>
-<script src="02-dashboard.js?v=5.97.0"></script>
-<script src="03-clientes.js?v=5.97.0"></script>
-<script src="04-vendas.js?v=5.97.0"></script>
-<script src="04b-pix-extrato.js?v=5.97.0"></script>
-<script src="11b-meu-dia.js?v=5.97.0"></script>
-<script src="11c-promessa-reneg.js?v=5.97.0"></script>
-<script src="11d-aprovar-lote.js?v=5.97.0"></script>
-<script src="05-producao.js?v=5.97.0"></script>
-<script src="06-estoque.js?v=5.97.0"></script>
-<script src="07-precificacao.js?v=5.97.0"></script>
-<script src="08-compras-fornecedores.js?v=5.97.0"></script>
-<script src="09-financeiro-relatorios.js?v=5.97.0"></script>
-<script src="10-fab-inline.js?v=5.97.0"></script>
-<script src="10b-planejamento.js?v=5.97.0"></script>
-<script src="13-crm.js?v=5.97.0"></script>
-<script src="14-relacionamento.js?v=5.97.0"></script>
-<script src="15-cliente360.js?v=5.97.0"></script>
-<script src="16-automacoes.js?v=5.97.0"></script>
-<script src="17-banco.js?v=5.97.0"></script>
-<script src="18-credito.js?v=5.97.0"></script>
-<script src="19-conectores.js?v=5.97.0"></script>
-<script src="20-cartoes.js?v=5.97.0"></script>
-<script src="12-drive-backup.js?v=5.97.0"></script>
-<script src="11-app-init.js?v=5.97.0"></script>
-<script src="21-gemini-ia.js?v=5.97.0"></script>
-<script src="22-operacao-foco.js?v=5.97.0"></script>
+<script src="00a-config.js?v=5.99.0"></script>
+<script src="00-core.js?v=5.99.0"></script>
+<script src="lib-qrcode.js?v=5.99.0"></script>
+<script src="01-ui-nav.js?v=5.99.0"></script>
+<script src="02-dashboard.js?v=5.99.0"></script>
+<script src="03-clientes.js?v=5.99.0"></script>
+<script src="04-vendas.js?v=5.99.0"></script>
+<script src="04b-pix-extrato.js?v=5.99.0"></script>
+<script src="11b-meu-dia.js?v=5.99.0"></script>
+<script src="11c-promessa-reneg.js?v=5.99.0"></script>
+<script src="11d-aprovar-lote.js?v=5.99.0"></script>
+<script src="05-producao.js?v=5.99.0"></script>
+<script src="06-estoque.js?v=5.99.0"></script>
+<script src="07-precificacao.js?v=5.99.0"></script>
+<script src="08-compras-fornecedores.js?v=5.99.0"></script>
+<script src="09-financeiro-relatorios.js?v=5.99.0"></script>
+<script src="10-fab-inline.js?v=5.99.0"></script>
+<script src="10b-planejamento.js?v=5.99.0"></script>
+<script src="13-crm.js?v=5.99.0"></script>
+<script src="14-relacionamento.js?v=5.99.0"></script>
+<script src="15-cliente360.js?v=5.99.0"></script>
+<script src="16-automacoes.js?v=5.99.0"></script>
+<script src="17-banco.js?v=5.99.0"></script>
+<script src="18-credito.js?v=5.99.0"></script>
+<script src="19-conectores.js?v=5.99.0"></script>
+<script src="20-cartoes.js?v=5.99.0"></script>
+<script src="12-drive-backup.js?v=5.99.0"></script>
+<script src="11-app-init.js?v=5.99.0"></script>
+<script src="21-gemini-ia.js?v=5.99.0"></script>
+<script src="22-operacao-foco.js?v=5.99.0"></script>
 
 <!-- MODAL NOVO PRODUTO -->
 <div class="modal-overlay" id="modal-novo-produto">

@@ -135,7 +135,7 @@ function renegMontarItens(clienteId){
     const rest = round2(m.valorRestante||0); if(rest<=0.009) return;
     const total = round2(m.parcelas.reduce((s,p)=>s+p.valor,0));
     itens.push({chave:'v'+v.id, tipo:'venda', id:v.id, restante:rest, total, venc:m.vencimentoPendente||v.vencimento||'', data:v.data,
-      desc:(v.itens||[]).map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')||'Venda'});
+      desc:(v.itens||[]).filter(it=>!it.brinde).map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')||'Venda'});
   });
   (state.renegociacoes||[]).filter(r=>r.clienteId==clienteId && !r.substituidaPor).forEach(r=>{
     const m = mapa['R'+r.id]; if(!m) return;

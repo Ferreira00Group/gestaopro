@@ -240,6 +240,15 @@ function gerarRelatorio(){
   const temHistoricoMarketing=state.financeiro.some(f=>f.tipo==='saida'&&(f.categoria||'').trim().toLowerCase()==='marketing/aquisição');
   const gastoAquisicao=finPeriodo.filter(f=>f.tipo==='saida'&&(f.categoria||'').trim().toLowerCase()==='marketing/aquisição').reduce((s,f)=>s+f.valor,0);
   const cac=clientesNovos>0?(gastoAquisicao/clientesNovos):null;
+  // 🎁 Brindes do período (quantidade, custo da ficha técnica e quem mais ganhou)
+  let brindesQtd=0,brindesCusto=0;const brindePorCli={};
+  vendasPeriodo.forEach(v=>(v.itens||[]).forEach(it=>{
+    if(!it.brinde) return;
+    const q=Number(it.qtd)||0; if(q<=0) return;
+    const cu=it.custoFichaUn!=null?Math.max(0,Number(it.custoFichaUn)||0):Math.max(0,Number(calcularCustoFicha(it.produtoId,it.varianteId,1))||0);
+    brindesQtd+=q;brindesCusto+=cu*q;brindePorCli[v.clienteId]=(brindePorCli[v.clienteId]||0)+q;
+  }));
+  const topBrinde=Object.entries(brindePorCli).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,q])=>{const c=getCliente(parseInt(id));return escapeHtml((c&&c.nome)?c.nome:'Sem cliente')+' ('+q+')';}).join(', ');
   const oldExtra=document.getElementById('rel-extra-indicadores');
   if(oldExtra) oldExtra.remove();
   const cardsGrid=document.querySelector('#relatorio-resultado .cards-grid-4');
@@ -248,6 +257,8 @@ function gerarRelatorio(){
     <div class="cards-grid cards-grid-2" id="rel-extra-indicadores" style="margin-bottom:20px">
       <div class="stat-card blue"><div class="label">Clientes Novos</div><div class="value">${clientesNovos}</div><div class="sub">cadastrados no período</div></div>
       <div class="stat-card blue"><div class="label">CAC</div><div class="value">${cac!=null?fmt(cac):'—'}</div><div class="sub">${!temHistoricoMarketing?'sem lançamento em "Marketing/Aquisição" ainda':clientesNovos===0?'sem cliente novo no período':'gasto aquisição ÷ clientes novos'}</div></div>
+      <div class="stat-card blue"><div class="label">🎁 Brindes dados</div><div class="value">${brindesQtd}</div><div class="sub">${brindesQtd>0?topBrinde:'nenhum brinde no período'}</div></div>
+      <div class="stat-card blue"><div class="label">🎁 Custo dos brindes</div><div class="value">${fmt(brindesCusto)}</div><div class="sub">pela ficha técnica dos produtos</div></div>
     </div>`);
   }
 

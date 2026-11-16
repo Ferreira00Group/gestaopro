@@ -8,8 +8,18 @@ function nomeItemVenda(it){
   if(it&&it.avulso) return String(it.nome||'').trim()||'Item avulso';
   return getNomeCompletoItem(it.produtoId,it.varianteId);
 }
+// 🎁 Brinde (v5.98): item da venda com brinde:true, preço 0, baixa estoque e guarda o custo.
+function nomeItemVendaExib(it){ const n=nomeItemVenda(it); return (it&&it.brinde)?'🎁 Brinde: '+n:n; }
+function round4(x){ return Math.round(x*10000)/10000; }
+// Total da linha: brinde = 0; total digitado à mão (totalFixo) manda; senão qtd × preço.
+function vcTotalLinha(it){
+  if(it.brinde) return 0;
+  if(it.totalFixo!=null) return Number(it.totalFixo)||0;
+  return Math.round((it.qtd||0)*(it.preco||0)*100)/100;
+}
 function itemVendaGravar(it,comCusto){
-  const base={produtoId:it.avulso?null:it.produtoId,varianteId:it.avulso?null:(it.varianteId||null),qtd:it.qtd,preco:it.preco,total:it.qtd*it.preco,...(Number.isFinite(Number(it.precoBase))?{precoBase:Number(it.precoBase)}:{})};
+  const base={produtoId:it.avulso?null:it.produtoId,varianteId:it.avulso?null:(it.varianteId||null),qtd:it.qtd,preco:it.preco,total:(it.totalFixo!=null||it.brinde)?vcTotalLinha(it):it.qtd*it.preco,...(Number.isFinite(Number(it.precoBase))?{precoBase:Number(it.precoBase)}:{})};
+  if(it.brinde) base.brinde=true;
   if(it.avulso){base.avulso=true;base.nome=nomeItemVenda(it);}
   // Avulso não tem ficha técnica: o custo é o que o usuário informou (opcional, 0 = não informado).
   // Mesmo no orçamento (comCusto=false) guarda o custo informado, pra não perder ao converter em venda.
@@ -81,7 +91,7 @@ function renderVendas(){
     const isOrc=v.tipo==='orcamento';
     const sit=isOrc?null:sitDe(v);
     const itensTxt=v.itens&&v.itens.length>0?v.itens.map(it=>
-      `<div><span>${nomeItemVenda(it)}</span><span class="qtd-pill">${String(it.qtd).padStart(2,'0')} L</span></div>`
+      `<div><span>${nomeItemVendaExib(it)}</span><span class="qtd-pill">${String(it.qtd).padStart(2,'0')} L</span></div>`
     ).join(''):'—';
     const expandido=vendasExpandidas.has(v.id);
     const formaTxt=isOrc?'—':(v.parcelado
@@ -281,11 +291,8 @@ function renderClienteComboResultados(termo){
     el.innerHTML='<div class="busca-item" style="cursor:default;color:var(--muted)">Nenhum cliente encontrado</div>';
   } else {
     el.innerHTML=lista.map(c=>{
-      const rota=getRota(c.rotaId);
-      const cartao=typeof cartoesDoCliente==='function'?cartoesDoCliente(c.id):c.cartaoNum;
-      const cartaoTxt=cartao!=null?` · Cartão #${String(cartao).padStart(3,'0')}`:'';
       const arq=!estaAtivo(c)?' <span style="color:var(--muted);font-weight:400">(arquivado)</span>':'';
-      return `<div class="busca-item" onclick="selecionarClienteVenda(${c.id})"><strong>${escapeHtml(c.nome)}${arq}</strong><span>${escapeHtml(c.tel||'sem telefone')}${cartaoTxt}${rota?' · <i data-lucide="map-pin" class="ic ic-sm"></i> '+escapeHtml(rota.nome):''}</span></div>`;
+      return clienteBuscaItemHtml(c,`selecionarClienteVenda(${c.id})`,arq);
     }).join('');
     if(listaCompleta.length>8) el.innerHTML+=`<div style="padding:8px 14px;font-size:11px;color:var(--muted)">+${listaCompleta.length-8} outro(s) — refine a busca</div>`;
   }
@@ -357,11 +364,11 @@ function vendaResetCampos(){
 }
 function vcBuscar(v){vendaCatBusca=String(v||'').trim().toLowerCase();renderVendaItensLista();}
 function vcItemCatalogo(produtoId,varianteId){
-  return vendaItensTemp.find(it=>!it.avulso&&it.produtoId==produtoId&&(it.varianteId||null)==(varianteId||null));
+  return vendaItensTemp.find(it=>!it.avulso&&!it.brinde&&it.produtoId==produtoId&&(it.varianteId||null)==(varianteId||null));
 }
 function vcItemPorChave(key){
   const [t,a,b]=key.split(':');
-  if(t==='a') return vendaItensTemp.find(x=>x.uid===a);
+  if(t==='a'||t==='b') return vendaItensTemp.find(x=>x.uid===a);
   return vcItemCatalogo(parseInt(a),b?parseInt(b):null);
 }
 let vendaCondicaoPagamento='fiado';
@@ -373,18 +380,23 @@ function vcAplicarDescontoCondicao(precoBase){
   return Math.max(0,Number((Number(precoBase||0)*(1-vcPercentualCondicao()/100)).toFixed(2)));
 }
 function vcCalcularPrecoComPromocoes(it,totalQtd){
+  if(it.brinde) return 0;
   const base=Number(it.precoBase??it.preco)||0;
   let preco=vcAplicarDescontoCondicao(base);
   if(vendaCondicaoPagamento!=='fiado')return Math.max(0,Number(preco.toFixed(2)));
   const cfg=state.descontosQuantidade||{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10};
-  const qtdMesmoProduto=it.avulso?0:vendaItensTemp.filter(x=>!x.avulso&&x.produtoId==it.produtoId&&(x.varianteId||null)==(it.varianteId||null)).reduce((a,x)=>a+(Number(x.qtd)||0),0);
+  const qtdMesmoProduto=it.avulso?0:vendaItensTemp.filter(x=>!x.avulso&&!x.brinde&&x.produtoId==it.produtoId&&(x.varianteId||null)==(it.varianteId||null)).reduce((a,x)=>a+(Number(x.qtd)||0),0);
   if(!it.avulso&&cfg.individualAtivo!==false&&qtdMesmoProduto>=Number(cfg.individualQtd||5))preco*=1-Math.max(0,Math.min(100,Number(cfg.individualPct)||0))/100;
   if(cfg.geralAtivo!==false&&totalQtd>=Number(cfg.geralQtd||15))preco*=1-Math.max(0,Math.min(100,Number(cfg.geralPct)||0))/100;
   return Math.max(0,Number(preco.toFixed(2)));
 }
 function recalcularPrecosPromocionaisVenda(){
-  const totalQtd=vendaItensTemp.reduce((a,it)=>a+(Number(it.qtd)||0),0);
-  vendaItensTemp.forEach(it=>{it.preco=vcCalcularPrecoComPromocoes(it,totalQtd);});
+  const totalQtd=vendaItensTemp.reduce((a,it)=>a+(it.brinde?0:(Number(it.qtd)||0)),0);
+  vendaItensTemp.forEach(it=>{
+    if(it.brinde){it.preco=0;return;}
+    if(it.totalFixo!=null) return; // total digitado à mão: mantém o preço até mudar quantidade/condição/canal
+    it.preco=vcCalcularPrecoComPromocoes(it,totalQtd);
+  });
   return totalQtd;
 }
 function vcPrecoBaseCatalogo(produtoId){
@@ -396,13 +408,14 @@ function vcPrecoBaseCatalogo(produtoId){
 function vcPrecoCatalogo(produtoId){return vcAplicarDescontoCondicao(vcPrecoBaseCatalogo(produtoId));}
 function renderCondicaoPagamentoVenda(){
   const wrap=document.getElementById('venda-condicao-pagamento'); if(!wrap)return;
-  const pct=vcPercentualCondicao();
+  const cfgCond=state.condicoesPagamento||{avista:20,fiado:0};
+  const pctDe=t=>Math.max(0,Math.min(100,Number(cfgCond[t]??(t==='avista'?20:0))||0));
   ['avista','fiado'].forEach(tipo=>{
     const b=document.getElementById('venda-condicao-'+tipo); if(!b)return;
     const ativo=vendaCondicaoPagamento===tipo;
     b.className='btn btn-sm '+(ativo?'btn-primary':'btn-outline');
     b.style.flex='1';b.style.borderColor=ativo?'var(--gold)':'var(--border)';
-    b.innerHTML=tipo==='avista'?`<i data-lucide="banknote" class="ic"></i> À vista <span style="font-size:11px;opacity:.85">−${pct.toLocaleString('pt-BR')}%</span>`:`<i data-lucide="calendar-clock" class="ic"></i> Fiado <span style="font-size:11px;opacity:.85">${pct>0?'−'+pct.toLocaleString('pt-BR')+'%':'sem desconto'}</span>`;
+    b.innerHTML=tipo==='avista'?`<i data-lucide="banknote" class="ic"></i> À vista <span style="font-size:11px;opacity:.85">${pctDe('avista')>0?'−'+pctDe('avista').toLocaleString('pt-BR')+'%':'sem desconto'}</span>`:`<i data-lucide="calendar-clock" class="ic"></i> Fiado <span style="font-size:11px;opacity:.85">${pctDe('fiado')>0?'−'+pctDe('fiado').toLocaleString('pt-BR')+'%':'sem desconto'}</span>`;
   });
   if(window.lucide&&lucide.createIcons)lucide.createIcons();
 }
@@ -419,6 +432,8 @@ function definirCondicaoPagamentoVenda(tipo,ajustarForma=true){
     }
   }
   vendaItensTemp.forEach(it=>{
+    if(it.brinde){it.preco=0;return;}
+    if(it.totalFixo!=null){ if(it.precoBaseOrig!=null) it.precoBase=it.precoBaseOrig; delete it.totalFixo; delete it.precoBaseOrig; }
     let base;if(it.avulso)base=Number(it.precoBase??it.preco)||0;
     else base=vcPrecoBaseCatalogo(it.produtoId);
     it.precoBase=base;it.preco=vcAplicarDescontoCondicao(base);
@@ -457,8 +472,66 @@ function vcStepper(key,qtd,alerta){
 // Toque no card: produto simples entra direto; produto com opções abre o seletor flutuante
 function tocarProdutoVenda(produtoId){
   const p=getProduto(produtoId); if(!p) return;
+  if(vendaBrindeArmado){ // 🎁 botão Brinde ativo: o próximo produto tocado entra como brinde
+    vendaBrindeArmado=false;
+    if(p.variantes&&p.variantes.length){ abrirSeletorVariante(produtoId,'brinde'); renderVendaItensLista(); }
+    else vcBrindeAjustar(produtoId,null,1);
+    return;
+  }
   if(p.variantes&&p.variantes.length) abrirSeletorVariante(produtoId,'venda');
   else vcAjustar(`p:${produtoId}:`,1);
+}
+// ── 🎁 Brinde por valor (v5.98) ──
+let vendaBrindeArmado=false;
+function vcBrindeCfg(){
+  const d=state.descontosQuantidade||{};
+  return {ativo:d.brindeAtivo!==false, valor:Math.max(1,Number(d.brindeValor)||50), qtd:Math.max(1,Math.floor(Number(d.brindeQtd))||1)};
+}
+function vcBrindesUsados(){ return vendaItensTemp.filter(it=>it.brinde).reduce((s,it)=>s+(Number(it.qtd)||0),0); }
+// Direito a brindes = a cada R$ X do total a cobrar (já com descontos, sem juros); a sobra não acumula
+function vcBrindesDisponiveis(){
+  const c=vcBrindeCfg(); if(!c.ativo) return 0;
+  return Math.floor(calcTotalVendaGeralSemRecursao()/c.valor+1e-9)*c.qtd;
+}
+function vcBrindeQtd(produtoId,varianteId){
+  const b=vendaItensTemp.find(it=>it.brinde&&it.produtoId==produtoId&&(it.varianteId||null)==(varianteId||null));
+  return b?b.qtd:0;
+}
+function vcQtdProdutoTotal(produtoId,varianteId){
+  return vendaItensTemp.filter(x=>!x.avulso&&x.produtoId==produtoId&&(x.varianteId||null)==(varianteId||null)).reduce((s,x)=>s+(Number(x.qtd)||0),0);
+}
+function toggleBrindeVenda(){
+  vendaBrindeArmado=!vendaBrindeArmado;
+  renderVendaItensLista();
+}
+function vcBrindeAjustar(produtoId,varianteId,delta){
+  const vid=varianteId?parseInt(varianteId):null;
+  let b=vendaItensTemp.find(it=>it.brinde&&it.produtoId==produtoId&&(it.varianteId||null)==vid);
+  if(!b){
+    if(delta<=0) return;
+    b=criarLinhaItemVenda({produtoId:parseInt(produtoId),varianteId:vid,qtd:0,preco:0,precoBase:0,brinde:true});
+    vendaItensTemp.push(b);
+  }
+  b.qtd=Math.max(0,(b.qtd||0)+delta);
+  if(b.qtd<=0) vendaItensTemp=vendaItensTemp.filter(x=>x!==b);
+  renderVendaItensLista();
+  if(delta>0&&vcBrindesUsados()>vcBrindesDisponiveis()) showToast('Atenção: brindes acima do direito desta compra ('+vcBrindesDisponiveis()+')','red');
+}
+// Texto embaixo do total + contador do card 🎁 (chamado a cada recálculo do total)
+function atualizarInfoBrinde(){
+  const c=vcBrindeCfg(), usados=vcBrindesUsados(), disp=vcBrindesDisponiveis();
+  const info=document.getElementById('venda-brinde-info');
+  if(info){
+    if(!c.ativo&&usados===0) info.innerHTML='';
+    else if(usados>disp) info.innerHTML=`<div style="color:var(--red);font-weight:700">⚠️ ${usados} brinde${usados>1?'s':''} na venda, mas o valor dá direito a ${disp}</div>`;
+    else {
+      const total=calcTotalVendaGeralSemRecursao();
+      const resto=total-Math.floor(total/c.valor+1e-9)*c.valor, falta=Math.round((c.valor-resto)*100)/100;
+      info.innerHTML=`<div style="color:${usados>0?'var(--green)':'var(--muted)'};font-weight:${usados>0?700:400}">🎁 ${usados} de ${disp} ${disp===1?'brinde usado':'brindes usados'} · faltam ${fmt(falta)} para ${disp>0?'o próximo':'o 1º brinde'}</div>`;
+    }
+  }
+  const badge=document.getElementById('venda-brinde-badge');
+  if(badge){ const rest=disp-usados; badge.textContent=rest<0?String(rest):String(rest); badge.style.background=rest<0?'var(--red)':''; }
 }
 function renderVendaItensLista(){
   recalcularPrecosPromocionaisVenda();
@@ -476,9 +549,9 @@ function renderVendaItensLista(){
   vendaItensTemp.filter(it=>it.avulso).forEach(it=>{
     const key='a:'+it.uid;
     html+=`<div class="vc-row sel">
-      <div class="vc-info"><p class="vc-nome">${escapeHtml(nomeItemVenda(it))}<span class="vc-tag">avulso</span></p><p class="vc-sub">Base ${fmt(it.precoBase??it.preco)} · ${vendaCondicaoPagamento==='avista'?'desconto à vista':''} ${vcPercentualCondicao()>0?`−${vcPercentualCondicao()}% · `:''}<strong>Final ${fmt(it.preco)}</strong></p></div>
+      <div class="vc-info"><p class="vc-nome">${escapeHtml(nomeItemVenda(it))}<span class="vc-tag">avulso</span></p><p class="vc-sub">Base ${fmt(it.precoBase??it.preco)} · ${vendaCondicaoPagamento==='avista'?'desconto à vista':''} ${vcPercentualCondicao()>0?`−${vcPercentualCondicao()}% · `:''}<strong id="vc-final-${it.uid}">Final ${fmt(it.preco)}</strong></p></div>
       ${vcStepper(key,it.qtd,false)}
-      <label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>
+      <label class="vc-preco">Total do item <input type="number" step="0.01" min="0" class="form-control" value="${vcTotalLinha(it).toFixed(2)}" oninput="vcTotalItem('${key}',this.value)"></label>
       <label class="vc-preco">Custo un. <input type="number" step="0.01" min="0" class="form-control" value="${it.custo||''}" placeholder="opcional" oninput="vcCustoAvulso('${key}',this.value)"></label>
     </div>`;
   });
@@ -486,12 +559,23 @@ function renderVendaItensLista(){
     const it=vcItemCatalogo(e.produtoId,e.varianteId);
     if(!it) return;
     const key=`p:${e.produtoId}:${e.varianteId||''}`;
-    const falta=verEstoque&&it.qtd>e.estoque;
+    const falta=verEstoque&&vcQtdProdutoTotal(e.produtoId,e.varianteId)>e.estoque;
     html+=`<div class="vc-row sel">
       <div class="vc-info"><p class="vc-nome">${escapeHtml(e.nome)}</p>
-        <p class="vc-sub">${escapeHtml(e.cod)} · Base ${fmt(it.precoBase??vcPrecoBaseCatalogo(e.produtoId))} · ${vcPercentualCondicao()>0?`<span style="color:var(--green)">−${vcPercentualCondicao()}% ${vendaCondicaoPagamento==='avista'?'à vista':''}</span> · `:''}<strong>Final ${fmt(it.preco)}</strong> · ${e.estoque > 5 ? `<span style="color:#4CC38A;font-weight:600">✓ ${e.estoque} em estoque</span>` : (e.estoque > 0 ? `<span style="color:#E3C16F;font-weight:600">⚠️ Apenas ${e.estoque} un</span>` : `<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`)}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
+        <p class="vc-sub">${escapeHtml(e.cod)} · Base ${fmt(it.precoBase??vcPrecoBaseCatalogo(e.produtoId))} · ${vcPercentualCondicao()>0?`<span style="color:var(--green)">−${vcPercentualCondicao()}% ${vendaCondicaoPagamento==='avista'?'à vista':''}</span> · `:''}<strong id="vc-final-${it.uid}">Final ${fmt(it.preco)}</strong> · ${e.estoque > 5 ? `<span style="color:#4CC38A;font-weight:600">✓ ${e.estoque} em estoque</span>` : (e.estoque > 0 ? `<span style="color:#E3C16F;font-weight:600">⚠️ Apenas ${e.estoque} un</span>` : `<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`)}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
       ${vcStepper(key,it.qtd,falta)}
-      <label class="vc-preco">Preço un. <input type="number" step="0.01" min="0" class="form-control" value="${it.preco}" oninput="vcPreco('${key}',this.value)"></label>
+      <label class="vc-preco">Total do item <input type="number" step="0.01" min="0" class="form-control" value="${vcTotalLinha(it).toFixed(2)}" oninput="vcTotalItem('${key}',this.value)"></label>
+    </div>`;
+  });
+  vendaItensTemp.filter(it=>it.brinde).forEach(it=>{
+    const key='b:'+it.uid;
+    const ent=entradas.find(e=>e.produtoId==it.produtoId&&(e.varianteId||null)==(it.varianteId||null));
+    const est=ent?ent.estoque:0;
+    const falta=verEstoque&&vcQtdProdutoTotal(it.produtoId,it.varianteId)>est;
+    html+=`<div class="vc-row sel" style="border-left:3px solid var(--gold)">
+      <div class="vc-info"><p class="vc-nome">🎁 ${escapeHtml(getNomeCompletoItem(it.produtoId,it.varianteId))}<span class="vc-tag">brinde</span></p>
+        <p class="vc-sub"><strong style="color:var(--green)">Grátis</strong> · ${est>0?`<span style="color:#4CC38A;font-weight:600">✓ ${est} em estoque</span>`:`<span style="color:#E5604F;font-weight:600">✕ Sem estoque</span>`}${falta?' · <span class="aviso">estoque insuficiente</span>':''}</p></div>
+      ${vcStepper(key,it.qtd,falta)}
     </div>`;
   });
   const temSel=html!=='';
@@ -537,7 +621,16 @@ function renderVendaItensLista(){
         </div>
       </div>`;
     }).join('');
-    grid.innerHTML=repetirHtml+(cards||`<div class="vc-vazio" style="grid-column:1/-1">${termo?'Nenhum item encontrado':'Nenhum produto cadastrado'}</div>`);
+    const bc=vcBrindeCfg();
+    const rest=vcBrindesDisponiveis()-vcBrindesUsados();
+    const cardBrinde=(bc.ativo&&!termo)?`<div class="pdv-card-prod${vendaBrindeArmado?' selecionado':''}" onclick="toggleBrindeVenda()" style="border:1px dashed var(--gold)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">🎁 Brinde</div>
+          <span class="pdv-card-badge" id="venda-brinde-badge"${rest<0?' style="background:var(--red)"':''}>${rest}</span>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:${vendaBrindeArmado?'var(--gold,#C9A24B)':'var(--muted)'};font-weight:${vendaBrindeArmado?700:600}">${vendaBrindeArmado?'Toque no produto do brinde':'A cada '+fmt(bc.valor)+' em compras'}</div>
+      </div>`:'';
+    grid.innerHTML=repetirHtml+cardBrinde+(cards||`<div class="vc-vazio" style="grid-column:1/-1">${termo?'Nenhum item encontrado':'Nenhum produto cadastrado'}</div>`);
   }
   const n=vendaItensTemp.filter(it=>(it.produtoId||it.avulso)&&it.qtd>0).reduce((s,it)=>s+it.qtd,0);
   const rs=document.getElementById('venda-itens-resumo');
@@ -553,6 +646,7 @@ function vcDefinir(key,qtd){
   if(qtd<=0){
     if(it) vendaItensTemp=vendaItensTemp.filter(x=>x!==it);
   } else if(it){
+    if(it.totalFixo!=null&&it.qtd!==qtd){ if(it.precoBaseOrig!=null) it.precoBase=it.precoBaseOrig; delete it.totalFixo; delete it.precoBaseOrig; }
     it.qtd=qtd;
   } else if(t==='p'){
     const produtoId=parseInt(a),varianteId=b?parseInt(b):null;
@@ -573,6 +667,18 @@ function vcPreco(key,valor){
   if(!it) return;
   it.preco=Math.max(0,parseFloat(valor)||0);
   const pct=vcPercentualCondicao();it.precoBase=pct<100?it.preco/(1-pct/100):it.preco;
+  calcTotalVendaGeral();
+}
+// Total do item digitado à mão (ex.: 3 sabões por R$ 25,00): o unitário vira total ÷ quantidade
+function vcTotalItem(key,valor){
+  const it=vcItemPorChave(key);
+  if(!it||it.brinde) return;
+  const total=Math.max(0,Math.round((parseFloat(String(valor).replace(',','.'))||0)*100)/100);
+  if(it.precoBaseOrig==null) it.precoBaseOrig=it.precoBase;
+  it.totalFixo=total;
+  it.preco=it.qtd>0?round4(total/it.qtd):0;
+  const pct=vcPercentualCondicao(); it.precoBase=pct<100?it.preco/(1-pct/100):it.preco;
+  const sp=document.getElementById('vc-final-'+it.uid); if(sp) sp.textContent='Final '+fmt(it.preco);
   calcTotalVendaGeral();
 }
 function vcCustoAvulso(key,valor){
@@ -614,22 +720,24 @@ function avulsoAdicionar(){
   avulsoDesenhar();
 }
 function calcTotalVendaGeral(){
-  const totalCheio=vendaItensTemp.reduce((s,it)=>{
+  const itensPag=vendaItensTemp.filter(it=>!it.brinde); // brinde não entra nos totais
+  const totalCheio=itensPag.reduce((s,it)=>{
     const base=it.avulso?Number(it.precoBase??it.preco)||0:(getProduto(it.produtoId)?.preco||0);
     return s+((it.qtd||0)*base);
   },0);
   const el=document.getElementById('venda-total-geral');
   if(el)el.textContent=fmt(totalCheio);
-  const subtotalCondicao=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*(Number(it.precoBase??(it.avulso?it.preco:vcPrecoBaseCatalogo(it.produtoId)))||0)),0);
-  const totalComCanal=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*(it.preco||0)),0);
-  const totalAposCondicao=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*vcAplicarDescontoCondicao(Number(it.precoBase??it.preco)||0)),0);
+  const subtotalCondicao=itensPag.reduce((s,it)=>s+((it.qtd||0)*(Number(it.precoBase??(it.avulso?it.preco:vcPrecoBaseCatalogo(it.produtoId)))||0)),0);
+  const totalComCanal=itensPag.reduce((s,it)=>s+vcTotalLinha(it),0);
+  const totalAposCondicao=itensPag.reduce((s,it)=>s+((it.qtd||0)*vcAplicarDescontoCondicao(Number(it.precoBase??it.preco)||0)),0);
   const descontoCondicao=Math.max(0,subtotalCondicao-totalAposCondicao);
   const info=document.getElementById('venda-condicao-desconto-info');
-  if(info){const pct=vcPercentualCondicao();const dq=state.descontosQuantidade||{};const totalQtd=vendaItensTemp.reduce((a,it)=>a+(Number(it.qtd)||0),0);const qtdDesconto=vendaCondicaoPagamento==='fiado'&&dq.individualAtivo!==false&&vendaItensTemp.some(it=>!it.avulso&&vendaItensTemp.filter(x=>!x.avulso&&x.produtoId==it.produtoId&&(x.varianteId||null)==(it.varianteId||null)).reduce((a,x)=>a+(Number(x.qtd)||0),0)>=Number(dq.individualQtd||5));const geralDesconto=vendaCondicaoPagamento==='fiado'&&dq.geralAtivo!==false&&totalQtd>=Number(dq.geralQtd||15);const linhas=[];if(pct>0&&descontoCondicao>0.001)linhas.push(`Desconto ${vendaCondicaoPagamento==='avista'?'à vista':'da condição'} (${pct}%): −${fmt(descontoCondicao)}`);if(qtdDesconto)linhas.push(`Desconto por produto: ${dq.individualPct||0}% nos produtos que atingiram ${dq.individualQtd||5}+ unidades`);if(geralDesconto)linhas.push(`Desconto geral: ${dq.geralPct||0}% sobre todos os itens (${totalQtd} unidades)`);info.innerHTML=linhas.length?linhas.map(t=>`<div style="color:var(--green);font-weight:700">${t}</div>`).join(''):`<span style="color:var(--muted)">${vendaCondicaoPagamento==='fiado'?'Promoções por quantidade ainda não atingidas':'Sem desconto por condição'}</span>`;}
+  if(info){const pct=vcPercentualCondicao();const dq=state.descontosQuantidade||{};const totalQtd=itensPag.reduce((a,it)=>a+(Number(it.qtd)||0),0);const qtdDesconto=vendaCondicaoPagamento==='fiado'&&dq.individualAtivo!==false&&itensPag.some(it=>!it.avulso&&itensPag.filter(x=>!x.avulso&&x.produtoId==it.produtoId&&(x.varianteId||null)==(it.varianteId||null)).reduce((a,x)=>a+(Number(x.qtd)||0),0)>=Number(dq.individualQtd||5));const geralDesconto=vendaCondicaoPagamento==='fiado'&&dq.geralAtivo!==false&&totalQtd>=Number(dq.geralQtd||15);const linhas=[];if(pct>0&&descontoCondicao>0.001)linhas.push(`Desconto ${vendaCondicaoPagamento==='avista'?'à vista':'da condição'} (${pct}%): −${fmt(descontoCondicao)}`);if(qtdDesconto)linhas.push(`Desconto por produto: ${dq.individualPct||0}% nos produtos que atingiram ${dq.individualQtd||5}+ unidades`);if(geralDesconto)linhas.push(`Desconto geral: ${dq.geralPct||0}% sobre todos os itens (${totalQtd} unidades)`);info.innerHTML=linhas.length?linhas.map(t=>`<div style="color:var(--green);font-weight:700">${t}</div>`).join(''):`<span style="color:var(--muted)">${vendaCondicaoPagamento==='fiado'?'Promoções por quantidade ainda não atingidas':'Sem desconto por condição'}</span>`;}
   const descontoExtra=parseFloat(document.getElementById('venda-desconto-extra')?.value)||0;
   const totalFinal=Math.max(0,totalComCanal-descontoExtra);
   const elFinal=document.getElementById('venda-total-final');
   if(elFinal)elFinal.textContent=fmt(totalFinal);
+  atualizarInfoBrinde();
   atualizarRestantePagamentoMisto();
   atualizarInfoEntrada();
   atualizarResumoParcelas();
@@ -667,6 +775,8 @@ function popularCanalVenda(){
 }
 function aplicarCanalVenda(){
   vendaItensTemp.forEach(it=>{
+    if(it.brinde){it.preco=0;return;}
+    if(it.totalFixo!=null){ if(it.precoBaseOrig!=null) it.precoBase=it.precoBaseOrig; delete it.totalFixo; delete it.precoBaseOrig; }
     const base=it.avulso?Number(it.precoBase??it.preco)||0:vcPrecoBaseCatalogo(it.produtoId);
     it.precoBase=base;it.preco=vcAplicarDescontoCondicao(base);
   });
@@ -774,7 +884,7 @@ function atualizarRestantePagamentoMisto(){
   el.style.color=Math.abs(restante)<0.01?'var(--green)':'var(--red)';
 }
 function calcTotalVendaGeralSemRecursao(){
-  const total=vendaItensTemp.reduce((s,it)=>s+((it.qtd||0)*(it.preco||0)),0);
+  const total=vendaItensTemp.reduce((s,it)=>s+vcTotalLinha(it),0);
   const descontoExtra=parseFloat(document.getElementById('venda-desconto-extra')?.value)||0;
   return Math.max(0,total-descontoExtra);
 }
@@ -825,6 +935,7 @@ function abrirNovaVenda(){
   vendaPagamentosTemp=[];
   document.getElementById('modal-venda-title').textContent='Nova Venda';
   vendaItensTemp=[];
+  vendaBrindeArmado=false;
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
@@ -850,7 +961,7 @@ function duplicarVenda(id){
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
   vendaPagamentosTemp=[];
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,precoBase:it.precoBase??it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,precoBase:it.precoBase??it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0,brinde:!!it.brinde,totalFixo:(Math.abs(it.qtd*it.preco-(it.total??it.qtd*it.preco))>0.005?it.total:undefined)}));
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
@@ -982,7 +1093,7 @@ function salvarVenda(){
   const condicaoPagamento=vendaCondicaoPagamento;
   const descontoCondicaoPct=vcPercentualCondicao();
   const subtotalCondicao=itensValidos.reduce((s,it)=>s+(it.qtd*(Number(it.precoBase??it.preco)||0)),0);
-  const subtotalFinalItens=itensValidos.reduce((s,it)=>s+(it.qtd*it.preco),0);
+  const subtotalFinalItens=itensValidos.reduce((s,it)=>s+vcTotalLinha(it),0);
   const descontoCondicaoValor=Math.max(0,subtotalCondicao-subtotalFinalItens);
 
   if(tipo==='orcamento'){
@@ -1005,7 +1116,7 @@ function salvarVenda(){
   const statusPedido=document.getElementById('venda-status-pedido').value||'preparando';
 
   let forma, pagamentos=null;
-  const total0=Math.max(0,itensValidos.reduce((s,it)=>s+(it.qtd*it.preco),0)-descontoExtra);
+  const total0=Math.max(0,itensValidos.reduce((s,it)=>s+vcTotalLinha(it),0)-descontoExtra);
   const entradaValor=parseFloat(document.getElementById('venda-entrada-valor').value)||0;
   if(!pagMisto && document.getElementById('venda-forma').value==='fiado' && entradaValor>total0+0.01){
     showToast(`Entrada (${fmt(entradaValor)}) maior que o total da venda (${fmt(total0)})`,'red');
@@ -1170,7 +1281,7 @@ function editarVenda(id){
   document.getElementById('venda-entrada-valor').value='';
   document.getElementById('venda-entrada-forma').value='dinheiro';
   toggleVendaEntradaShortcut();
-  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,precoBase:it.precoBase??it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0}));
+  vendaItensTemp=v.itens.map(it=>criarLinhaItemVenda({produtoId:it.produtoId,varianteId:it.varianteId,qtd:it.qtd,preco:it.preco,precoBase:it.precoBase??it.preco,avulso:!!it.avulso,nome:it.nome||'',custo:it.avulso?(it.custoFichaUn||0):0,brinde:!!it.brinde,totalFixo:(Math.abs(it.qtd*it.preco-(it.total??it.qtd*it.preco))>0.005?it.total:undefined)}));
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
@@ -1244,7 +1355,7 @@ function excluirVenda(id){
 let reciboVendaIdAtual=null;
 function gerarTextoRecibo(v){
   const c=getCliente(v.clienteId);
-  const linhas=v.itens.map(it=>`${nomeItemVenda(it)} — ${it.qtd}x ${fmt(it.preco)} = ${fmt(it.total)}`);
+  const linhas=v.itens.map(it=>it.brinde?`${nomeItemVendaExib(it)} — ${it.qtd}x (grátis)`:`${nomeItemVenda(it)} — ${it.qtd}x ${fmt(it.preco)} = ${fmt(it.total)}`);
   const pagTxt=v.pagamentos&&v.pagamentos.length>1
     ? v.pagamentos.map(p=>`${formaLabel(p.forma)}: ${fmt(p.valor)}`).join(' | ')
     : formaLabel(v.forma);
@@ -1326,6 +1437,7 @@ function abrirNovoOrcamento(){
   vendaPagamentosTemp=[];
   document.getElementById('modal-venda-title').textContent='Novo Orçamento';
   vendaItensTemp=[];
+  vendaBrindeArmado=false;
   vendaResetCampos();
   renderVendaItensLista();
   popularCanalVenda();
@@ -1396,17 +1508,18 @@ function exportarOrcamentoWhatsapp(id){
   if(!o)return;
   const c=getCliente(o.clienteId);
   const totalCheio=o.itens.reduce((s,it)=>{
+    if(it.brinde) return s;
     const precoBase=getProduto(it.produtoId)?.preco||it.preco;
     return s+(it.qtd*precoBase);
   },0);
-  const totalComCanal=o.itens.reduce((s,it)=>s+(it.qtd*it.preco),0);
+  const totalComCanal=o.itens.reduce((s,it)=>s+(it.total??(it.qtd*it.preco)),0);
   const descontoExtra=o.descontoExtra||0;
   const totalFinal=Math.max(0,totalComCanal-descontoExtra);
   const descontoTotal=totalCheio-totalFinal;
   const linhas=o.itens.map(it=>{
-    const nome=nomeItemVenda(it);
+    const nome=nomeItemVendaExib(it);
     const prefixo=`${it.qtd}x ${nome} `;
-    const valorTxt=fmt(it.qtd*it.preco);
+    const valorTxt=it.brinde?'grátis':fmt(it.total??(it.qtd*it.preco));
     const pontos='.'.repeat(Math.max(3,28-prefixo.length));
     return `${prefixo}${pontos} ${valorTxt}`;
   }).join('\n');
@@ -1538,7 +1651,7 @@ function cobrarWhatsapp(clienteId){
   const unidades=getUnidadesFiadoFlat()
     .filter(u=>u.clienteId==clienteId&&u.status!=='pago'&&u.valorRestante>0.009)
     .sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||'')||(a.data||'').localeCompare(b.data||'')||((a.parcelaNum||0)-(b.parcelaNum||0)));
-  const itensTxt=v=>(v.itens||[]).map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')||'Venda';
+  const itensTxt=v=>(v.itens||[]).filter(it=>!it.brinde).map(it=>nomeItemVenda(it)+' ('+it.qtd+'x)').join(', ')||'Venda';
   const linhaUn=(u,mostrarVenc)=>{
     let txt;
     if(u.renegociacaoId){
@@ -1901,7 +2014,7 @@ function repetirPedidoAnterior(vendaId){
     showToast('Nenhum item encontrado no pedido anterior','red');
     return;
   }
-  vendaItensTemp = v.itens.map(it => criarLinhaItemVenda({
+  vendaItensTemp = v.itens.filter(it=>!it.brinde).map(it => criarLinhaItemVenda({
     produtoId: it.produtoId,
     varianteId: it.varianteId,
     qtd: it.qtd,
@@ -2115,7 +2228,7 @@ function mostrarComprovanteAtendimentoMes(at, vendaSalva){
   // Bloco novo pedido
   const boxPed = document.getElementById('comp-at-pedido');
   if(vendaSalva && vendaSalva.itens && vendaSalva.itens.length){
-    const itensStr = vendaSalva.itens.map(it => `<div>• ${it.qtd}x ${escapeHtml(nomeItemVenda(it))} — <strong>${fmt(it.total||(it.qtd*it.preco))}</strong></div>`).join('');
+    const itensStr = vendaSalva.itens.map(it => `<div>• ${it.qtd}x ${escapeHtml(nomeItemVendaExib(it))} — <strong>${fmt(it.total||(it.qtd*it.preco))}</strong></div>`).join('');
     const { subtotal, desconto } = atendimentoCalcDesconto(vendaSalva);
     const blocoDesc = desconto > 0.009 ? `
       <div style="display:flex;justify-content:space-between;border-top:1px dashed var(--border);padding-top:6px;margin-top:6px;color:var(--muted)">
@@ -2178,7 +2291,7 @@ function montarMensagemAtendimento(d){
   if(d.vendaSalva && d.vendaSalva.itens && d.vendaSalva.itens.length){
     msg += `📦 *NOVO PEDIDO (Mês Seguinte):*\n`;
     d.vendaSalva.itens.forEach(it => {
-      msg += `- ${it.qtd}x ${nomeItemVenda(it)}: ${fmt(it.total||(it.qtd*it.preco))}\n`;
+      msg += `- ${it.qtd}x ${nomeItemVendaExib(it)}: ${it.brinde?'grátis':fmt(it.total||(it.qtd*it.preco))}\n`;
     });
     const { subtotal, desconto } = atendimentoCalcDesconto(d.vendaSalva);
     if(desconto > 0.009){
@@ -2312,9 +2425,9 @@ function _desenharComprovanteAtendimento(ctx, W, H, d){
     t += 14; if(draw){ set(12, 800, GOLD); esq('2. NOVO PEDIDO (MÊS SEGUINTE)', PAD + 20, t); } t += 30;
     if(!temPedido){ if(draw){ set(15, 500, MUTED); esq('Sem produtos adicionados.', PAD + 20, t); } return t + 10 - yy; }
     vs.itens.forEach(it => {
-      const val = fmt(it.total || (it.qtd * it.preco));
+      const val = it.brinde ? 'grátis' : fmt(it.total || (it.qtd * it.preco));
       ctx.font = `700 17px ${FONT}`; const wv = ctx.measureText(val).width;
-      if(draw){ set(17, 500, TEXT); esq(_cvTexto(ctx, `${it.qtd}x ${nomeItemVenda(it)}`, IW - 40 - wv - 14), PAD + 20, t); set(17, 700, TEXT); dir(val, W - PAD - 20, t); }
+      if(draw){ set(17, 500, TEXT); esq(_cvTexto(ctx, `${it.qtd}x ${nomeItemVendaExib(it)}`, IW - 40 - wv - 14), PAD + 20, t); set(17, 700, TEXT); dir(val, W - PAD - 20, t); }
       t += 28;
     });
     const { subtotal, desconto } = atendimentoCalcDesconto(vs);

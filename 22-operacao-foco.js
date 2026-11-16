@@ -338,7 +338,7 @@ function desenharSeletorVariante() {
   if (!p) { fecharSeletorVariante(); return; }
   pop.innerHTML = `<div class="pdv-var-cab">
       <div><div class="pdv-var-titulo">${escapeHtml(p.nome)}</div>
-      <div class="pdv-var-sub">Toque para adicionar</div></div>
+      <div class="pdv-var-sub">${modo === 'brinde' ? '🎁 Toque para adicionar como brinde' : 'Toque para adicionar'}</div></div>
       <button type="button" class="pdv-var-desfazer" onclick="desfazerSeletorVariante()" ${hist.length ? '' : 'disabled'}>${_VAR_SVG_DESFAZER}Desfazer</button>
     </div>
     <div class="pdv-var-grid">
@@ -346,7 +346,9 @@ function desenharSeletorVariante() {
       const disp = Number(v.estoque) || 0;
       const naCesta = modo === 'pdv'
         ? _pdvCesta.filter(it => it.produtoId === p.id && it.varianteId == v.id).reduce((s, it) => s + it.qtd, 0)
-        : ((typeof vcItemCatalogo === 'function' && vcItemCatalogo(p.id, v.id)) || { qtd: 0 }).qtd;
+        : modo === 'brinde'
+          ? vcBrindeQtd(p.id, v.id)
+          : ((typeof vcItemCatalogo === 'function' && vcItemCatalogo(p.id, v.id)) || { qtd: 0 }).qtd;
       const sem = disp <= 0;
       return `<button type="button" class="pdv-var-op${naCesta > 0 ? ' sel' : ''}${sem ? ' sem' : ''}" ${(sem && modo === 'pdv') ? 'disabled' : ''} onclick="somarSeletorVariante(${v.id})">
         <span class="pdv-var-top"><span class="pdv-var-nome">${escapeHtml(v.nome)}</span>${naCesta > 0 ? `<b class="pdv-card-badge">${naCesta}</b>` : ''}</span>
@@ -368,6 +370,8 @@ function somarSeletorVariante(varianteId) {
     adicionarItemPDV(produtoId, varianteId);
     // sem estoque: adicionarItemPDV avisa e não adiciona, então não conta no histórico do popup
     if (_pdvHistoricoAcoes.length === antes) { desenharSeletorVariante(); return; }
+  } else if (modo === 'brinde') {
+    vcBrindeAjustar(produtoId, varianteId, 1);
   } else {
     vcAjustar(`p:${produtoId}:${varianteId}`, 1);
   }
@@ -385,6 +389,8 @@ function _desfazerUmSeletorVariante() {
     if (ult && ult.produtoId === produtoId && (ult.varianteId || null) === vid) _pdvHistoricoAcoes.pop();
     const idx = _pdvCesta.findIndex(it => it.produtoId === produtoId && (it.varianteId || null) === vid);
     if (idx !== -1) alterarQtdPDV(idx, -1);
+  } else if (modo === 'brinde') {
+    vcBrindeAjustar(produtoId, vid, -1);
   } else {
     vcAjustar(`p:${produtoId}:${vid}`, -1);
   }

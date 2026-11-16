@@ -2225,3 +2225,12 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .ia-linha-valor{white-space:nowrap;flex-shrink:0}
 .ia-linha-resumo .ia-tag-urgencia{white-space:nowrap;flex-shrink:0}
 .ia-tag-excesso{background:rgba(86,156,214,0.18);color:#6FB1E8;border:1px solid rgba(86,156,214,0.35)}
+
+/* ===== v5.99.0 — busca de clientes: nº do cartão em dourado + pino da rota ===== */
+.busca-item.busca-cli strong{display:flex;align-items:baseline;gap:8px;min-width:0}
+.busca-item.busca-cli strong .busca-cli-num{flex:0 0 auto;color:var(--gold);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.busca-item.busca-cli strong .busca-cli-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:13px}
+.busca-item.busca-cli .busca-cli-rota{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted)}
+.busca-item.busca-cli .busca-cli-rota svg{width:13px;height:13px;flex:0 0 auto;color:var(--gold)}
+/* ===== v5.99.0 — menu puxável pela borda esquerda (só celular/tablet) ===== */
+#sidebar.arrastando,#sidebar-backdrop.arrastando{transition:none!important}

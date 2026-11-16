@@ -101,7 +101,8 @@ function renderPrecVisaoGeral(){
   if(dqEl)dqEl.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:10px">
     <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:190px;flex:1"><div style="font-size:13px;font-weight:700">Por produto</div><div style="font-size:20px;font-weight:800;color:var(--green);margin-top:4px">${dq.individualPct||0}%</div><div style="font-size:11px;color:var(--muted)">${dq.individualQtd||5} unidades do mesmo produto · ${dq.individualAtivo?'Ativo':'Inativo'}</div></div>
     <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:190px;flex:1"><div style="font-size:13px;font-weight:700">Geral da compra</div><div style="font-size:20px;font-weight:800;color:var(--green);margin-top:4px">${dq.geralPct||0}%</div><div style="font-size:11px;color:var(--muted)">${dq.geralQtd||15} unidades somadas · ${dq.geralAtivo?'Ativo':'Inativo'}</div></div>
-  </div><div style="font-size:11px;color:var(--muted);margin-top:8px">Aplicados somente no fiado. O desconto geral incide sobre o subtotal após os descontos individuais.</div>`;
+    <div style="background:var(--card-2);border-radius:10px;padding:12px 18px;min-width:190px;flex:1"><div style="font-size:13px;font-weight:700">🎁 Brinde por valor</div><div style="font-size:20px;font-weight:800;color:${dq.brindeAtivo!==false?'var(--green)':'var(--muted)'};margin-top:4px">${dq.brindeAtivo!==false?'a cada '+fmt(Number(dq.brindeValor)||50):'desativado'}</div><div style="font-size:11px;color:var(--muted)">${dq.brindeAtivo!==false?(Math.floor(Number(dq.brindeQtd))||1)+' brinde por faixa · vale à vista e no fiado':'ative em "Editar promoções"'}</div></div>
+  </div><div style="font-size:11px;color:var(--muted);margin-top:8px">Descontos aplicados somente no fiado; o brinde vale nos dois. O desconto geral incide sobre o subtotal após os descontos individuais.</div>`;
 
   // canais
   const canais=state.canais||[];
@@ -431,13 +432,14 @@ function populaSelectFornecedores(){
 
 function openModalDescontosQuantidade(){
   const d=state.descontosQuantidade||{individualAtivo:true,individualQtd:5,individualPct:10,geralAtivo:true,geralQtd:15,geralPct:10};
-  ['individualAtivo','individualQtd','individualPct','geralAtivo','geralQtd','geralPct'].forEach(k=>{const el=document.getElementById('dq-'+k);if(!el)return;if(el.type==='checkbox')el.checked=d[k]!==false;else el.value=d[k]??0;});
+  ['individualAtivo','individualQtd','individualPct','geralAtivo','geralQtd','geralPct','brindeAtivo','brindeValor','brindeQtd'].forEach(k=>{const el=document.getElementById('dq-'+k);if(!el)return;if(el.type==='checkbox')el.checked=d[k]!==false;else el.value=d[k]??(k==='brindeValor'?50:k==='brindeQtd'?1:0);});
   document.getElementById('modal-descontos-quantidade').classList.add('open');
 }
 function salvarDescontosQuantidade(){
   const num=k=>Number(String(document.getElementById('dq-'+k).value).replace(',','.'));
-  const d={individualAtivo:document.getElementById('dq-individualAtivo').checked,individualQtd:num('individualQtd'),individualPct:num('individualPct'),geralAtivo:document.getElementById('dq-geralAtivo').checked,geralQtd:num('geralQtd'),geralPct:num('geralPct')};
+  const d={individualAtivo:document.getElementById('dq-individualAtivo').checked,individualQtd:num('individualQtd'),individualPct:num('individualPct'),geralAtivo:document.getElementById('dq-geralAtivo').checked,geralQtd:num('geralQtd'),geralPct:num('geralPct'),brindeAtivo:document.getElementById('dq-brindeAtivo').checked,brindeValor:num('brindeValor'),brindeQtd:Math.floor(num('brindeQtd'))};
   if(![d.individualQtd,d.geralQtd].every(v=>Number.isFinite(v)&&v>0)||![d.individualPct,d.geralPct].every(v=>Number.isFinite(v)&&v>=0&&v<=100)){showToast('Confira as quantidades e percentuais (0 a 100%)','red');return;}
+  if(!(d.brindeValor>0)||!(d.brindeQtd>=1)){showToast('Brinde: informe o valor (maior que zero) e a quantidade (1 ou mais)','red');return;}
   state.descontosQuantidade=d;marcarAlterado();closeModal('modal-descontos-quantidade');renderPrecVisaoGeral();
   if(document.getElementById('modal-venda')?.classList.contains('open')){recalcularPrecosPromocionaisVenda();renderVendaItensLista();}
   showToast('Promoções por quantidade salvas','green');
