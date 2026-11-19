@@ -1108,7 +1108,7 @@ function salvarVenda(){
       showToast('Orçamento criado','green');
     }
     marcarAlterado();
-    closeModal('modal-venda');renderVendas();renderDashboard();
+    closeModal('modal-venda');renderVendas();renderDashboard();renderPaginaAtual();
     return;
   }
 
@@ -1247,7 +1247,7 @@ function salvarVenda(){
   if(vendaSalva&&excecaoCredito) vendaSalva.creditoExcecao=excecaoCredito; // registrada "mesmo assim": fica marcada na lista
   if(creditoOn&&valorFiado>0.009) creditoRegistrarInicio();                // começa a contar os 60 dias de revisão
   marcarAlterado();
-  closeModal('modal-venda');renderVendas();renderDashboard();renderEstoque();
+  closeModal('modal-venda');renderVendas();renderDashboard();renderEstoque();renderPaginaAtual();
   if(_atendimentoEmAndamento && _atendimentoEmAndamento.clienteId === clienteId){
     const at = _atendimentoEmAndamento;
     _atendimentoEmAndamento = null;

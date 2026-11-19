@@ -74,12 +74,12 @@ function renderPrecVisaoGeral(){
   const cf=state.custosFixos||[];
   document.getElementById('prec-custos-resumo').innerHTML=cf.length===0
     ?'<p style="color:var(--muted);font-size:13px">Nenhum custo fixo cadastrado ainda.</p>'
-    :`<table style="width:100%;border-collapse:collapse">
+    :`<table style="width:100%;min-width:0;table-layout:fixed;border-collapse:collapse">
       ${cf.map(c=>`<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:8px 4px;font-size:13px">${escapeHtml(c.nome)}</td>
-        <td style="padding:8px 4px;font-size:13px;font-weight:700;text-align:right;color:var(--red)">${fmt(c.valor||0)}/mês</td>
+        <td style="padding:8px 4px;font-size:13px;white-space:normal;overflow-wrap:anywhere">${escapeHtml(c.nome)}</td>
+        <td style="padding:8px 4px;font-size:13px;font-weight:700;text-align:right;white-space:nowrap;width:42%;color:var(--red)">${fmt(c.valor||0)}/mês</td>
       </tr>`).join('')}
-      <tr><td style="padding:10px 4px;font-size:13px;font-weight:700">Total</td><td style="padding:10px 4px;font-size:14px;font-weight:800;text-align:right;color:var(--navy)">${fmt(totalCF)}/mês</td></tr>
+      <tr><td style="padding:10px 4px;font-size:13px;font-weight:700">Total</td><td style="padding:10px 4px;font-size:14px;font-weight:800;text-align:right;white-space:nowrap;width:42%;color:var(--navy)">${fmt(totalCF)}/mês</td></tr>
     </table>
     <div style="margin-top:10px;padding:10px 12px;background:var(--gold-soft);border-radius:8px;font-size:13px">
       ${unidadesProduzidasMes>0

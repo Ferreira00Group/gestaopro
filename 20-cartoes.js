@@ -584,7 +584,7 @@ if(typeof c360Render==='function'){
     }catch(e){}
   };
 }
-function cartoesNovaVendaPara(id){ goto('vendas'); setTimeout(()=>{ abrirNovaVenda(); selecionarClienteVenda(id); },200); }
+function cartoesNovaVendaPara(id){ setTimeout(()=>{ abrirNovaVenda(); selecionarClienteVenda(id); },200); }
 // 3) Link do cartão aberto pela câmera do celular (espera o app terminar de carregar os dados).
 setTimeout(cartoesTratarLink,900);
 

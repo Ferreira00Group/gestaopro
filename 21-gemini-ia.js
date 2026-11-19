@@ -81,6 +81,7 @@ function coletarContextoERP(periodo = 'mes_atual') {
       aPagar: 0,
       aPagarVencido: 0,
       margemMediaPct: 0,
+      produtosSemFicha: 0,
       breakEvenMensal: 0,
       projecaoCaixa: { d7: 0, d15: 0, d30: 0 },
       curvaABC: [],
@@ -402,9 +403,21 @@ function coletarContextoERP(periodo = 'mes_atual') {
   if (Array.isArray(state.custosFixos)) {
     totalCustosFixos = state.custosFixos.reduce((acc, c) => acc + Number(c.valor || 0), 0);
   }
-  const margemMediaPct = margemTotalItens.length > 0
-    ? (margemTotalItens.reduce((a, b) => a + b, 0) / margemTotalItens.length)
-    : 35;
+  // v5.99.2 — a margem média passa a usar o MESMO critério da Precificação (ficha técnica atual,
+  // produtos ativos, custo MP + fixos rateados). Antes era a média simples do custo gravado em cada
+  // item vendido: uma venda antiga com custo errado derrubava tudo (ex.: -101%) e a IA mandava
+  // "cadastrar custo" de produtos que já estavam certos. Avulsos e brindes não entram.
+  let margemMediaPct = 35, produtosSemFicha = 0;
+  try {
+    if (typeof getLinhasPrecificacao === 'function') {
+      const linhasPrec = getLinhasPrecificacao();
+      produtosSemFicha = linhasPrec.filter(l => !(l.custoMP > 0)).length;
+      const arrPrec = linhasPrec.filter(l => l.preco > 0 && l.custoTotal > 0).map(l => (l.preco - l.custoTotal) / l.preco * 100);
+      if (arrPrec.length > 0) margemMediaPct = arrPrec.reduce((a, b) => a + b, 0) / arrPrec.length;
+    } else if (margemTotalItens.length > 0) {
+      margemMediaPct = margemTotalItens.reduce((a, b) => a + b, 0) / margemTotalItens.length;
+    }
+  } catch (e) {}
   const breakEvenMensal = margemMediaPct > 0 ? (totalCustosFixos / (margemMediaPct / 100)) : 0;
 
   // Score de Saúde Empresarial (0 a 100)
@@ -427,6 +440,7 @@ function coletarContextoERP(periodo = 'mes_atual') {
     aPagar: Number(pagAberto.toFixed(2)),
     aPagarVencido: Number(pagVencido.toFixed(2)),
     margemMediaPct: Math.round(margemMediaPct),
+    produtosSemFicha: produtosSemFicha,
     breakEvenMensal: Math.round(breakEvenMensal),
     projecaoCaixa: {
       d7: Number((rec7Dias - pag7Dias).toFixed(2)),
@@ -590,6 +604,7 @@ function construirPacoteAnalise() {
       a_pagar: ctx.aPagar,
       a_pagar_vencido: ctx.aPagarVencido,
       margem_media_pct: ctx.margemMediaPct,
+      produtos_sem_ficha_tecnica: ctx.produtosSemFicha,
       ponto_equilibrio: ctx.breakEvenMensal,
       score_saude: ctx.scoreSaude,
       projecao_caixa_7d: ctx.projecaoCaixa.d7,

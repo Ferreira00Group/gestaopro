@@ -2234,3 +2234,10 @@ body:has(#qa-sheet.open) #btn-flutuante-ia{display:none!important}
 .busca-item.busca-cli .busca-cli-rota svg{width:13px;height:13px;flex:0 0 auto;color:var(--gold)}
 /* ===== v5.99.0 — menu puxável pela borda esquerda (só celular/tablet) ===== */
 #sidebar.arrastando,#sidebar-backdrop.arrastando{transition:none!important}
+/* ===== v5.99.1 — botão ✕ nos campos de busca ===== */
+.gpx-wrap{position:relative;display:block}
+.gpx-wrap>input.gpx-input{display:block;width:100%;margin:0;padding-right:40px!important}
+.gpx-wrap>input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.gpx-x{display:none;position:absolute;right:5px;top:50%;transform:translateY(-50%);width:34px;height:34px;align-items:center;justify-content:center;border:none;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
+.gpx-x:active{background:rgba(201,162,75,.18);color:var(--gold)}
+.gpx-wrap>input.gpx-input:not(:placeholder-shown)~.gpx-x{display:flex}

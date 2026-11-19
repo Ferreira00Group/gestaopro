@@ -1,4 +1,12 @@
-# GestãoPRO v5.99.0
+# GestãoPRO v5.99.2
+
+## Versão 5.99.2 — Margem da Análise igual à Precificação e tabela de custos fixos sem corte
+- **Análise de Dados:** a margem média enviada à IA agora usa o mesmo critério da Precificação (ficha técnica atual, produtos ativos, custo MP + fixos rateados). Antes era a média do custo gravado em cada venda, e uma venda antiga com custo errado derrubava o número (ex.: -101%) e gerava alerta falso de "cadastrar custo". Itens avulsos e brindes ficam fora. O pacote também informa quantos produtos estão sem ficha técnica. Nenhum dado das vendas foi alterado.
+- **Precificação:** a tabela de Rateio de Custos Fixos agora cabe na tela do celular (valores e Total não ficam mais cortados à direita).
+
+## Versão 5.99.1 — Botão ✕ nas buscas e vendas sem trocar de tela
+- **Botão ✕ nas buscas:** todos os campos de busca (Clientes, Vendas, Estoque, Movimentação, Fornecedores, Precificação, catálogo da Nova Venda, PDV, CRM, Banco e Cartões) ganham um ✕ à direita quando há texto. Ao tocar, limpa só o texto, mantém o foco e refaz o filtro; filtros de status/rota continuam. A busca global já tinha o seu.
+- **Venda sem trocar de tela:** Venda (card do cliente), Nova Venda/Orçamento (painel e botão flutuante) e Gerar venda (CRM) agora abrem a venda por cima da tela atual, sem ir para Vendas. Ao salvar, a tela aberta é atualizada (ex.: saldo do cliente) e você continua nela. A importação de orçamentos continua abrindo Vendas.
 
 ## Versão 5.99.0 — Menu puxável, buscas que limpam ao navegar e cartão/rota na busca de clientes
 - **Menu puxável:** no celular/tablet, o menu lateral abre arrastando o dedo a partir da borda esquerda (faixa de ~24 px) e acompanha o dedo; o fundo escurece aos poucos. Soltando depois de ~40% da largura, ou num puxão rápido, ele termina de abrir; senão volta. Para fechar, arraste o menu para a esquerda ou toque no fundo escuro. O botão ☰ continua. O gesto fica desligado com janela aberta e é ignorado quando o movimento é de rolagem vertical. Em telas largas (1024 px ou mais) o menu continua fixo.

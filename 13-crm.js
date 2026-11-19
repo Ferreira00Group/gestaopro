@@ -453,7 +453,6 @@ function crmGerarVenda(id){
   const n=state.crmNegocios.find(n=>n.id===id); if(!n) return;
   if(!n.clienteId&&n.leadId) crmConverterLeadSilencioso(n.leadId);
   if(!n.clienteId){ showToast('Negócio sem cliente — edite e escolha um cliente','red'); return; }
-  goto('vendas');
   abrirNovaVenda();
   selecionarClienteVenda(n.clienteId);
   const itens=n.itens||[];

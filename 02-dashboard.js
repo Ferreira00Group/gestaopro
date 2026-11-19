@@ -44,11 +44,11 @@ function novaVendaPDV(){
 // Orçamento: abre a Nova Venda já no modo Orçamento
 function novaVendaOrcamento(){
   fecharMenuNovaVenda();
-  setTimeout(function(){goto('vendas');setTimeout(function(){abrirNovaVenda();setVendaTipo('orcamento');},80);},120);
+  setTimeout(function(){abrirNovaVenda();setVendaTipo('orcamento');},120);
 }
 function novaVendaCompleta(){
   fecharMenuNovaVenda();
-  setTimeout(function(){goto('vendas');setTimeout(function(){abrirNovaVenda();},80);},120);
+  setTimeout(function(){abrirNovaVenda();},120);
 }
 // Novo gasto = lançamento de saída (com categoria; use "Gasolina" para o número do card)
 function abrirNovoGasto(){

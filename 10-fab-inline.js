@@ -11,10 +11,8 @@ function fabAction(tipo){
   toggleFabMenu(false);
   setTimeout(function(){
     if(tipo==='venda'){
-      goto('vendas');
       setTimeout(function(){ abrirNovaVenda(); }, 80);
     } else if(tipo==='orcamento'){
-      goto('vendas');
       setTimeout(function(){ abrirNovaVenda(); setVendaTipo('orcamento'); }, 80);
     } else if(tipo==='cliente'){
       openModal('modal-cliente');

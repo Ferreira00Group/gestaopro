@@ -774,6 +774,16 @@ function confirmarAcao(texto,callback){
 }
 
 // ============ RENDER DISPATCHER ============
+// Re-renderiza a tela aberta (usado quando a venda é salva por cima de outra tela, sem ir pra Vendas)
+function renderPaginaAtual(){
+  try{
+    const p=document.querySelector('.page.active');
+    if(!p||p.id.indexOf('page-')!==0) return;
+    const pg=p.id.slice(5);
+    if(pg==='vendas'||pg==='dashboard') return; // já renderizadas pelo próprio salvar
+    render(pg);
+  }catch(e){}
+}
 function render(page){
   if(typeof atualizarAlertBells==='function') atualizarAlertBells();
   if(typeof bancoAplicarFlag==='function') bancoAplicarFlag();
@@ -1123,4 +1133,45 @@ function fecharJanelaGestaoPro(){
   // Entrada sentinela: permite capturar o botão voltar mesmo na tela inicial.
   try { history.pushState({gpApp:true,gpPage:_gpPaginaAtual},'',location.href); } catch(e) {}
   window.addEventListener('popstate',tratarVoltarGestaoPro);
+})();
+
+// ============ BOTÃO ✕ NOS CAMPOS DE BUSCA (v5.99.1) ============
+// Envolve cada campo de busca num wrapper e adiciona um ✕ que limpa o texto e refaz o filtro.
+// A visibilidade do ✕ é só CSS (:placeholder-shown), então acompanha também limpezas feitas por código.
+(function(){
+  const SEL='input.search-input, input[type="search"], #pdv-busca-item, #cartao-busca, #cartoes-busca';
+  const X_SVG='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  function envolver(inp){
+    if(inp.dataset.gpx||inp.id==='busca-global-input'||inp.type==='hidden') return;
+    const pai=inp.parentNode; if(!pai) return;
+    inp.dataset.gpx='1';
+    if(!inp.getAttribute('placeholder')) inp.setAttribute('placeholder',' ');
+    const cs=getComputedStyle(inp);
+    const estavaFoco=document.activeElement===inp;
+    let ini=0,fim=0; try{ini=inp.selectionStart;fim=inp.selectionEnd;}catch(e){}
+    const w=document.createElement('span');
+    w.className='gpx-wrap';
+    w.style.flex=cs.flex; w.style.minWidth=cs.minWidth; w.style.marginBottom=cs.marginBottom; w.style.marginTop=cs.marginTop;
+    pai.insertBefore(w,inp);
+    w.appendChild(inp);
+    inp.classList.add('gpx-input');
+    const b=document.createElement('button');
+    b.type='button'; b.className='gpx-x'; b.tabIndex=-1; b.setAttribute('aria-label','Limpar busca'); b.innerHTML=X_SVG;
+    w.appendChild(b);
+    if(estavaFoco){ try{inp.focus({preventScroll:true}); if(ini!=null) inp.setSelectionRange(ini,fim);}catch(e){} }
+  }
+  function varrer(){ document.querySelectorAll(SEL).forEach(envolver); }
+  let agendado=false;
+  function agendar(){ if(agendado) return; agendado=true; requestAnimationFrame(function(){agendado=false;varrer();}); }
+  document.addEventListener('mousedown',function(e){ if(e.target.closest&&e.target.closest('.gpx-x')) e.preventDefault(); });
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('.gpx-x'); if(!b) return;
+    const inp=b.parentNode.querySelector('input.gpx-input'); if(!inp) return;
+    inp.value='';
+    inp.dispatchEvent(new Event('input',{bubbles:true}));
+    try{inp.focus();}catch(err){}
+  });
+  varrer();
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',varrer);
+  new MutationObserver(agendar).observe(document.body||document.documentElement,{childList:true,subtree:true});
 })();
